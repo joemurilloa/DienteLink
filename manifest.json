@@ -1,0 +1,28 @@
+
+{
+  "short_name": "MedPulse",
+  "name": "MedPulse Medical Dashboard",
+  "icons": [
+    {
+      "src": "https://picsum.photos/192/192",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://picsum.photos/512/512",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#f8fafc",
+  "display": "standalone",
+  "theme_color": "#3b82f6",
+  "shortcuts": [
+    {
+      "name": "New Appointment",
+      "url": "/#/new-appointment",
+      "icons": [{"src": "https://picsum.photos/96/96", "sizes": "96x96"}]
+    }
+  ]
+}

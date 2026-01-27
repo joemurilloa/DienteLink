@@ -1,0 +1,8 @@
+{
+  "name": "MedPulse Dashboard",
+  "description": "A high-performance, minimalist medical management dashboard designed for modern healthcare professionals. Features real-time appointment tracking and financial analytics.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
