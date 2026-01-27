@@ -6,6 +6,8 @@ import BottomNav from './components/BottomNav';
 import AppointmentCard from './components/AppointmentCard';
 import Odontogram from './components/Odontogram';
 import Periodontogram from './components/Periodontogram';
+import BudgetPlanner from './components/BudgetPlanner';
+import XRayViewer from './components/XRayViewer';
 import AIAssistant from './components/AIAssistant';
 import { getAppointments, getDashboardStats } from './services/mockData';
 import { Appointment, Stats, ReminderStatus } from './types';
@@ -155,7 +157,7 @@ const Dashboard: React.FC = () => {
 // Vistas simplificadas para el resto de rutas (comparten el layout)
 const DentalView: React.FC = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState<'odontogram' | 'periodontogram'>('odontogram');
+  const [view, setView] = useState<'odontogram' | 'periodontogram' | 'budget' | 'xray'>('odontogram');
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-6 lg:p-12 animate-in fade-in zoom-in-95 duration-500 pb-32">
@@ -165,11 +167,11 @@ const DentalView: React.FC = () => {
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tighter">Historial Odontológico</h2>
         </div>
         
-        <div className="flex bg-slate-100 p-1.5 rounded-[24px] border border-slate-200">
+        <div className="flex bg-slate-100 p-1.5 rounded-[24px] border border-slate-200 overflow-x-auto hide-scrollbar max-w-full">
           <button 
             onClick={() => setView('odontogram')}
             className={cn(
-              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider",
+              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider whitespace-nowrap",
               view === 'odontogram' ? "bg-white text-slate-900 shadow-md" : "text-slate-400"
             )}
           >
@@ -178,17 +180,38 @@ const DentalView: React.FC = () => {
           <button 
             onClick={() => setView('periodontogram')}
             className={cn(
-              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider",
+              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider whitespace-nowrap",
               view === 'periodontogram' ? "bg-white text-slate-900 shadow-md" : "text-slate-400"
             )}
           >
             Periodontograma
           </button>
+          <button 
+            onClick={() => setView('budget')}
+            className={cn(
+              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider whitespace-nowrap",
+              view === 'budget' ? "bg-white text-slate-900 shadow-md" : "text-slate-400"
+            )}
+          >
+            Presupuesto
+          </button>
+          <button 
+            onClick={() => setView('xray')}
+            className={cn(
+              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider whitespace-nowrap",
+              view === 'xray' ? "bg-white text-slate-900 shadow-md" : "text-slate-400"
+            )}
+          >
+            Radiografías
+          </button>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto space-y-12">
-        {view === 'odontogram' ? <Odontogram patientId="1" /> : <Periodontogram />}
+      <div className="max-w-6xl mx-auto space-y-12">
+        {view === 'odontogram' && <Odontogram patientId="1" />}
+        {view === 'periodontogram' && <Periodontogram />}
+        {view === 'budget' && <BudgetPlanner />}
+        {view === 'xray' && <XRayViewer />}
       </div>
     </div>
   );

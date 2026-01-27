@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export type ReminderStatus = 'not_sent' | 'sending' | 'sent' | 'error';
@@ -31,4 +32,17 @@ export interface NavItem {
   label: string;
   icon: React.ReactNode;
   path: string;
+}
+
+export interface Treatment {
+  id: string;
+  name: string;
+  price: number;
+  color: string;
+  description: string;
+}
+
+export interface BudgetItem {
+  toothId: number;
+  treatment: Treatment;
 }
