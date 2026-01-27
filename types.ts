@@ -46,3 +46,53 @@ export interface BudgetItem {
   toothId: number;
   treatment: Treatment;
 }
+
+// --- Nuevas interfaces para Expediente Clínico ---
+
+export interface PatientIdentification {
+  fullName: string;
+  birthDate: string;
+  gender: string;
+  address: string;
+  phone: string;
+  email: string;
+  occupation: string;
+}
+
+export interface ClinicalHistory {
+  allergies: string[];
+  medications: string;
+  previousDiseases: string;
+  familyHistory: string;
+  motiveOfConsult: string;
+}
+
+export interface EvolutionNote {
+  id: string;
+  date: string;
+  content: string;
+  procedure: string;
+}
+
+export interface ClinicalEvent {
+  id: string;
+  date: string;
+  type: 'treatment' | 'extraction' | 'cleaning' | 'diagnose' | 'other';
+  description: string;
+  toothId?: number;
+  cost: number;
+}
+
+export interface PatientRecord {
+  id: string;
+  identification: PatientIdentification;
+  clinicalHistory: ClinicalHistory;
+  evolutionNotes: EvolutionNote[];
+  history: ClinicalEvent[]; // Historial cronológico completo
+  consentSigned: boolean;
+  odontogram: ToothData[];
+  periodontogram: number[]; // Profundidades de sondaje (mm)
+  budget: BudgetItem[];
+  xrays: string[];
+  balance: number; // Saldo pendiente o total invertido
+}

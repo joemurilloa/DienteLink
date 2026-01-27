@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Save, Info } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface PeriodontogramProps {
-  onUpdate?: (depths: number[]) => void;
+  depths: number[];
+  onUpdate: (depths: number[]) => void;
 }
 
 const ToothProbe: React.FC<{ index: number; value: number; onChange: (val: number) => void }> = ({ index, value, onChange }) => {
@@ -22,10 +24,10 @@ const ToothProbe: React.FC<{ index: number; value: number; onChange: (val: numbe
       {/* Visualización del Diente (Simplificada) */}
       <div className="w-10 h-12 relative flex items-center justify-center mb-2">
         <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-sm filter">
-          <path 
-            d={isMolar ? "M20 40 Q20 20 50 20 Q80 20 80 40 Q80 70 70 100 Q50 110 30 100 Z" : "M30 30 Q30 15 50 15 Q70 15 70 30 Q70 60 60 100 Q50 110 40 100 Z"} 
-            fill="white" 
-            stroke="#E2E8F0" 
+          <path
+            d={isMolar ? "M20 40 Q20 20 50 20 Q80 20 80 40 Q80 70 70 100 Q50 110 30 100 Z" : "M30 30 Q30 15 50 15 Q70 15 70 30 Q70 60 60 100 Q50 110 40 100 Z"}
+            fill="white"
+            stroke="#E2E8F0"
             strokeWidth="2"
           />
           <path d="M40 25 Q50 20 60 25" stroke="white" strokeWidth="3" strokeOpacity="0.5" />
@@ -38,11 +40,14 @@ const ToothProbe: React.FC<{ index: number; value: number; onChange: (val: numbe
       {/* Zona Reactiva de Arrastre */}
       <div className="relative w-full h-32 bg-slate-50/50 rounded-2xl border border-slate-100 flex flex-col items-center justify-start py-2 overflow-hidden shadow-inner">
         {/* Barra de Profundidad */}
-        <motion.div 
+        <motion.div
+          layout
+          initial={{ height: 0 }}
+          animate={{ height: `${value * 10}%` }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
           className={cn("w-1.5 rounded-full shadow-lg transition-colors duration-300", getColor(value))}
-          style={{ height: `${value * 10}%` }}
         />
-        
+
         {/* Indicador Numérico */}
         <div className={cn(
           "mt-2 text-[11px] font-black px-1.5 py-0.5 rounded-md transition-all",
@@ -52,7 +57,7 @@ const ToothProbe: React.FC<{ index: number; value: number; onChange: (val: numbe
         </div>
 
         {/* Capa de Control Invisible para Gestos */}
-        <motion.div 
+        <motion.div
           drag="y"
           dragConstraints={{ top: 0, bottom: 0 }}
           dragElastic={0.05}
@@ -69,14 +74,12 @@ const ToothProbe: React.FC<{ index: number; value: number; onChange: (val: numbe
   );
 };
 
-const Periodontogram: React.FC<PeriodontogramProps> = ({ onUpdate }) => {
-  const [depths, setDepths] = useState<number[]>(new Array(16).fill(1));
+const Periodontogram: React.FC<PeriodontogramProps> = ({ depths, onUpdate }) => {
 
-  const handleUpdate = (idx: number, val: number) => {
+  const handleUpdateDepth = (idx: number, val: number) => {
     const next = [...depths];
     next[idx] = val;
-    setDepths(next);
-    onUpdate?.(next);
+    onUpdate(next);
   };
 
   return (
@@ -86,7 +89,7 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ onUpdate }) => {
           <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Sondaje Periodontal</h3>
           <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mt-1">Desliza verticalmente para medir</p>
         </div>
-        
+
         <div className="flex gap-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-emerald-500 rounded-full" />
@@ -103,11 +106,11 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ onUpdate }) => {
       <div className="overflow-x-auto hide-scrollbar pb-6 -mx-4 px-4">
         <div className="flex gap-2 min-w-max px-2">
           {depths.map((d, i) => (
-            <ToothProbe 
-              key={i} 
-              index={i} 
-              value={d} 
-              onChange={(val) => handleUpdate(i, val)} 
+            <ToothProbe
+              key={i}
+              index={i}
+              value={depths[i] || 1}
+              onChange={(val) => handleUpdateDepth(i, val)}
             />
           ))}
         </div>
@@ -135,7 +138,7 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ onUpdate }) => {
             </p>
           </div>
           <button className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-slate-100 hover:scale-110 active:scale-95 transition-all text-blue-600">
-            💾
+            <Save size={20} />
           </button>
         </div>
       </div>

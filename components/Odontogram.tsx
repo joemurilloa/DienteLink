@@ -1,45 +1,52 @@
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ToothData, ToothStatus } from '../types';
 import { dentalService } from '../services/dentalService';
 import { cn } from '../lib/utils';
 
 interface OdontogramProps {
   patientId: string;
+  teeth: ToothData[];
+  onUpdate: (teeth: ToothData[]) => void;
 }
 
-const statusThemes: Record<ToothStatus, { gradient: string; border: string; label: string; dot: string; fill: string; shadow: string }> = {
-  healthy: { 
-    gradient: 'from-white to-slate-100', 
-    border: 'border-slate-200', 
-    label: 'Sano', 
-    dot: 'bg-slate-300', 
-    fill: '#f8fafc',
-    shadow: 'rgba(203, 213, 225, 0.4)'
+const statusThemes: Record<ToothStatus, { gradient: string; border: string; label: string; dot: string; fill: string; shadowColor: string; textColor: string }> = {
+  healthy: {
+    gradient: 'from-white to-slate-50',
+    border: 'border-slate-200',
+    label: 'Sano',
+    dot: 'bg-slate-300',
+    fill: '#FFFFFF',
+    shadowColor: 'rgba(203, 213, 225, 0.2)',
+    textColor: 'text-slate-400'
   },
-  caries: { 
-    gradient: 'from-rose-400 to-rose-600', 
-    border: 'border-rose-700', 
-    label: 'Caries', 
-    dot: 'bg-rose-500', 
-    fill: '#e11d48',
-    shadow: 'rgba(225, 29, 72, 0.4)'
+  caries: {
+    gradient: 'from-red-500 to-red-600',
+    border: 'border-red-700',
+    label: 'Caries',
+    dot: 'bg-red-500',
+    fill: '#FF0000', // Rojo puro para máxima visibilidad
+    shadowColor: 'rgba(255, 0, 0, 0.4)',
+    textColor: 'text-white'
   },
-  missing: { 
-    gradient: 'from-slate-200 to-slate-300', 
-    border: 'border-slate-400', 
-    label: 'Ausente', 
-    dot: 'bg-slate-400', 
-    fill: '#94a3b8',
-    shadow: 'rgba(148, 163, 184, 0.2)'
+  missing: {
+    gradient: 'from-slate-100 to-slate-200',
+    border: 'border-slate-300',
+    label: 'Ausente',
+    dot: 'bg-slate-400',
+    fill: '#F1F5F9',
+    shadowColor: 'rgba(148, 163, 184, 0.1)',
+    textColor: 'text-slate-300'
   },
-  treated: { 
-    gradient: 'from-blue-400 to-blue-600', 
-    border: 'border-blue-700', 
-    label: 'Tratado', 
-    dot: 'bg-blue-50', 
-    fill: '#2563eb',
-    shadow: 'rgba(37, 99, 235, 0.4)'
+  treated: {
+    gradient: 'from-blue-500 to-blue-600',
+    border: 'border-blue-700',
+    label: 'Tratado',
+    dot: 'bg-blue-400',
+    fill: '#2563EB',
+    shadowColor: 'rgba(37, 99, 235, 0.3)',
+    textColor: 'text-white'
   }
 };
 
@@ -54,93 +61,66 @@ const ToothSVG = ({ status, id }: { status: ToothStatus; id: number }) => {
   const isUpper = id <= 16;
 
   return (
-    <svg 
-      viewBox="0 0 100 140" 
+    <svg
+      viewBox="0 0 100 140"
       className={cn(
         "w-full h-full transition-all duration-500",
         status === 'missing' ? "opacity-30 grayscale" : "drop-shadow-xl"
       )}
-      style={{ filter: status !== 'healthy' ? `drop-shadow(0 10px 15px ${theme.shadow})` : 'none' }}
+      style={{ filter: status !== 'healthy' ? `drop-shadow(0 10px 15px ${theme.shadowColor})` : 'none' }}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
         <linearGradient id={`tooth-grad-${id}`} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor={status === 'healthy' ? '#FFFFFF' : theme.fill} stopOpacity="1" />
-          <stop offset="60%" stopColor={status === 'healthy' ? '#F8FAFC' : theme.fill} stopOpacity="0.9" />
-          <stop offset="100%" stopColor={status === 'healthy' ? '#E2E8F0' : theme.fill} stopOpacity="0.8" />
+          <stop offset="100%" stopColor={status === 'healthy' ? '#F8FAFC' : theme.fill} stopOpacity="0.9" />
         </linearGradient>
-        <filter id="inner-shadow">
-          <feOffset dx="0" dy="2" />
-          <feGaussianBlur stdDeviation="2" result="offset-blur" />
-          <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
-          <feFlood floodColor="black" floodOpacity="0.1" result="color" />
-          <feComposite operator="in" in="color" in2="inverse" result="shadow" />
-          <feComposite operator="over" in="shadow" in2="SourceGraphic" />
-        </filter>
       </defs>
 
       <g transform={!isUpper ? "rotate(180 50 70)" : ""}>
         {isMolar && (
-          // Forma de Molar: Ancha con cúspides
-          <path 
-            d="M15 40C15 25 25 20 50 20C75 20 85 25 85 40C85 60 80 80 70 110C65 125 55 130 50 130C45 130 35 125 30 110C20 80 15 60 15 40Z" 
+          <path
+            d="M15 40C15 25 25 20 50 20C75 20 85 25 85 40C85 60 80 80 70 110C65 125 55 130 50 130C45 130 35 125 30 110C20 80 15 60 15 40Z"
             fill={`url(#tooth-grad-${id})`}
-            stroke={status === 'healthy' ? '#CBD5E1' : theme.fill}
-            strokeWidth="2"
-            filter="url(#inner-shadow)"
+            stroke={status === 'healthy' ? '#E2E8F0' : theme.fill}
+            strokeWidth="2.5"
           />
         )}
         {isPremolar && (
-          // Forma de Premolar: Medianamente ancha
-          <path 
-            d="M22 35C22 22 35 18 50 18C65 18 78 22 78 35C78 55 75 80 68 110C64 125 56 128 50 128C44 128 36 125 32 110C25 80 22 55 22 35Z" 
+          <path
+            d="M22 35C22 22 35 18 50 18C65 18 78 22 78 35C78 55 75 80 68 110C64 125 56 128 50 128C44 128 36 125 32 110C25 80 22 55 22 35Z"
             fill={`url(#tooth-grad-${id})`}
-            stroke={status === 'healthy' ? '#CBD5E1' : theme.fill}
-            strokeWidth="2"
-            filter="url(#inner-shadow)"
+            stroke={status === 'healthy' ? '#E2E8F0' : theme.fill}
+            strokeWidth="2.5"
           />
         )}
         {isCanine && (
-          // Forma de Canino: Puntiaguda
-          <path 
-            d="M28 30C28 20 40 15 50 15C60 15 72 20 72 30C72 50 68 85 62 115C58 130 50 135 42 130C32 115 28 50 28 30Z" 
+          <path
+            d="M28 30C28 20 40 15 50 15C60 15 72 20 72 30C72 50 68 85 62 115C58 130 50 135 42 130C32 115 28 50 28 30Z"
             fill={`url(#tooth-grad-${id})`}
-            stroke={status === 'healthy' ? '#CBD5E1' : theme.fill}
-            strokeWidth="2"
-            filter="url(#inner-shadow)"
+            stroke={status === 'healthy' ? '#E2E8F0' : theme.fill}
+            strokeWidth="2.5"
           />
         )}
         {isIncisor && (
-          // Forma de Incisivo: Plana y rectangular
-          <path 
-            d="M25 25C25 18 35 15 50 15C65 15 75 18 75 25C75 45 72 85 65 115C60 128 50 132 40 125C30 110 25 45 25 25Z" 
+          <path
+            d="M25 25C25 18 35 15 50 15C65 15 75 18 75 25C75 45 72 85 65 115C60 128 50 132 40 125C30 110 25 45 25 25Z"
             fill={`url(#tooth-grad-${id})`}
-            stroke={status === 'healthy' ? '#CBD5E1' : theme.fill}
-            strokeWidth="2"
-            filter="url(#inner-shadow)"
+            stroke={status === 'healthy' ? '#E2E8F0' : theme.fill}
+            strokeWidth="2.5"
           />
         )}
 
-        {/* Detalles de oclusión para molares y premolares */}
-        {(isMolar || isPremolar) && status === 'healthy' && (
-          <path 
-            d="M35 35Q50 45 65 35M50 30V50" 
-            stroke="#E2E8F0" 
-            strokeWidth="1.5" 
-            strokeLinecap="round" 
+        {/* Detalles para piezas activas */}
+        {status !== 'healthy' && (
+          <path
+            d="M30 40 L70 40 M50 20 L50 60"
+            stroke="black"
+            strokeWidth="1"
+            strokeOpacity="0.1"
             fill="none"
           />
         )}
-
-        {/* Brillo de superficie (Esmalte) */}
-        <path 
-          d="M40 25C40 22 45 20 50 20C55 20 60 22 60 25" 
-          stroke="white" 
-          strokeWidth="4" 
-          strokeLinecap="round" 
-          strokeOpacity="0.5"
-          fill="none"
-        />
       </g>
     </svg>
   );
@@ -148,27 +128,45 @@ const ToothSVG = ({ status, id }: { status: ToothStatus; id: number }) => {
 
 const ToothIcon: React.FC<{ status: ToothStatus; onClick: () => void; id: number }> = ({ status, onClick, id }) => {
   const isUpper = id <= 16;
-  
+  const theme = statusThemes[status];
+
   return (
-    <div 
+    <motion.div
+      layout
+      whileHover={{ scale: 1.15, zIndex: 10 }}
+      whileTap={{ scale: 0.9 }}
       onClick={onClick}
-      className="flex flex-col items-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
+      className="flex flex-col items-center cursor-pointer transition-all duration-300 group"
     >
-      <div className="w-12 h-16 md:w-16 md:h-20 relative flex items-center justify-center">
+      <motion.div
+        initial={false}
+        animate={{
+          rotateX: status === 'missing' ? 20 : 0,
+          opacity: status === 'missing' ? 0.3 : 1
+        }}
+        className="w-12 h-16 md:w-16 md:h-20 relative flex items-center justify-center"
+      >
         <ToothSVG status={status} id={id} />
-        
+
         <span className={cn(
-          "absolute text-[10px] font-black z-10 select-none transition-all duration-300",
+          "absolute text-[11px] font-black z-10 select-none transition-all duration-300",
           isUpper ? "top-4" : "bottom-4",
-          status === 'healthy' ? 'text-slate-400 opacity-60' : 'text-white'
+          theme.textColor
         )}>
           {id}
         </span>
 
         {/* Hotspot para Caries */}
-        {status === 'caries' && (
-          <div className="absolute w-2 h-2 bg-black/30 rounded-full blur-[2px] animate-pulse" />
-        )}
+        <AnimatePresence>
+          {status === 'caries' && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              className="absolute w-2 h-2 bg-black/30 rounded-full blur-[2px] animate-pulse"
+            />
+          )}
+        </AnimatePresence>
 
         {/* Tooltip de estado al pasar el ratón */}
         <div className="absolute -top-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 pointer-events-none">
@@ -176,37 +174,28 @@ const ToothIcon: React.FC<{ status: ToothStatus; onClick: () => void; id: number
             "px-2 py-1 rounded-lg text-[9px] font-bold text-white shadow-lg whitespace-nowrap",
             statusThemes[status].fill.replace('#', 'bg-[#') + ']'
           )}
-          style={{ backgroundColor: statusThemes[status].fill }}
+            style={{ backgroundColor: statusThemes[status].fill }}
           >
             {statusThemes[status].label}
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
-const Odontogram: React.FC<OdontogramProps> = ({ patientId }) => {
-  const [teeth, setTeeth] = useState<ToothData[]>([]);
-  const [loading, setLoading] = useState(true);
+const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate }) => {
   const [selectedStatus, setSelectedStatus] = useState<ToothStatus>('caries');
 
-  useEffect(() => {
-    dentalService.getPatientOdontogram(patientId).then(data => {
-      setTeeth(data);
-      setLoading(false);
-    });
-  }, [patientId]);
-
-  const handleToothClick = async (id: number) => {
+  const handleToothClick = (id: number) => {
     const tooth = teeth.find(t => t.id === id);
     if (!tooth) return;
     const newStatus = tooth.status === selectedStatus ? 'healthy' : selectedStatus;
-    setTeeth(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
-    await dentalService.updateToothStatus(patientId, id, newStatus);
+    const updatedTeeth = teeth.map(t => t.id === id ? { ...t, status: newStatus } : t);
+    onUpdate(updatedTeeth);
   };
 
-  if (loading) return (
+  if (teeth.length === 0) return (
     <div className="flex flex-col items-center justify-center h-96 gap-4">
       <div className="w-12 h-12 border-[4px] border-blue-600 border-t-transparent rounded-full animate-spin shadow-lg"></div>
       <p className="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Cargando Biometría...</p>
@@ -220,7 +209,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId }) => {
           <h3 className="text-3xl font-black text-slate-900 tracking-tighter leading-none mb-2">Exploración Anatómica</h3>
           <p className="text-blue-500 text-xs font-black uppercase tracking-[2px]">Paciente: Sarah Jenkins • ID: {patientId}</p>
         </div>
-        
+
         <div className="flex bg-slate-100/60 p-1.5 rounded-[28px] border border-slate-200/50 backdrop-blur-2xl shadow-inner">
           {(Object.keys(statusThemes) as ToothStatus[]).map((status) => (
             <button
@@ -228,8 +217,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId }) => {
               onClick={() => setSelectedStatus(status)}
               className={cn(
                 "px-5 py-3 rounded-[24px] text-[10px] font-black transition-all uppercase tracking-[1px] flex items-center gap-2",
-                selectedStatus === status 
-                  ? "bg-white text-slate-900 shadow-xl shadow-slate-200 scale-105" 
+                selectedStatus === status
+                  ? "bg-white text-slate-900 shadow-xl shadow-slate-200 scale-105"
                   : "text-slate-400 hover:text-slate-600"
               )}
             >
@@ -244,9 +233,9 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId }) => {
         {/* Arcada Superior */}
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-6 mb-10">
-             <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-             <span className="text-[10px] font-black uppercase text-slate-400 tracking-[5px] whitespace-nowrap">Arcada Superior</span>
-             <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+            <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[5px] whitespace-nowrap">Arcada Superior</span>
+            <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
           </div>
           <div className="grid grid-cols-8 gap-1 md:gap-4">
             {teeth.slice(0, 16).map(tooth => (
@@ -263,9 +252,9 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId }) => {
             ))}
           </div>
           <div className="flex items-center gap-6 mt-10">
-             <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-             <span className="text-[10px] font-black uppercase text-slate-400 tracking-[5px] whitespace-nowrap">Arcada Inferior</span>
-             <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+            <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[5px] whitespace-nowrap">Arcada Inferior</span>
+            <div className="h-[2px] w-24 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
           </div>
         </div>
       </div>
@@ -290,8 +279,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId }) => {
             {Math.round((teeth.filter(t => t.status === 'healthy').length / 32) * 100)}%
           </div>
           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-4">
-            <div 
-              className="h-full bg-blue-600 rounded-full transition-all duration-1000" 
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all duration-1000"
               style={{ width: `${(teeth.filter(t => t.status === 'healthy').length / 32) * 100}%` }}
             />
           </div>

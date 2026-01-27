@@ -11,9 +11,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ activePath }) => {
   const navigate = useNavigate();
   const items = [
     { id: 'dashboard', icon: '📊', label: 'Stats', path: '/' },
-    { id: 'patients', icon: '🦷', label: 'Dental', path: '/dental' },
-    { id: 'ai', icon: '✨', label: 'AI Chat', path: '/ai', isCenter: true },
-    { id: 'calendar', icon: '📅', label: 'Events', path: '/' },
+    { id: 'calendar', icon: '📅', label: 'Events', path: '/calendar' },
+    { id: 'patients', icon: '👤', label: 'Pacientes', path: '/patients', isCenter: true },
     { id: 'settings', icon: '⚙️', label: 'Settings', path: '/' },
   ];
 

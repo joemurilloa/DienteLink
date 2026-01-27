@@ -1,10 +1,16 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Stethoscope, ShieldCheck, Eraser, Syringe, Sparkles, Trash2, PlusCircle } from 'lucide-react';
+import { Stethoscope, ShieldCheck, Eraser, Syringe, Sparkles, Trash2, PlusCircle, Download } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Treatment, BudgetItem } from '../types';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+interface BudgetPlannerProps {
+  budget: BudgetItem[];
+  onUpdate: (budget: BudgetItem[]) => void;
+}
 
 const AVAILABLE_TREATMENTS: Treatment[] = [
   { id: 'limpieza', name: 'Limpieza Pro', price: 60, color: 'bg-emerald-500', description: 'Profilaxis completa' },
@@ -71,7 +77,7 @@ const DroppableTooth: React.FC<{ id: number; assignedTreatments: BudgetItem[]; o
         myTreatments.length > 0 ? "border-blue-200" : ""
       )}>
         <span className="text-[10px] font-black text-slate-300">{id}</span>
-        
+
         {/* Marcadores de tratamientos aplicados */}
         <div className="absolute -top-1 right-0 flex -space-x-1">
           {myTreatments.map((t, i) => (
@@ -87,7 +93,7 @@ const DroppableTooth: React.FC<{ id: number; assignedTreatments: BudgetItem[]; o
 
       <AnimatePresence>
         {myTreatments.length > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
@@ -97,7 +103,7 @@ const DroppableTooth: React.FC<{ id: number; assignedTreatments: BudgetItem[]; o
               {myTreatments.map(t => (
                 <div key={t.treatment.id} className="flex items-center justify-between gap-2 p-1 border-b border-slate-100 last:border-0">
                   <span className="text-[9px] font-bold text-slate-700 truncate">{t.treatment.name}</span>
-                  <button 
+                  <button
                     onClick={() => onRemove(id, t.treatment.id)}
                     className="p-1 hover:text-rose-500 transition-colors"
                   >
@@ -113,27 +119,75 @@ const DroppableTooth: React.FC<{ id: number; assignedTreatments: BudgetItem[]; o
   );
 };
 
-const BudgetPlanner: React.FC = () => {
-  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
+const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ budget, onUpdate }) => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event;
     if (over && active.data.current) {
       const treatment = active.data.current as Treatment;
       const toothId = parseInt(over.id.toString().replace('tooth-', ''));
-      
+
       // No repetir el mismo tratamiento en el mismo diente
-      if (!budgetItems.find(i => i.toothId === toothId && i.treatment.id === treatment.id)) {
-        setBudgetItems(prev => [...prev, { toothId, treatment }]);
+      if (!budget.find(i => i.toothId === toothId && i.treatment.id === treatment.id)) {
+        onUpdate([...budget, { toothId, treatment }]);
       }
     }
   };
 
   const removeTreatment = (toothId: number, treatmentId: string) => {
-    setBudgetItems(prev => prev.filter(i => !(i.toothId === toothId && i.treatment.id === treatmentId)));
+    onUpdate(budget.filter(i => !(i.toothId === toothId && i.treatment.id === treatmentId)));
   };
 
-  const totalPrice = budgetItems.reduce((acc, item) => acc + item.treatment.price, 0);
+  const totalPrice = budget.reduce((acc, item) => acc + item.treatment.price, 0);
+
+  const handleGeneratePDF = () => {
+    const doc = new jsPDF() as any;
+
+    // Header
+    doc.setFontSize(24);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Presupuesto de Tratamiento", 20, 25);
+
+    doc.setFontSize(10);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`DienteLink | Fecha: ${new Date().toLocaleDateString()}`, 20, 33);
+
+    // Group by tooth
+    const grouped: Record<number, Treatment[]> = {};
+    budget.forEach(item => {
+      if (!grouped[item.toothId]) grouped[item.toothId] = [];
+      grouped[item.toothId].push(item.treatment);
+    });
+
+    // Table data
+    const tableData = budget.map(item => [
+      `#${item.toothId}`,
+      item.treatment.name,
+      item.treatment.description,
+      formatCurrency(item.treatment.price)
+    ]);
+
+    doc.autoTable({
+      startY: 45,
+      head: [['Pieza', 'Tratamiento', 'Descripción', 'Precio']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 10 }
+    });
+
+    // Total
+    const finalY = doc.lastAutoTable.finalY + 15;
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Total Estimado: ${formatCurrency(totalPrice)} USD`, 20, finalY);
+
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Este presupuesto es una estimación. El costo final puede variar según el diagnóstico.", 20, finalY + 8);
+
+    doc.save(`Presupuesto_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
@@ -151,7 +205,7 @@ const BudgetPlanner: React.FC = () => {
                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-6">Arcada Superior</span>
                 <div className="grid grid-cols-8 gap-3 sm:gap-4">
                   {Array.from({ length: 16 }, (_, i) => (
-                    <DroppableTooth key={i+1} id={i+1} assignedTreatments={budgetItems} onRemove={removeTreatment} />
+                    <DroppableTooth key={i + 1} id={i + 1} assignedTreatments={budget} onRemove={removeTreatment} />
                   ))}
                 </div>
               </div>
@@ -159,7 +213,7 @@ const BudgetPlanner: React.FC = () => {
               <div className="flex flex-col items-center">
                 <div className="grid grid-cols-8 gap-3 sm:gap-4">
                   {Array.from({ length: 16 }, (_, i) => (
-                    <DroppableTooth key={32-i} id={32-i} assignedTreatments={budgetItems} onRemove={removeTreatment} />
+                    <DroppableTooth key={32 - i} id={32 - i} assignedTreatments={budget} onRemove={removeTreatment} />
                   ))}
                 </div>
                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-6">Arcada Inferior</span>
@@ -189,21 +243,22 @@ const BudgetPlanner: React.FC = () => {
                 <h2 className="text-5xl font-black tracking-tighter">{formatCurrency(totalPrice)}</h2>
                 <span className="text-blue-400 font-bold text-xs">USD</span>
               </div>
-              
+
               <div className="mt-8 pt-6 border-t border-white/10 space-y-3">
                 <div className="flex justify-between text-xs font-bold text-slate-400">
                   <span>Tratamientos aplicados:</span>
-                  <span className="text-white">{budgetItems.length}</span>
+                  <span className="text-white">{budget.length}</span>
                 </div>
-                <button 
-                  disabled={budgetItems.length === 0}
-                  className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-sm transition-all active:scale-95 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:grayscale"
+                <button
+                  onClick={handleGeneratePDF}
+                  disabled={budget.length === 0}
+                  className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-sm transition-all active:scale-95 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
                 >
-                  GENERAR PRESUPUESTO PDF
+                  <Download size={16} /> GENERAR PRESUPUESTO PDF
                 </button>
               </div>
             </div>
-            
+
             <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl group-hover:bg-blue-600/20 transition-all" />
           </div>
         </div>

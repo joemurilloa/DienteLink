@@ -1,50 +1,21 @@
-
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-[#F8FAFC]">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#3b82f6">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://picsum.photos/180/180">
-    <title>MedPulse | Ultra Modern Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>DienteLink | Gestión Dental Profesional</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .depth-card {
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform-style: preserve-3d;
-            perspective: 1000px;
-        }
-        .depth-card:hover {
-            transform: translateY(-8px) rotateX(2deg) rotateY(1deg);
-            box-shadow: 0 30px 60px -12px rgba(50, 50, 93, 0.15), 0 18px 36px -18px rgba(0, 0, 0, 0.2);
-        }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
-        }
-        .mesh-bg {
-            background-color: #f8fafc;
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(147, 51, 234, 0.03) 0px, transparent 50%);
-        }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        #initial-loader {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: #ffffff; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 9999;
-        }
-    </style>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "react/": "https://esm.sh/react@^19.2.4/",
@@ -62,12 +33,16 @@
 }
 </script>
 </head>
+
 <body class="h-full overflow-hidden mesh-bg">
     <div id="initial-loader">
-        <div class="w-16 h-16 bg-blue-600 rounded-[22px] flex items-center justify-center text-white text-3xl shadow-[0_20px_50px_rgba(59,130,246,0.3)] animate-bounce">✚</div>
-        <div class="mt-4 font-bold text-slate-900 tracking-tighter text-xl">MEDPULSE</div>
+        <div
+            class="w-16 h-16 bg-blue-600 rounded-[22px] flex items-center justify-center text-white text-3xl shadow-[0_20px_50px_rgba(59,130,246,0.3)] animate-bounce">
+            🦷</div>
+        <div class="mt-4 font-bold text-slate-900 tracking-tighter text-xl">DIENTELINK</div>
     </div>
     <div id="root" class="h-full"></div>
+    <script type="module" src="/index.tsx"></script>
     <script>
         window.addEventListener('load', () => {
             const loader = document.getElementById('initial-loader');
@@ -77,5 +52,16 @@
             }
         });
     </script>
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((reg) => console.log('DienteLink SW registered:', reg.scope))
+                    .catch((err) => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
 </body>
+
 </html>

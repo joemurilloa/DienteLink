@@ -1,46 +1,18 @@
-
 {
-  "short_name": "MedPulse",
-  "name": "MedPulse: Gestión Médica Inteligente",
-  "description": "Plataforma integral para profesionales de la salud con odontograma y recordatorios WhatsApp.",
+  "name": "DienteLink",
+  "short_name": "DienteLink",
+  "description": "Sistema de gestión dental profesional con expedientes clínicos, odontogramas y agenda de citas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "https://picsum.photos/192/192",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any"
-    },
-    {
-      "src": "https://picsum.photos/192/192",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
-      "src": "https://picsum.photos/512/512",
-      "type": "image/png",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦷</text></svg>",
       "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "https://picsum.photos/512/512",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
-    }
-  ],
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
-  "categories": ["medical", "productivity"],
-  "shortcuts": [
-    {
-      "name": "Nueva Cita",
-      "url": "/#/new-appointment",
-      "icons": [{"src": "https://picsum.photos/96/96", "sizes": "96x96"}]
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
