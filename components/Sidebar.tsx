@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
 interface SidebarProps {
@@ -7,32 +8,33 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activePath }) => {
+  const navigate = useNavigate();
   const items = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'patients', label: 'Patients', icon: '👥' },
-    { id: 'calendar', label: 'Calendar', icon: '📅' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
+    { id: 'patients', label: 'Dental Chart', icon: '🦷', path: '/dental' },
+    { id: 'ai', label: 'IA Assistant', icon: '✨', path: '/ai' },
+    { id: 'calendar', label: 'Calendario', icon: '📅', path: '/' },
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 h-full bg-white border-r border-slate-100 p-6">
-      <div className="flex items-center gap-3 mb-10 px-2">
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl">
+    <aside className="hidden lg:flex flex-col w-72 h-full bg-white/50 backdrop-blur-xl border-r border-slate-200/50 p-8">
+      <div className="flex items-center gap-4 mb-16 px-2 cursor-pointer group" onClick={() => navigate('/')}>
+        <div className="w-12 h-12 bg-blue-600 rounded-[18px] flex items-center justify-center text-white text-2xl shadow-[0_15px_30px_rgba(59,130,246,0.3)] group-hover:scale-110 transition-transform">
           ✚
         </div>
-        <h1 className="text-xl font-bold text-slate-900">MedPulse</h1>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tighter">MedPulse</h1>
       </div>
 
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-4">
         {items.map((item) => (
           <button
             key={item.id}
+            onClick={() => navigate(item.path)}
             className={cn(
-              "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-medium",
+              "w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 font-bold text-sm tracking-tight",
               activePath === item.id 
-                ? "bg-blue-50 text-blue-600" 
-                : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                ? "bg-white text-blue-600 shadow-xl shadow-slate-200/50 translate-x-1" 
+                : "text-slate-400 hover:text-slate-900 hover:bg-white/50"
             )}
           >
             <span className="text-xl">{item.icon}</span>
@@ -41,12 +43,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activePath }) => {
         ))}
       </nav>
 
-      <div className="mt-auto p-4 bg-slate-50 rounded-2xl">
-        <div className="flex items-center gap-3">
-          <img src="https://i.pravatar.cc/150?u=dr-smith" alt="Dr. Smith" className="w-10 h-10 rounded-full border border-white" />
+      <div className="mt-auto glass-panel p-5 rounded-[28px] border-white/60">
+        <div className="flex items-center gap-4">
+          <img src="https://i.pravatar.cc/150?u=dr-smith" alt="Dr. Smith" className="w-12 h-12 rounded-xl shadow-md" />
           <div className="overflow-hidden">
-            <p className="text-sm font-bold text-slate-800 truncate">Dr. Smith</p>
-            <p className="text-xs text-slate-500 truncate">Cardiologist</p>
+            <p className="text-sm font-extrabold text-slate-900 truncate tracking-tight">Dr. Smith</p>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Cardiólogo</p>
           </div>
         </div>
       </div>

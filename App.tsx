@@ -1,141 +1,232 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import AppointmentCard from './components/AppointmentCard';
+import Odontogram from './components/Odontogram';
+import Periodontogram from './components/Periodontogram';
+import AIAssistant from './components/AIAssistant';
 import { getAppointments, getDashboardStats } from './services/mockData';
-import { Appointment, Stats } from './types';
+import { Appointment, Stats, ReminderStatus } from './types';
 import { formatCurrency, cn } from './lib/utils';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 
 const Dashboard: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setAppointments(getAppointments());
     setStats(getDashboardStats());
   }, []);
 
+  const handleReminderStatusUpdate = (id: string, status: ReminderStatus) => {
+    setAppointments(prev => prev.map(apt => apt.id === id ? { ...apt, reminderStatus: status } : apt));
+  };
+
   const chartData = [
-    { name: 'Mon', income: 400 },
-    { name: 'Tue', income: 1300 },
-    { name: 'Wed', income: 900 },
-    { name: 'Thu', income: 1500 },
-    { name: 'Fri', income: 1200 },
-    { name: 'Sat', income: 1800 },
-    { name: 'Sun', income: 2400 },
+    { name: 'Lun', income: 4200 }, { name: 'Mar', income: 3800 }, { name: 'Mie', income: 5100 },
+    { name: 'Jue', income: 4800 }, { name: 'Vie', income: 6200 }, { name: 'Sab', income: 5800 }, { name: 'Dom', income: 7500 },
   ];
 
   if (!stats) return null;
 
   return (
-    <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-24 lg:pb-8 p-4 lg:p-8 bg-slate-50">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8 pt-2 lg:pt-0">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Health Pulse</h2>
-          <p className="text-slate-500 text-sm">Welcome back, Dr. Smith</p>
+    <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 lg:pb-12 p-6 lg:p-12">
+      <header className="flex items-center justify-between mb-12">
+        <div className="animate-in fade-in slide-in-from-left duration-700">
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tighter">MedPulse Studio</h2>
+          <p className="text-slate-500 font-semibold text-sm mt-1">Lunes, 20 de Mayo • 8 Citas hoy</p>
         </div>
-        <button className="lg:hidden w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm">
-          <img src="https://i.pravatar.cc/150?u=dr-smith" alt="Doctor" />
-        </button>
+        <div className="flex items-center gap-4">
+           <button className="hidden md:flex w-12 h-12 bg-white rounded-2xl items-center justify-center text-slate-400 shadow-sm border border-slate-100 hover:text-blue-600 transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+           </button>
+           <img src="https://i.pravatar.cc/150?u=dr-smith" alt="Doctor" className="w-12 h-12 rounded-2xl border-2 border-white shadow-xl" />
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Main Column */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 group">
-              <span className="text-xl group-active:scale-90 transition-transform">📅</span>
-              <span className="font-semibold text-sm">New Appointment</span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-8">
+          {/* Acciones Rápidas 3D */}
+          <div className="grid grid-cols-2 gap-6">
+            <button 
+              onClick={() => navigate('/dental')}
+              className="depth-card bg-blue-600 p-6 rounded-[32px] text-white flex flex-col gap-4 shadow-[0_20px_40px_rgba(59,130,246,0.3)] group"
+            >
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-md group-hover:scale-110 transition-transform">🦷</div>
+              <div className="text-left">
+                <span className="block font-black text-lg tracking-tight">Odontograma</span>
+                <span className="text-blue-100 text-xs font-bold uppercase tracking-widest">Nuevo Registro</span>
+              </div>
             </button>
-            <button className="flex-1 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 p-4 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 group">
-              <span className="text-xl group-active:scale-90 transition-transform">👤</span>
-              <span className="font-semibold text-sm">New Patient</span>
+            <button className="depth-card bg-white p-6 rounded-[32px] text-slate-900 border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col gap-4 group">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">👤</div>
+              <div className="text-left">
+                <span className="block font-black text-lg tracking-tight">Paciente</span>
+                <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">Alta rápida</span>
+              </div>
             </button>
           </div>
 
-          {/* Monthly Income Card */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex justify-between items-start mb-4">
+          {/* Gráfico Financiero de Alta Gama */}
+          <div className="glass-panel p-8 rounded-[40px] border-white/60">
+            <div className="flex justify-between items-start mb-8">
               <div>
-                <p className="text-slate-500 text-sm font-medium">Monthly Earnings</p>
-                <h3 className="text-3xl font-bold text-slate-900">{formatCurrency(stats.monthlyIncome)}</h3>
-                <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
-                  ▲ {stats.incomeTrend}% from last month
-                </span>
+                <p className="text-slate-400 text-[11px] font-black uppercase tracking-[2px] mb-1">Rendimiento Mensual</p>
+                <h3 className="text-4xl font-extrabold text-slate-900 tracking-tighter">{formatCurrency(stats.monthlyIncome)}</h3>
+                <div className="flex items-center gap-2 mt-2">
+                   <span className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-black rounded-lg">+ {stats.incomeTrend}%</span>
+                   <span className="text-slate-400 text-xs font-semibold">vs Abril 2024</span>
+                </div>
               </div>
-              <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-xl">
-                💰
-              </div>
+              <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl text-blue-600 shadow-inner">📈</div>
             </div>
             
-            <div className="h-48 w-full -mx-4">
+            <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
-                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25}/>
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
                   />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
                   <Area 
                     type="monotone" 
                     dataKey="income" 
                     stroke="#3b82f6" 
-                    strokeWidth={3}
+                    strokeWidth={5}
                     fillOpacity={1} 
-                    fill="url(#colorIncome)" 
+                    fill="url(#chartGradient)" 
+                    animationDuration={2000}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
-
-          {/* Quick Stats Grid Desktop Only */}
-          <div className="hidden lg:grid grid-cols-2 gap-4">
-            <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-              <p className="text-emerald-700 text-sm font-semibold mb-1">Total Patients</p>
-              <h4 className="text-2xl font-bold text-emerald-900">{stats.totalPatients}</h4>
-            </div>
-            <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
-              <p className="text-amber-700 text-sm font-semibold mb-1">Today's Slots</p>
-              <h4 className="text-2xl font-bold text-amber-900">{stats.todayAppointments}</h4>
-            </div>
-          </div>
         </div>
 
-        {/* Sidebar Column: Appointments */}
-        <div className="lg:col-span-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-900">Upcoming Appointments</h3>
-            <button className="text-blue-600 text-xs font-bold">View all</button>
-          </div>
-          <div className="space-y-1">
-            {appointments.map(apt => (
-              <AppointmentCard key={apt.id} appointment={apt} />
-            ))}
-          </div>
-          
-          <div className="mt-8 p-6 bg-slate-900 rounded-3xl text-white relative overflow-hidden">
-            <div className="relative z-10">
-              <h4 className="font-bold mb-1">Telemedicine Pro</h4>
-              <p className="text-xs text-slate-400 mb-4">Upgrade your plan to unlock AI diagnosis assistant.</p>
-              <button className="bg-white text-slate-900 px-4 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform">
-                Upgrade Now
-              </button>
-            </div>
-            <div className="absolute top-[-20px] right-[-20px] w-32 h-32 bg-blue-600/20 rounded-full blur-2xl"></div>
-          </div>
+        {/* Panel Lateral de Citas */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+           <div className="flex items-center justify-between px-2">
+             <h3 className="text-xl font-black text-slate-900 tracking-tight">Agenda Hoy</h3>
+             <span className="text-xs font-black text-blue-600 uppercase tracking-widest cursor-pointer hover:underline">Calendario</span>
+           </div>
+           
+           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 hide-scrollbar">
+              {appointments.map(apt => (
+                <AppointmentCard 
+                  key={apt.id} 
+                  appointment={apt} 
+                  onReminderSent={handleReminderStatusUpdate}
+                />
+              ))}
+           </div>
+           
+           <div 
+             onClick={() => navigate('/ai')}
+             className="depth-card bg-slate-900 p-8 rounded-[36px] text-white relative overflow-hidden cursor-pointer group mt-4 shadow-2xl shadow-slate-900/20"
+           >
+             <div className="relative z-10">
+               <div className="flex items-center gap-3 mb-4">
+                 <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-[0_0_20px_rgba(59,130,246,0.5)]">✨</div>
+                 <h4 className="font-extrabold text-lg tracking-tight">Asistente Gemini</h4>
+               </div>
+               <p className="text-sm text-slate-400 leading-relaxed font-medium">Analice diagnósticos complejos o revise interacciones químicas al instante.</p>
+               <div className="mt-6 flex items-center gap-2 text-blue-400 font-bold text-xs uppercase tracking-widest">
+                 Lanzar ahora <span className="group-hover:translate-x-2 transition-transform">→</span>
+               </div>
+             </div>
+             <div className="absolute top-[-30%] right-[-10%] w-64 h-64 bg-blue-600/20 rounded-full blur-[100px] group-hover:bg-blue-600/40 transition-all duration-700"></div>
+           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Vistas simplificadas para el resto de rutas (comparten el layout)
+const DentalView: React.FC = () => {
+  const navigate = useNavigate();
+  const [view, setView] = useState<'odontogram' | 'periodontogram'>('odontogram');
+
+  return (
+    <div className="flex-1 h-full overflow-y-auto p-6 lg:p-12 animate-in fade-in zoom-in-95 duration-500 pb-32">
+      <header className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-12">
+        <div className="flex items-center gap-6">
+          <button onClick={() => navigate('/')} className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-100 hover:text-blue-600 transition-all active:scale-90">←</button>
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tighter">Historial Odontológico</h2>
+        </div>
+        
+        <div className="flex bg-slate-100 p-1.5 rounded-[24px] border border-slate-200">
+          <button 
+            onClick={() => setView('odontogram')}
+            className={cn(
+              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider",
+              view === 'odontogram' ? "bg-white text-slate-900 shadow-md" : "text-slate-400"
+            )}
+          >
+            Odontograma
+          </button>
+          <button 
+            onClick={() => setView('periodontogram')}
+            className={cn(
+              "px-6 py-2.5 rounded-[18px] text-[11px] font-black transition-all uppercase tracking-wider",
+              view === 'periodontogram' ? "bg-white text-slate-900 shadow-md" : "text-slate-400"
+            )}
+          >
+            Periodontograma
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto space-y-12">
+        {view === 'odontogram' ? <Odontogram patientId="1" /> : <Periodontogram />}
+      </div>
+    </div>
+  );
+};
+
+const AIView: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <div className="flex-1 h-full overflow-hidden flex flex-col p-6 lg:p-12 animate-in fade-in slide-in-from-bottom-8 duration-500">
+      <header className="flex items-center gap-6 mb-12">
+        <button onClick={() => navigate('/')} className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-100 hover:text-blue-600 transition-all active:scale-90">←</button>
+        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tighter">Centro de Inteligencia</h2>
+      </header>
+      <div className="flex-1 overflow-hidden max-w-3xl mx-auto w-full"><AIAssistant /></div>
+    </div>
+  );
+};
+
+const Layout: React.FC = () => {
+  const location = useLocation();
+  const getActivePath = () => {
+    if (location.pathname === '/dental') return 'patients';
+    if (location.pathname === '/ai') return 'ai';
+    return 'dashboard';
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar activePath={getActivePath()} />
+      <main className="flex-1 flex flex-col relative overflow-hidden">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dental" element={<DentalView />} />
+          <Route path="/ai" element={<AIView />} />
+          <Route path="*" element={<Dashboard />} />
+        </Routes>
+        <BottomNav activePath={getActivePath()} />
+      </main>
     </div>
   );
 };
@@ -143,19 +234,7 @@ const Dashboard: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="flex h-screen bg-slate-50 overflow-hidden">
-        <Sidebar activePath="dashboard" />
-        
-        <main className="flex-1 flex flex-col relative overflow-hidden">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            {/* Other routes placeholder */}
-            <Route path="*" element={<Dashboard />} />
-          </Routes>
-          
-          <BottomNav activePath="dashboard" />
-        </main>
-      </div>
+      <Layout />
     </Router>
   );
 };

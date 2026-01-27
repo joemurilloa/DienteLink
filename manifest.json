@@ -1,26 +1,44 @@
 
 {
   "short_name": "MedPulse",
-  "name": "MedPulse Medical Dashboard",
+  "name": "MedPulse: Gestión Médica Inteligente",
+  "description": "Plataforma integral para profesionales de la salud con odontograma y recordatorios WhatsApp.",
   "icons": [
     {
       "src": "https://picsum.photos/192/192",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "https://picsum.photos/192/192",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
     },
     {
       "src": "https://picsum.photos/512/512",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "https://picsum.photos/512/512",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
-  "background_color": "#f8fafc",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
   "theme_color": "#3b82f6",
+  "categories": ["medical", "productivity"],
   "shortcuts": [
     {
-      "name": "New Appointment",
+      "name": "Nueva Cita",
       "url": "/#/new-appointment",
       "icons": [{"src": "https://picsum.photos/96/96", "sizes": "96x96"}]
     }
