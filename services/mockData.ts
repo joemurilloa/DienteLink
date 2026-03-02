@@ -1,4 +1,4 @@
-import { Appointment, Stats, PatientRecord, ToothData } from '../types';
+import { Appointment, PatientRecord, ToothData } from '../types';
 
 const today = new Date().toISOString().split('T')[0];
 
@@ -13,7 +13,7 @@ export const getAppointments = (): Appointment[] => [
     type: 'Consulta',
     status: 'Programada',
     reminderStatus: 'not_sent',
-    patientImage: 'https://i.pravatar.cc/150?u=sarah'
+    patientImage: undefined
   },
   {
     id: crypto.randomUUID(),
@@ -25,7 +25,7 @@ export const getAppointments = (): Appointment[] => [
     type: 'Revisión',
     status: 'Retrasada',
     reminderStatus: 'sent',
-    patientImage: 'https://i.pravatar.cc/150?u=sarah'
+    patientImage: undefined
   },
   {
     id: crypto.randomUUID(),
@@ -37,16 +37,9 @@ export const getAppointments = (): Appointment[] => [
     type: 'Seguimiento',
     status: 'Programada',
     reminderStatus: 'not_sent',
-    patientImage: 'https://i.pravatar.cc/150?u=sarah'
+    patientImage: undefined
   }
 ];
-
-export const getDashboardStats = (): Stats => ({
-  monthlyIncome: 14850.50,
-  incomeTrend: 12.5,
-  totalPatients: 1242,
-  todayAppointments: 8
-});
 
 // --- Mock de Expediente Clínico ---
 
@@ -94,10 +87,10 @@ export const getPatientRecords = (): PatientRecord[] => [
       }
     ],
     consentSigned: true,
-    odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, status: 'healthy' as const })),
+    odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
     periodontogram: new Array(32).fill(1),
     budget: [],
-    xrays: ['https://picsum.photos/seed/xray1/400/300'],
+    xrays: [],
     balance: 110
   }
 ];

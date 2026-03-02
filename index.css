@@ -1,5 +1,324 @@
 @import "tailwindcss";
 
+/* Sileo Toast Global Overrides - Dark Theme */
+:root {
+  --sileo-state-info: oklch(0.685 0.169 237.323);
+  --sileo-state-success: oklch(0.65 0.21 145);
+  --sileo-state-error: oklch(0.63 0.24 25);
+  --sileo-state-warning: oklch(0.80 0.18 86);
+}
+
+/* Make description text brighter on dark background */
+[data-sileo-viewport][data-theme="light"] [data-sileo-description] {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ================================
+   PROFESSIONAL APP STYLING
+   ================================ */
+
+/* Disable text selection globally for professional app feel */
+* {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-touch-callout: none;
+}
+
+/* Re-enable selection for text inputs and editable content */
+input,
+textarea,
+[contenteditable="true"],
+.selectable-text {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Enhance touch interactions */
+button,
+[role="button"],
+.clickable,
+.card-premium {
+  -webkit-tap-highlight-color: rgba(20, 184, 166, 0.1);
+  touch-action: manipulation;
+}
+
+/* Smooth cursor interactions */
+body {
+  cursor: default;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+[role="button"],
+.clickable {
+  cursor: pointer;
+}
+
+/* Professional app scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ================================
+   ACCESSIBILITY ENHANCEMENTS
+   ================================ */
+
+/* Focus indicators */
+.focus-visible {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* High contrast focus for critical actions */
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
+}
+
+/* Enhanced focus for form elements */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+/* Skip link for screen readers */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #3b82f6;
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 10000;
+  font-weight: bold;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card-premium {
+    border-width: 2px !important;
+  }
+  
+  .text-slate-400 {
+    color: #475569 !important;
+  }
+  
+  .bg-slate-50 {
+    background-color: #f1f5f9 !important;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ================================
+   ENHANCED MICROINTERACTIONS
+   ================================ */
+
+/* Magnetic effect for buttons */
+@keyframes magnetic-pull {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1.05); }
+}
+
+/* Ripple effect */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.ripple-effect:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Enhanced card hover effects */
+.card-premium {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Button interactions */
+.btn-magnetic {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-magnetic:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-magnetic:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* Loading pulse animation */
+@keyframes loading-pulse {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+.loading-pulse {
+  animation: loading-pulse 2s ease-in-out infinite;
+}
+
+/* Smooth focus transitions */
+.focus-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+.focus-transition:focus {
+  transform: scale(1.02);
+}
+
+/* Stagger animation delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Success feedback animation */
+@keyframes success-bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.success-feedback {
+  animation: success-bounce 0.3s ease-out;
+}
+
+/* Error shake animation */
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+.error-shake {
+  animation: error-shake 0.5s ease-in-out;
+}
+
+/* Tooltip animations */
+.tooltip-enter {
+  opacity: 0;
+  transform: translateY(5px) scale(0.95);
+  transition: all 0.15s ease-out;
+}
+
+.tooltip-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Progress bar animations */
+@keyframes progress-indeterminate {
+  0% {
+    left: -50%;
+    width: 40%;
+  }
+  100% {
+    left: 100%;
+    width: 40%;
+  }
+}
+
+.progress-indeterminate::before {
+  content: '';
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.6), transparent);
+  animation: progress-indeterminate 1.5s infinite ease-in-out;
+}
+
 @theme {
   --font-plus-jakarta: "Plus Jakarta Sans", sans-serif;
   --animate-float: float 6s ease-in-out infinite;
@@ -45,12 +364,12 @@
 
 :root {
   --background: #F8FAFC;
-  --primary: #0d9488;
-  --primary-light: #14b8a6;
-  --primary-dark: #0f766e;
-  --primary-glow: rgba(13, 148, 136, 0.3);
+  --primary: #2563eb;
+  --primary-light: #3b82f6;
+  --primary-dark: #1d4ed8;
+  --primary-glow: rgba(37, 99, 235, 0.3);
   --secondary: #6366f1;
-  --accent: #059669;
+  --accent: #2563eb;
   --sidebar-bg: #0f172a;
   --sidebar-hover: #1e293b;
   --sidebar-w: 280px;
@@ -207,20 +526,16 @@ body {
 }
 
 /* ===== Gradients ===== */
-.gradient-teal {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+.gradient-blue {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
-.gradient-emerald {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+.gradient-blue-light {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
 }
 
 .gradient-indigo {
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-}
-
-.gradient-blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 /* ===== Sidebar Dark Theme ===== */
@@ -229,16 +544,12 @@ body {
 }
 
 /* ===== KPI Card Accent Borders ===== */
-.kpi-accent-teal {
-  border-top: 3px solid #0d9488;
-}
-
 .kpi-accent-blue {
-  border-top: 3px solid #3b82f6;
+  border-top: 3px solid #2563eb;
 }
 
-.kpi-accent-emerald {
-  border-top: 3px solid #059669;
+.kpi-accent-blue-light {
+  border-top: 3px solid #60a5fa;
 }
 
 .kpi-accent-indigo {

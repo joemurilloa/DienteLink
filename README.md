@@ -2,19 +2,39 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# DienteLink - Sistema de Gestión Dental
 
-This contains everything you need to run your app locally.
+Sistema completo de gestión para clínicas dentales con odontograma clínico, registro de pacientes y agenda de citas.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1KBZ1ZwOhCuEBEoHkUl7msq7q3JnBg-Lo
+## Funcionalidades
 
-## Run Locally
+- **Odontograma Clínico**: Sistema de 5 superficies con 12 condiciones clínicas
+- **Gestión de Pacientes**: Expedientes completos con historial clínico
+- **Agenda de Citas**: Programación y seguimiento de citas
+- **Periodontograma**: Registro de profundidades de sondaje
+- **Radiografías**: Visualizador de imágenes radiográficas
 
-**Prerequisites:**  Node.js
+## Ejecutar Localmente
 
+**Prerrequisitos:** Node.js
 
-1. Install dependencies:
+1. Instalar dependencias:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Ejecutar la aplicación:
    `npm run dev`
+   
+## Construcción para Producción
+
+```bash
+npm run build
+```
+
+## Desarrollo Mobile
+
+Para compilar la aplicación móvil con Capacitor:
+
+```bash
+npm run build
+npx cap sync
+npx cap open android
+```

@@ -12,7 +12,7 @@ interface PeriodontogramProps {
 const ToothProbe: React.FC<{ index: number; value: number; onChange: (val: number) => void }> = ({ index, value, onChange }) => {
   // Mapeo de mm a colores
   const getColor = (mm: number) => {
-    if (mm <= 3) return 'bg-emerald-500';
+    if (mm <= 3) return 'bg-blue-500';
     if (mm <= 5) return 'bg-amber-500';
     return 'bg-rose-500';
   };
@@ -99,7 +99,7 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ depths, onUpdate }) => 
 
         <div className="flex bg-slate-100/40 p-2 rounded-[32px] border border-slate-200/50 backdrop-blur-2xl shadow-inner gap-6 items-center px-8">
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/30" />
+            <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/30" />
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salud (≤3mm)</span>
           </div>
           <div className="w-[1px] h-4 bg-slate-200" />

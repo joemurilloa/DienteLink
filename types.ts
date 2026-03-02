@@ -2,11 +2,46 @@
 import React from 'react';
 
 export type ReminderStatus = 'not_sent' | 'sending' | 'sent' | 'error';
+
+// Legacy type kept for migration
 export type ToothStatus = 'healthy' | 'caries' | 'missing' | 'treated';
+
+// --- Odontograma Clínico Completo ---
+export type ToothSurface = 'oclusal' | 'incisal' | 'vestibular' | 'lingual' | 'mesial' | 'distal';
+
+export type ClinicalCondition =
+  // Estado
+  | 'healthy'
+  | 'caries'
+  | 'obturado'
+  | 'fractura'
+  // Tratamiento indicado
+  | 'extraccion_indicada'
+  | 'tratamiento_conducto'
+  | 'corona_indicada'
+  | 'protesis_implante'
+  // Estado especial
+  | 'ausente'
+  | 'implante_presente'
+  | 'corona_presente'
+  | 'en_observacion';
+
+export interface SurfaceData {
+  surface: ToothSurface;
+  condition: ClinicalCondition;
+}
 
 export interface ToothData {
   id: number;
-  status: ToothStatus;
+  surfaces: SurfaceData[];
+  // Legacy field — migration only
+  status?: ToothStatus;
+}
+
+export interface OdontogramSnapshot {
+  id: string;
+  date: string;
+  teeth: ToothData[];
 }
 
 export type AppointmentType = 'Consulta' | 'Seguimiento' | 'Cirugía' | 'Revisión';
@@ -26,8 +61,6 @@ export interface Appointment {
 }
 
 export interface Stats {
-  monthlyIncome: number;
-  incomeTrend: number;
   totalPatients: number;
   todayAppointments: number;
 }
@@ -38,18 +71,7 @@ export interface NavItem {
   path: string;
 }
 
-export interface Treatment {
-  id: string;
-  name: string;
-  price: number;
-  color: string;
-  description: string;
-}
 
-export interface BudgetItem {
-  toothId: number;
-  treatment: Treatment;
-}
 
 // --- Nuevas interfaces para Expediente Clínico ---
 
@@ -84,7 +106,6 @@ export interface ClinicalEvent {
   type: 'treatment' | 'extraction' | 'cleaning' | 'diagnose' | 'other';
   description: string;
   toothId?: number;
-  cost: number;
 }
 
 export interface PatientRecord {
@@ -95,8 +116,56 @@ export interface PatientRecord {
   history: ClinicalEvent[]; // Historial cronológico completo
   consentSigned: boolean;
   odontogram: ToothData[];
+  odontogramHistory?: OdontogramSnapshot[];
   periodontogram: number[]; // Profundidades de sondaje (mm)
-  budget: BudgetItem[];
   xrays: string[];
-  balance: number; // Saldo pendiente o total invertido
+}
+
+// --- Sistema de Reservas Públicas (Calendly Clone) ---
+
+export interface TimeSlot {
+  start: string; // "09:00"
+  end: string;   // "09:30"
+}
+
+export interface DayAvailability {
+  dayOfWeek: number; // 0 = Domingo, 1 = Lunes, etc.
+  enabled: boolean;
+  timeSlots: TimeSlot[];
+}
+
+export interface DoctorAvailability {
+  id: string;
+  doctorId: string;
+  weeklySchedule: DayAvailability[];
+  slotDuration: number; // minutos (15, 30, 45, 60)
+  bufferTime: number;   // tiempo entre citas en minutos
+  advanceBookingDays: number; // cuántos días adelante pueden agendar
+  lastUpdated: string;
+}
+
+export interface AppointmentRequest {
+  id: string;
+  patientName: string;
+  patientEmail: string;
+  patientPhone: string;
+  requestedDate: string;
+  requestedTime: string;
+  appointmentType: AppointmentType;
+  message?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  respondedAt?: string;
+  doctorId: string;
+}
+
+export interface PublicBookingSettings {
+  doctorName: string;
+  clinicName: string;
+  description: string;
+  availableTypes: AppointmentType[];
+  requirePhone: boolean;
+  requireMessage: boolean;
+  confirmationMessage: string;
+  isActive: boolean;
 }

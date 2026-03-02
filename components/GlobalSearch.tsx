@@ -4,6 +4,8 @@ import { Search, X, User } from 'lucide-react';
 import { persistenceService } from '../services/persistenceService';
 import { PatientRecord } from '../types';
 import { cn } from '../lib/utils';
+import { sileo } from 'sileo';
+import 'sileo/styles.css';
 
 interface GlobalSearchProps {
     isOpen: boolean;
@@ -38,9 +40,24 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
         );
         setResults(filtered.slice(0, 5));
         setSelectedIndex(filtered.length > 0 ? 0 : -1);
+        
+        // Friendly search feedback
+        if (query.length >= 3) {
+            if (filtered.length === 0) {
+                sileo.warning({ title: 'No encontré a ese paciente 🔍', description: 'Intenta con otro nombre, teléfono o cédula' });
+            } else if (filtered.length === 1) {
+                sileo.success({ title: '¡Encuentro perfecto!', description: `Encontré a ${filtered[0].identification.fullName}` });
+            } else {
+                sileo.info({ title: `Encontré ${filtered.length} pacientes`, description: 'Selecciona el que necesitas' });
+            }
+        }
     }, [query]);
 
     const handleSelect = (patientId: string) => {
+        const patient = results.find(p => p.id === patientId);
+        if (patient) {
+            sileo.success({ title: `Abriendo expediente de ${patient.identification.fullName}`, description: '¡Listo para la consulta!' });
+        }
         navigate(`/patient/${patientId}`);
         onClose();
         setQuery('');
@@ -96,25 +113,25 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                                 onClick={() => handleSelect(patient.id)}
                                 className={cn(
                                     "w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-left group",
-                                    selectedIndex === index ? "bg-teal-600 shadow-lg shadow-teal-500/20 scale-[1.02]" : "hover:bg-teal-50"
+                                    selectedIndex === index ? "bg-blue-600 shadow-lg shadow-blue-500/20 scale-[1.02]" : "hover:bg-blue-50"
                                 )}
                             >
                                 <div className={cn(
                                     "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
-                                    selectedIndex === index ? "bg-white/20 text-white" : "bg-teal-100 text-teal-600"
+                                    selectedIndex === index ? "bg-white/20 text-white" : "bg-blue-100 text-blue-600"
                                 )}>
                                     <User size={20} />
                                 </div>
                                 <div className="flex-1">
                                     <h4 className={cn(
                                         "font-bold transition-colors",
-                                        selectedIndex === index ? "text-white" : "text-slate-900 group-hover:text-teal-600"
+                                        selectedIndex === index ? "text-white" : "text-slate-900 group-hover:text-blue-600"
                                     )}>
                                         {patient.identification.fullName}
                                     </h4>
                                     <p className={cn(
                                         "text-[10px] font-bold uppercase tracking-widest transition-colors",
-                                        selectedIndex === index ? "text-teal-100" : "text-slate-400"
+                                        selectedIndex === index ? "text-blue-100" : "text-slate-400"
                                     )}>
                                         ID: {patient.id} • {patient.identification.phone}
                                     </p>

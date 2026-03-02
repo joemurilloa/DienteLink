@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { X, User, Phone, MapPin, Mail, Briefcase, Calendar, Plus, ChevronRight } from 'lucide-react';
 import { PatientRecord, PatientIdentification } from '../types';
 import { cn } from '../lib/utils';
+import { sileo } from 'sileo';
+import 'sileo/styles.css';
 
 interface Props {
     isOpen: boolean;
@@ -27,6 +29,7 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
         e.preventDefault();
 
         if (!formData.fullName.trim() || !formData.birthDate || !formData.phone.trim()) {
+            sileo.error({ title: '¡Ups! Faltan algunos datos importantes', description: 'Por favor completa el nombre, fecha de nacimiento y teléfono' });
             return;
         }
 
@@ -43,7 +46,7 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
             evolutionNotes: [],
             history: [],
             consentSigned: false,
-            odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, status: 'healthy' as const })),
+            odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
             periodontogram: new Array(32).fill(1),
             budget: [],
             xrays: [],
@@ -51,6 +54,9 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
         };
 
         onSave(newPatient);
+        
+        sileo.success({ title: `¡Bienvenido/a ${formData.fullName}! 🎉`, description: 'Su expediente ha sido creado exitosamente' });
+        
         onClose();
         setFormData({
             fullName: '',

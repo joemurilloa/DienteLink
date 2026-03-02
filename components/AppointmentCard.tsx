@@ -11,14 +11,14 @@ interface AppointmentCardProps {
 }
 
 const typeColors: Record<string, { bg: string; text: string }> = {
-  Consulta: { bg: 'bg-teal-50', text: 'text-teal-700' },
+  Consulta: { bg: 'bg-blue-50', text: 'text-blue-700' },
   Cirugía: { bg: 'bg-red-50', text: 'text-red-700' },
   Revisión: { bg: 'bg-amber-50', text: 'text-amber-700' },
   Seguimiento: { bg: 'bg-blue-50', text: 'text-blue-700' },
 };
 
 const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent }) => {
-  const statusDot = appointment.status === 'Programada' ? 'bg-emerald-400' : appointment.status === 'Completada' ? 'bg-blue-400' : 'bg-amber-400';
+  const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-blue-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
 
   const handleSendReminder = async (e: React.MouseEvent) => {
@@ -30,14 +30,11 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   };
 
   return (
-    <div className="card-premium p-3.5 flex items-center gap-3.5 group cursor-pointer hover:border-teal-100 transition-all duration-200">
+    <div className="card-premium p-3.5 flex items-center gap-3.5 group cursor-pointer hover:border-blue-100 transition-all duration-200">
       <div className="relative flex-shrink-0">
-        <img
-          src={appointment.patientImage}
-          alt={appointment.patientName}
-          className="w-11 h-11 rounded-xl object-cover"
-          loading="lazy"
-        />
+        <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+          <span className="text-slate-600 font-bold text-xs">{appointment.patientName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}</span>
+        </div>
         <div className={cn("absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white", statusDot)} />
       </div>
 
@@ -59,8 +56,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
         className={cn(
           "w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0",
           appointment.reminderStatus === 'sent'
-            ? "bg-emerald-100 text-emerald-600"
-            : "bg-slate-50 text-slate-400 hover:bg-teal-600 hover:text-white"
+            ? "bg-blue-100 text-blue-600"
+            : "bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white"
         )}
       >
         {appointment.reminderStatus === 'sending' ? (

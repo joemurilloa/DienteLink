@@ -3,19 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { PatientRecord as PatientRecordType, EvolutionNote, ClinicalEvent } from '../types';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { persistenceService } from '../services/persistenceService';
+import { sileo } from 'sileo';
+import 'sileo/styles.css';
 import {
     User,
     History,
     ClipboardList,
     Plus,
     Activity,
-    DollarSign,
     Zap,
     LayoutGrid,
     BarChart3,
-    Receipt,
     X,
     Maximize2,
     Download,
@@ -31,7 +31,6 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Odontogram from './Odontogram';
 import Periodontogram from './Periodontogram';
-import BudgetPlanner from './BudgetPlanner';
 
 interface Props {
     patient: PatientRecordType;
@@ -41,10 +40,12 @@ interface Props {
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [searchParams] = useSearchParams();
     const initialTab = (searchParams.get('tab') as any) || 'id';
-    const [activeTab, setActiveTab] = useState<'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'budget' | 'notes' | 'citas' | 'history'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'citas' | 'history'>(initialTab);
     const [newNote, setNewNote] = useState({ content: '', procedure: '' });
-    const [newEvent, setNewEvent] = useState({ description: '', cost: 0, type: 'treatment' as ClinicalEvent['type'] });
+    const [newEvent, setNewEvent] = useState({ description: '', type: 'treatment' as ClinicalEvent['type'] });
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [snapshotRefresh, setSnapshotRefresh] = useState(0);
+    const handleSnapshotSaved = () => setSnapshotRefresh(n => n + 1);
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -53,13 +54,12 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
     const tabs = [
         { id: 'id', label: 'Ficha', icon: User },
-        { id: 'anamnesis', label: 'Anamnesis', icon: History },
         { id: 'odontogram', label: 'Odontograma', icon: LayoutGrid },
+        { id: 'anamnesis', label: 'Anamnesis', icon: History },
         { id: 'periodontogram', label: 'Periodonto', icon: BarChart3 },
-        { id: 'budget', label: 'Presupuesto', icon: Receipt },
         { id: 'notes', label: 'Evolución', icon: ClipboardList },
         { id: 'citas', label: 'Agenda', icon: Calendar },
-        { id: 'history', label: 'Balance', icon: Activity },
+        { id: 'history', label: 'Historial', icon: Activity },
     ];
 
     const patientAppointments = persistenceService.getAppointments().filter(
@@ -76,6 +76,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         };
         onUpdate({ ...patient, evolutionNotes: [note, ...patient.evolutionNotes] });
         setNewNote({ content: '', procedure: '' });
+        sileo.success({ title: '¡Nota guardada correctamente! 📝', description: 'Se añadió a la historia clínica del paciente' });
     };
 
     const handleAddEvent = () => {
@@ -87,13 +88,15 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         };
         onUpdate({
             ...patient,
-            history: [event, ...patient.history],
-            balance: patient.balance + event.cost
+            history: [event, ...patient.history]
         });
-        setNewEvent({ description: '', cost: 0, type: 'treatment' });
+        setNewEvent({ description: '', type: 'treatment' });
+        sileo.success({ title: '¡Evento clínico registrado!', description: `${newEvent.type === 'treatment' ? 'Tratamiento' : newEvent.type === 'diagnosis' ? 'Diagnóstico' : 'Consulta'} añadido al historial` });
     };
 
     const handleExportPDF = () => {
+        sileo.info({ title: 'Generando expediente... 📄', description: 'Esto puede tomar unos segundos' });
+        
         const doc = new jsPDF() as any;
         doc.setFontSize(22);
         doc.setTextColor(15, 23, 42);
@@ -117,21 +120,21 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         doc.text(`Enfermedades: ${patient.clinicalHistory.previousDiseases || 'Ninguna'}`, 20, 105);
         doc.setFontSize(14);
         doc.text("Tratamientos Realizados", 20, 120);
-        const historyData = patient.history.map(e => [e.date, e.description, formatCurrency(e.cost)]);
+        const historyData = patient.history.map(e => [e.date, e.description]);
         doc.autoTable({
             startY: 125,
-            head: [['Fecha', 'Descripción', 'Costo']],
+            head: [['Fecha', 'Descripción']],
             body: historyData,
             theme: 'striped',
             headStyles: { fillStyle: [59, 130, 246] }
         });
-        const finalY = (doc as any).lastAutoTable.cursor.y + 10;
-        doc.setFontSize(16);
-        doc.text(`Balance Total: ${formatCurrency(patient.balance)}`, 140, finalY);
+
         doc.save(`Expediente_${patient.identification.fullName.replace(/\s+/g, '_')}.pdf`);
+        
+        sileo.success({ title: '¡Expediente descargado exitosamente! ✅', description: `Archivo guardado como PDF para ${patient.identification.fullName}` });
     };
 
-    const isClinicalTab = ['odontogram', 'periodontogram', 'budget'].includes(activeTab);
+    const isClinicalTab = ['odontogram', 'periodontogram'].includes(activeTab);
 
     const renderClinicalContent = () => {
         switch (activeTab) {
@@ -140,18 +143,14 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                     patientId={patient.id}
                     teeth={patient.odontogram || []}
                     onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })}
+                    snapshots={patient.odontogramHistory || []}
+                    onSaveSnapshot={handleSnapshotSaved}
                 />
             );
             case 'periodontogram': return (
                 <Periodontogram
                     depths={patient.periodontogram || new Array(32).fill(1)}
                     onUpdate={(depths) => onUpdate({ ...patient, periodontogram: depths })}
-                />
-            );
-            case 'budget': return (
-                <BudgetPlanner
-                    budget={patient.budget || []}
-                    onUpdate={(budget) => onUpdate({ ...patient, budget })}
                 />
             );
             default: return null;
@@ -184,18 +183,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 "lg:w-80 flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto gap-3 pb-4 lg:pb-0 hide-scrollbar transition-all duration-700",
                 isFocusMode ? "lg:w-0 opacity-0 pointer-events-none -ml-8 overflow-hidden" : "opacity-100"
             )}>
-                <div className="mb-8 p-8 bg-slate-900 rounded-[48px] text-white hidden lg:block shadow-2xl shadow-slate-900/40 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-blue-500/20 transition-colors"></div>
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-black uppercase tracking-[3px] mb-3 opacity-50">Saldo Pendiente</p>
-                        <h4 className="text-4xl font-black tracking-tighter italic leading-none">{formatCurrency(patient.balance)}</h4>
-                        <div className="mt-6 flex items-center gap-2">
-                            <div className="px-2 py-1 bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-[1.5px]">Expediente #{patient.id}</div>
-                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50"></div>
-                        </div>
-                    </div>
-                </div>
-
                 <nav className="flex flex-row lg:flex-col gap-2.5">
                     {tabs.map((tab, index) => (
                         <button
@@ -389,6 +376,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 patientId={patient.id}
                                 teeth={patient.odontogram || []}
                                 onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })}
+                                snapshots={patient.odontogramHistory || []}
+                                onSaveSnapshot={handleSnapshotSaved}
                             />
                         </div>
                     )}
@@ -406,18 +395,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         </div>
                     )}
 
-                    {activeTab === 'budget' && (
-                        <div className="space-y-12 animate-in-up duration-700 min-h-[600px]">
-                            <div>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Presupuesto</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Plan de tratamiento y costos</p>
-                            </div>
-                            <BudgetPlanner
-                                budget={patient.budget || []}
-                                onUpdate={(budget) => onUpdate({ ...patient, budget })}
-                            />
-                        </div>
-                    )}
+
 
                     {activeTab === 'notes' && (
                         <div className="space-y-12 animate-in-up duration-700">
@@ -499,7 +477,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                             <div className="flex items-center gap-6">
                                                 <div className={cn(
                                                     "w-16 h-16 rounded-[24px] flex items-center justify-center shadow-inner group-hover:rotate-6 transition-all duration-500",
-                                                    apt.status === 'Completada' ? "bg-emerald-50 text-emerald-600" :
+                                                    apt.status === 'Completada' ? "bg-blue-50 text-blue-600" :
                                                         apt.status === 'Retrasada' ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"
                                                 )}>
                                                     <Calendar size={28} strokeWidth={2.5} />
@@ -514,7 +492,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                             </div>
                                             <div className={cn(
                                                 "px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm",
-                                                apt.status === 'Completada' ? "bg-emerald-100 text-emerald-700" :
+                                                apt.status === 'Completada' ? "bg-blue-100 text-blue-700" :
                                                     apt.status === 'Retrasada' ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
                                             )}>
                                                 {apt.status === 'Completada' ? 'Exitosa' : apt.status === 'Retrasada' ? 'Retraso' : 'Activa'}
@@ -528,15 +506,9 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
                     {activeTab === 'history' && (
                         <div className="space-y-12 animate-in-up duration-700">
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Balance Clínico</h3>
-                                    <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Estado de cuenta y tratamientos</p>
-                                </div>
-                                <div className="hidden lg:flex flex-col items-end">
-                                    <span className="text-[10px] font-black uppercase tracking-[3px] text-slate-300">Total Acumulado</span>
-                                    <span className="text-3xl font-black text-slate-900 italic tracking-tighter">{formatCurrency(patient.balance)}</span>
-                                </div>
+                            <div>
+                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Historial Clínico</h3>
+                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Registro de tratamientos realizados</p>
                             </div>
 
                             <div className="glass-panel p-10 rounded-[48px] bg-blue-600/5 border-blue-100/30 grid grid-cols-1 lg:grid-cols-12 gap-8 shadow-2xl shadow-blue-500/5">
@@ -551,20 +523,9 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 <div className="lg:col-span-5">
                                     <InputGroup
                                         label="Descripción del procedimiento"
-                                        icon={Receipt}
                                         placeholder="Ej. Limpieza Dental Profunda"
                                         value={newEvent.description}
                                         onChange={val => setNewEvent(p => ({ ...p, description: val }))}
-                                    />
-                                </div>
-                                <div className="lg:col-span-3">
-                                    <InputGroup
-                                        label="Costo del Servicio"
-                                        icon={DollarSign}
-                                        type="number"
-                                        placeholder="0.00"
-                                        value={newEvent.cost ? newEvent.cost.toString() : ""}
-                                        onChange={val => setNewEvent(p => ({ ...p, cost: Number(val) }))}
                                     />
                                 </div>
                                 <div className="lg:col-span-4 space-y-3">
@@ -603,7 +564,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                                     "w-16 h-16 rounded-[24px] flex items-center justify-center shadow-inner group-hover:scale-110 transition-all duration-500",
                                                     event.type === 'treatment' ? "bg-blue-50 text-blue-600" :
                                                         event.type === 'extraction' ? "bg-red-50 text-red-600" :
-                                                            event.type === 'cleaning' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                                                            event.type === 'cleaning' ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"
                                                 )}>
                                                     <Activity size={24} strokeWidth={2.5} />
                                                 </div>
@@ -616,12 +577,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="flex items-center gap-1.5 text-2xl font-black text-slate-900 tracking-tighter italic">
-                                                    <span className="text-slate-400 text-sm">$</span>
-                                                    {event.cost}
-                                                </div>
                                                 <div className="flex items-center gap-1 justify-end mt-1 animate-pulse">
-                                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                                                     <span className="text-[8px] font-black uppercase tracking-[2px] text-slate-300">Sincronizado</span>
                                                 </div>
                                             </div>

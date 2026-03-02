@@ -4,28 +4,29 @@ import { HashRouter as Router, Routes, Route, useNavigate, useLocation, useParam
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import AppointmentCard from './components/AppointmentCard';
-import Odontogram from './components/Odontogram';
-import Periodontogram from './components/Periodontogram';
-import BudgetPlanner from './components/BudgetPlanner';
-import XRayViewer from './components/XRayViewer';
 import PatientList from './components/PatientList';
-import PatientRecord from './components/PatientRecord';
 import NewPatientModal from './components/NewPatientModal';
+import PatientConsultationView from './components/PatientConsultationView';
+import PublicBookingPage from './components/PublicBookingPage';
+import AppointmentRequestsManager from './components/AppointmentRequestsManager';
+import BookingManagementView from './components/BookingManagementView';
 import { whatsappService } from './services/whatsappService';
 import { persistenceService } from './services/persistenceService';
-import WebhookSimulator from './components/WebhookSimulator';
-import { Appointment, ReminderStatus, PatientRecord as PatientRecordType, AppointmentType } from './types';
-import { formatCurrency, cn, generateId } from './lib/utils';
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-import { Plus, Calendar as CalendarIcon, History, Search, Settings, Trash2, Users, DollarSign, Activity, ArrowUpRight, ArrowDownRight, TrendingUp, Clock } from 'lucide-react';
-import GlobalSearch from './components/GlobalSearch';
+import { bookingService } from './services/bookingService';
+import { AuthProvider, useAuth } from './services/authService';
+import AuthPage from './components/AuthPage';
+import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcuts';
 
-// --- DOCTOR CONFIG (until auth is implemented) ---
-const DOCTOR_CONFIG = {
-  name: 'Dr. Joe Murillo',
-  role: 'Odontólogo',
-  avatar: 'https://i.pravatar.cc/150?u=dr-smith'
-};
+// Lazy loading for better performance
+const PatientRecord = React.lazy(() => import('./components/PatientRecord'));
+const Odontogram = React.lazy(() => import('./components/Odontogram'));
+const XRayViewer = React.lazy(() => import('./components/XRayViewer'));
+import GlobalSearch from './components/GlobalSearch';
+import { Appointment, ReminderStatus, PatientRecord as PatientRecordType, AppointmentType, AppointmentRequest } from './types';
+import { cn, generateId } from './lib/utils';
+import { Plus, Calendar as CalendarIcon, History, Search, Settings, Trash2, Users, Activity, Clock, Bell } from 'lucide-react';
+import { sileo, Toaster } from 'sileo';
+import 'sileo/styles.css';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -35,12 +36,19 @@ function getGreeting(): string {
 }
 
 const Dashboard: React.FC = () => {
+  const { profile } = useAuth();
+  const doctorName = profile?.full_name || 'Doctor';
+  const doctorInitials = doctorName.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'DR';
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [allPatients, setAllPatients] = useState(() => persistenceService.getPatients());
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
   const navigate = useNavigate();
 
   const today = new Date().toISOString().split('T')[0];
-  const totalBalance = useMemo(() => allPatients.reduce((sum, p) => sum + p.balance, 0), [allPatients]);
 
   // Weekly procedures count
   const weeklyProcedures = useMemo(() => {
@@ -53,253 +61,312 @@ const Dashboard: React.FC = () => {
     }, 0);
   }, [allPatients, today]);
 
-  // Build chart data from recent clinical events
-  const chartData = useMemo(() => {
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    const result = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayIncome = allPatients.reduce((sum, p) => {
-        return sum + p.history.filter(e => e.date === dateStr).reduce((s, e) => s + e.cost, 0);
-      }, 0);
-      result.push({ name: dayNames[d.getDay()], income: dayIncome });
+  const loadPendingRequests = useCallback(async () => {
+    try {
+      await bookingService.refreshRequests();
+    } catch (e) {
+      // refreshRequests might fail if not initialized yet
     }
-    return result;
-  }, [allPatients]);
-
-  const weeklyTotal = useMemo(() => chartData.reduce((s, d) => s + d.income, 0), [chartData]);
+    const requests = bookingService.getPendingRequests();
+    setPendingRequests(requests);
+  }, []);
 
   useEffect(() => {
     setAppointments(persistenceService.getAppointmentsForDate(today));
+    loadPendingRequests();
+
+    // Listen for new appointment requests
+    const handleNewRequest = (event: CustomEvent) => {
+      const newRequest = event.detail as AppointmentRequest;
+      setPendingRequests(prev => [newRequest, ...prev]);
+    };
+
+    window.addEventListener('newAppointmentRequest', handleNewRequest as EventListener);
 
     const unsubscribe = whatsappService.subscribe(({ appointmentId, status }) => {
       setAppointments(prev => {
         const updated = prev.map(apt => apt.id === appointmentId ? { ...apt, status } : apt);
         const apt = updated.find(a => a.id === appointmentId);
-        if (apt) persistenceService.saveAppointment(apt);
+        if (apt) {
+          persistenceService.saveAppointment(apt).catch(console.error);
+          // Friendly notification for appointment updates
+          if (status === 'confirmed') {
+            sileo.success({ title: `¡Perfecto! ${apt.patientName} confirmó su cita para hoy`, description: '¿Todo listo para recibirle?' });
+          } else if (status === 'cancelled') {
+            sileo.warning({ title: `${apt.patientName} canceló su cita`, description: 'Puedes reprogramarla cuando gustes' });
+          }
+        }
         return updated;
       });
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      window.removeEventListener('newAppointmentRequest', handleNewRequest as EventListener);
+      unsubscribe();
+    };
+  }, [loadPendingRequests]);
 
   const handleReminderStatusUpdate = useCallback((id: string, status: ReminderStatus) => {
     setAppointments(prev => {
       const updated = prev.map(apt => apt.id === id ? { ...apt, reminderStatus: status } : apt);
       const apt = updated.find(a => a.id === id);
-      if (apt) persistenceService.saveAppointment(apt);
+      if (apt) {
+        persistenceService.saveAppointment(apt).catch(console.error);
+        // Friendly reminder notifications
+        if (status === 'sent') {
+          sileo.success({ title: `Recordatorio enviado a ${apt.patientName} ✨`, description: 'Le llegará por WhatsApp en unos segundos' });
+        } else if (status === 'failed') {
+          sileo.error({ title: `No pudimos contactar a ${apt.patientName}`, description: 'Revisa el número de teléfono o inténtalo de nuevo' });
+        }
+      }
       return updated;
     });
   }, []);
 
   return (
     <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 lg:pb-8 p-5 lg:p-8 page-transition">
-      {/* ===== Header — Greeting ===== */}
-      <header className="flex items-center justify-between mb-8 animate-in-up stagger-delay-1">
-        <div>
-          <p className="text-sm font-medium text-slate-400 mb-1">
-            {new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-          <h2 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
-            {getGreeting()}, <span className="text-teal-600">{DOCTOR_CONFIG.name.replace('Dr. ', '')}</span>
-          </h2>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-semibold uppercase tracking-wider">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            En línea
-          </div>
-          <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-teal-500/20">
-            <img src={DOCTOR_CONFIG.avatar} alt="Doctor" className="w-full h-full object-cover" loading="lazy" />
-          </div>
-        </div>
-      </header>
+        {/* Eliminar el header anterior ya integrado arriba */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ===== Main Content ===== */}
-        <div className="lg:col-span-8 space-y-6">
-
-          {/* Quick Actions — compact row */}
-          <div className="flex gap-3 animate-in-up stagger-delay-1">
-            <button
-              onClick={() => navigate('/patients?new=true')}
-              className="flex items-center gap-2.5 px-5 py-3 bg-teal-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-teal-600/20 hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-600/25 transition-all duration-200 active:scale-[0.97]"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              Nuevo Paciente
-            </button>
-            <button
-              onClick={() => navigate('/calendar')}
-              className="flex items-center gap-2.5 px-5 py-3 bg-white text-slate-700 rounded-xl font-semibold text-sm border border-slate-200 hover:border-teal-200 hover:text-teal-700 hover:bg-teal-50/50 transition-all duration-200 active:scale-[0.97]"
-            >
-              <CalendarIcon size={18} strokeWidth={2} />
-              Nueva Cita
-            </button>
-          </div>
-
-          {/* KPI Metrics — 4 compact cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in-up stagger-delay-2">
-            {/* Total Pacientes */}
-            <div className="card-premium kpi-accent-teal p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center text-teal-600">
-                  <Users size={18} />
-                </div>
-                <div className="flex items-center gap-0.5 text-emerald-600">
-                  <ArrowUpRight size={14} />
-                  <span className="text-[11px] font-semibold">Activo</span>
+      <div className="space-y-6 lg:space-y-8">
+        {/* ===== Header mejorado con búsqueda integrada ===== */}
+        <section className="animate-in-up stagger-delay-1">
+          <div className="bg-white rounded-2xl lg:rounded-3xl border border-slate-100 p-6 lg:p-8 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
+              <div className="flex-1">
+                <h2 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight mb-1">
+                  {getGreeting()}, <span className="text-blue-600">{doctorName.replace(/^Dr\.?\s*/i, '')}</span>
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+              </div>
+              
+              {/* Búsqueda integrada - mobile first */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setIsSearchOpen(true);
+                    sileo.info({ title: '¡Hola! ¿A quién buscamos hoy?', description: 'Puedes buscar por nombre, cédula o teléfono' });
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200 hover:border-blue-200 transition-all group flex-1 lg:flex-none lg:min-w-[280px]"
+                >
+                  <Search size={18} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                  <span className="text-sm text-slate-400 group-hover:text-slate-600 transition-colors">Buscar pacientes...</span>
+                  <div className="hidden lg:flex items-center gap-1 px-2 py-1 bg-slate-200 group-hover:bg-slate-300 rounded-lg text-[10px] font-semibold text-slate-500 ml-auto">
+                    <kbd>⌘K</kbd>
+                  </div>
+                </button>
+                
+                <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-100 shadow-sm bg-blue-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">{doctorInitials}</span>
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-900 leading-none">{allPatients.length}</p>
-              <p className="text-[11px] font-medium text-slate-400 mt-1">Total pacientes</p>
-            </div>
-
-            {/* Citas Hoy */}
-            <div className="card-premium kpi-accent-blue p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
-                  <CalendarIcon size={18} />
-                </div>
-                <div className="flex items-center gap-0.5 text-blue-600">
-                  <Clock size={12} />
-                  <span className="text-[11px] font-semibold">Hoy</span>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-slate-900 leading-none">{appointments.length}</p>
-              <p className="text-[11px] font-medium text-slate-400 mt-1">Citas del día</p>
-            </div>
-
-            {/* Balance */}
-            <div className="card-premium kpi-accent-emerald p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
-                  <DollarSign size={18} />
-                </div>
-                <div className="flex items-center gap-0.5 text-emerald-600">
-                  <TrendingUp size={14} />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-emerald-600 leading-none">{formatCurrency(totalBalance)}</p>
-              <p className="text-[11px] font-medium text-slate-400 mt-1">Balance clínica</p>
-            </div>
-
-            {/* Procedimientos Semana */}
-            <div className="card-premium kpi-accent-indigo p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
-                  <Activity size={18} />
-                </div>
-                <div className="flex items-center gap-0.5 text-indigo-500">
-                  <span className="text-[11px] font-semibold">7d</span>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-slate-900 leading-none">{weeklyProcedures}</p>
-              <p className="text-[11px] font-medium text-slate-400 mt-1">Procedimientos</p>
             </div>
           </div>
-
-          {/* Revenue Chart */}
-          <div className="card-premium p-6 animate-in-up stagger-delay-3">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp size={14} className="text-teal-500" />
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ingresos · Últimos 7 días</p>
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">{formatCurrency(weeklyTotal)}</h3>
-              </div>
+        </section>
+        {/* ===== Citas de Hoy — Principal ===== */}
+        <section className="animate-in-up stagger-delay-2">
+          <div className="flex items-center justify-between mb-4 lg:mb-6">
+            <h3 className="text-lg lg:text-xl font-bold text-slate-900 tracking-tight">Agenda de Hoy</h3>
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-semibold">{appointments.length} citas</span>
               <button
-                onClick={() => navigate('/patients')}
-                className="text-[11px] font-semibold text-teal-600 hover:text-teal-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-teal-50"
+                onClick={() => {
+                  navigate('/calendar');
+                  sileo.success({ title: '¡Vamos a programar una nueva cita!', description: 'Selecciona fecha y hora para tu paciente' });
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25"
               >
-                Ver detalle →
+                <Plus size={16} />
+                <span className="hidden sm:inline">Nueva Cita</span>
+                <span className="sm:hidden">Nueva</span>
               </button>
             </div>
-            <div className="h-52 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: '1px solid #f1f5f9',
-                      boxShadow: '0 10px 30px -8px rgba(0, 0, 0, 0.1)',
-                      padding: '10px 14px',
-                      fontWeight: '600',
-                      fontSize: '12px'
-                    }}
-                    itemStyle={{ color: '#0d9488' }}
-                    labelStyle={{ color: '#64748b', fontWeight: '500', fontSize: '11px' }}
-                  />
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#0d9488" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#0d9488" stopOpacity={0.01} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#94a3b8' }} dy={8} />
-                  <Area type="monotone" dataKey="income" stroke="#0d9488" strokeWidth={2.5} fill="url(#chartGradient)" animationDuration={1200} dot={false} activeDot={{ r: 5, fill: '#0d9488', strokeWidth: 2, stroke: '#fff' }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
           </div>
-        </div>
-
-        {/* ===== Sidebar — Today's Agenda ===== */}
-        <div className="lg:col-span-4 flex flex-col gap-4 animate-in-up stagger-delay-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Agenda de Hoy</h3>
-            <span className="px-2.5 py-1 bg-teal-50 text-teal-700 rounded-lg text-[11px] font-semibold">{appointments.length} citas</span>
-          </div>
-          <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1 hide-scrollbar pb-10">
-            {appointments.length === 0 ? (
-              <div className="card-premium p-8 text-center">
-                <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <CalendarIcon size={24} className="text-slate-300" />
-                </div>
-                <p className="text-sm font-medium text-slate-400 mb-1">Sin citas programadas</p>
-                <p className="text-xs text-slate-300 mb-4">No hay citas para hoy</p>
-                <button
-                  onClick={() => navigate('/calendar')}
-                  className="text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
-                >
-                  Ir al calendario →
-                </button>
+          
+          {appointments.length === 0 ? (
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-2xl border border-slate-100 p-8 lg:p-12 text-center">
+              <div className="w-16 h-16 lg:w-20 lg:h-20 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 lg:mb-6">
+                <CalendarIcon size={32} className="text-slate-300" />
               </div>
-            ) : (
-              appointments.map(apt => (
+              <h4 className="text-lg lg:text-xl font-semibold text-slate-600 mb-2">Sin citas programadas</h4>
+              <p className="text-slate-400 mb-6 lg:mb-8 max-w-sm mx-auto">No hay citas para el día de hoy. Programa la primera cita del día.</p>
+              <button
+                onClick={() => {
+                  navigate('/calendar');
+                  sileo.success({ title: '¡Perfecto! Programa tu primera cita del día', description: '¡Que tengas un excelente día de trabajo!' });
+                }}
+                className="px-6 py-3 lg:px-8 lg:py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25"
+              >
+                Programar Primera Cita
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+              {appointments.map(apt => (
                 <AppointmentCard key={apt.id} appointment={apt} onReminderSent={handleReminderStatusUpdate} />
-              ))
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ===== Solicitudes de Cita ===== */}
+        <section className="animate-in-up stagger-delay-3">
+          <div className={cn(
+            'rounded-2xl lg:rounded-3xl border p-6 lg:p-8',
+            pendingRequests.length > 0
+              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+              : 'bg-white border-slate-100'
+          )}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                {pendingRequests.length > 0 && <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>}
+                <h3 className={cn('text-lg lg:text-xl font-bold', pendingRequests.length > 0 ? 'text-amber-800' : 'text-slate-900')}>
+                  Solicitudes de Cita {pendingRequests.length > 0 && `(${pendingRequests.length})`}
+                </h3>
+              </div>
+              <button
+                onClick={() => navigate('/booking/manage')}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all',
+                  pendingRequests.length > 0
+                    ? 'bg-amber-600 text-white hover:bg-amber-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                )}
+              >
+                <Bell size={16} />
+                <span className="hidden sm:inline">Ver Solicitudes</span>
+                <span className="sm:hidden">Ver</span>
+              </button>
+            </div>
+            
+            {pendingRequests.length > 0 ? (
+              <>
+                <div className="space-y-3">
+                  {pendingRequests.slice(0, 3).map(request => {
+                    const fmtDate = (dateStr: string) => {
+                      return new Date(dateStr).toLocaleDateString('es-ES', {
+                        month: 'short',
+                        day: 'numeric'
+                      });
+                    };
+
+                    const fmtTime = (timeStr: string) => {
+                      const [hours, minutes] = timeStr.split(':');
+                      return new Date(0, 0, 0, parseInt(hours), parseInt(minutes))
+                        .toLocaleTimeString('es-ES', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          hour12: true 
+                        });
+                    };
+
+                    return (
+                      <div key={request.id} className="bg-white rounded-xl p-4 border border-amber-200 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                            {request.patientName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900 text-sm">{request.patientName}</div>
+                            <div className="text-xs text-slate-500">
+                              {fmtDate(request.requestedDate)} - {fmtTime(request.requestedTime)} ({request.appointmentType})
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => navigate('/booking/manage')}
+                          className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-200 transition-colors"
+                        >
+                          Revisar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {pendingRequests.length > 3 && (
+                  <div className="mt-4 text-center">
+                    <span className="text-sm text-amber-600">
+                      +{pendingRequests.length - 3} solicitudes más
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <Bell size={32} className="text-slate-200 mx-auto mb-3" />
+                <p className="text-sm text-slate-400 font-medium">No hay solicitudes pendientes</p>
+                <p className="text-xs text-slate-300 mt-1">Las citas solicitadas desde tu enlace público aparecerán aquí</p>
+              </div>
             )}
           </div>
+        </section>
 
-          {/* Quick Stats mini-card */}
-          <div className="card-premium p-4 mt-auto">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Accesos Rápidos</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => navigate('/patients')}
-                className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-colors"
-              >
-                <Users size={14} />
-                Pacientes
-              </button>
-              <button
-                onClick={() => navigate('/settings')}
-                className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-colors"
-              >
-                <Settings size={14} />
-                Ajustes
-              </button>
-            </div>
+        {/* ===== Acciones Rápidas de Gestión ===== */}
+        <section className="animate-in-up stagger-delay-4">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4 lg:mb-6">Herramientas de Gestión</h3>
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+            <button
+              onClick={() => {
+                navigate('/patients?new=true');
+                sileo.success({ title: '¡Excelente! Vamos a registrar un nuevo paciente', description: 'Completa la ficha para empezar su historia clínica' });
+              }}
+              className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-white rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all shadow-sm group"
+            >
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                <Plus size={20} className="lg:hidden" />
+                <Plus size={24} className="hidden lg:block" />
+              </div>
+              <span className="font-semibold text-slate-700 text-sm lg:text-base text-center leading-tight">Nuevo Paciente</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                navigate('/patients');
+                sileo.info({ title: 'Explorando tu lista de pacientes', description: `Tienes ${allPatients.length} paciente${allPatients.length !== 1 ? 's' : ''} registrado${allPatients.length !== 1 ? 's' : ''}` });
+              }}
+              className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-white rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all shadow-sm group"
+            >
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                <Users size={20} className="lg:hidden" />
+                <Users size={24} className="hidden lg:block" />
+              </div>
+              <span className="font-semibold text-slate-700 text-sm lg:text-base text-center leading-tight">Ver Pacientes</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                navigate('/settings');
+                sileo.info({ title: 'Configurando tu espacio de trabajo', description: 'Ajusta DienteLink a tu manera de trabajar' });
+              }}
+              className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all shadow-sm group"
+            >
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 group-hover:bg-slate-600 group-hover:text-white transition-all">
+                <Settings size={20} className="lg:hidden" />
+                <Settings size={24} className="hidden lg:block" />
+              </div>
+              <span className="font-semibold text-slate-700 text-sm lg:text-base text-center leading-tight">Configuración</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                navigate('/consultation');
+                sileo.success({ title: 'Modo consulta activado 📟', description: 'Herramienta perfecta para atención directa' });
+              }}
+              className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-slate-50 rounded-2xl border border-blue-100 hover:border-blue-200 hover:from-blue-100 hover:to-slate-100 transition-all shadow-sm group col-span-2 lg:col-span-1"
+            >
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-all">
+                <Activity size={20} className="lg:hidden" />
+                <Activity size={24} className="hidden lg:block" />
+              </div>
+              <span className="font-semibold text-blue-700 text-sm lg:text-base text-center leading-tight">Recibir Paciente</span>
+            </button>
           </div>
-        </div>
+        </section>
       </div>
-      <WebhookSimulator appointments={appointments} />
+
+      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>
   );
 };
@@ -316,8 +383,8 @@ const PatientsView: React.FC = () => {
     }
   }, [searchParams]);
 
-  const handleSave = (newPatient: PatientRecordType) => {
-    persistenceService.savePatient(newPatient);
+  const handleSave = async (newPatient: PatientRecordType) => {
+    await persistenceService.savePatient(newPatient);
     setPatients(persistenceService.getPatients());
     navigate(`/patient/${newPatient.id}`);
   };
@@ -343,24 +410,41 @@ const PatientDetailView: React.FC = () => {
   const navigate = useNavigate();
   const [patient, setPatient] = useState<PatientRecordType | undefined>(persistenceService.getPatientById(id || ''));
 
-  if (!patient) return <div className="p-12 font-bold">Paciente no encontrado</div>;
+  if (!patient) return (
+    <div className="flex items-center justify-center h-screen">
+      <div className="text-center">
+        <p className="text-lg font-semibold text-slate-600 mb-2">Paciente no encontrado</p>
+        <button 
+          onClick={() => navigate('/patients')} 
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+        >
+          Volver a Pacientes
+        </button>
+      </div>
+    </div>
+  );
 
-  const handleUpdate = (updated: PatientRecordType) => {
-    persistenceService.savePatient(updated);
+  const handleUpdate = async (updated: PatientRecordType) => {
+    await persistenceService.savePatient(updated);
     setPatient(updated);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm(`¿Eliminar el expediente de ${patient.identification.fullName}? Esta acción no se puede deshacer.`)) {
-      persistenceService.deletePatient(patient.id);
+      await persistenceService.deletePatient(patient.id);
       navigate('/patients');
     }
   };
 
   return (
     <div className="flex-1 h-full overflow-hidden flex flex-col p-5 lg:p-8 pb-32 page-transition">
-      <header className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate('/patients')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-teal-600 transition-all">←</button>
+      <React.Suspense fallback={
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      }>
+        <header className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate('/patients')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all">←</button>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-1">
           <div>
             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{patient.identification.fullName}</h2>
@@ -375,7 +459,7 @@ const PatientDetailView: React.FC = () => {
             </button>
             <button
               onClick={() => navigate(`/calendar?patient=${encodeURIComponent(patient.identification.fullName)}&id=${patient.id}`)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700 transition-all shadow-md shadow-teal-600/20"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
             >
               <History size={14} /> Agendar Cita
             </button>
@@ -385,6 +469,7 @@ const PatientDetailView: React.FC = () => {
       <div className="flex-1 overflow-hidden">
         <PatientRecord patient={patient} onUpdate={handleUpdate} />
       </div>
+      </React.Suspense>
     </div>
   );
 };
@@ -415,7 +500,7 @@ const CalendarView: React.FC = () => {
   const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
 
-  const handleAddAppointment = () => {
+  const handleAddAppointment = async () => {
     if (!newApt.patientName) return;
 
     // Try to find patient by name if no patientId is provided
@@ -438,17 +523,19 @@ const CalendarView: React.FC = () => {
       status: 'Programada',
       reminderStatus: 'not_sent'
     };
-    persistenceService.saveAppointment(appointment);
+    await persistenceService.saveAppointment(appointment);
     setAppointments(persistenceService.getAppointments());
     setIsAdding(false);
     setNewApt({ patientName: '', patientId: '', time: '09:00', date: newApt.date, type: 'Consulta' });
+    sileo.success({ title: `¡Cita creada para ${appointment.patientName}!`, description: `${appointment.date} a las ${appointment.time} — ${appointment.type}` });
   };
 
-  const handleDeleteAppointment = (e: React.MouseEvent, aptId: string) => {
+  const handleDeleteAppointment = async (e: React.MouseEvent, aptId: string) => {
     e.stopPropagation();
     if (window.confirm('¿Eliminar esta cita?')) {
-      persistenceService.deleteAppointment(aptId);
+      await persistenceService.deleteAppointment(aptId);
       setAppointments(persistenceService.getAppointments());
+      sileo.info({ title: 'Cita eliminada correctamente', description: 'Puedes reprogramarla cuando lo necesites' });
     }
   };
 
@@ -462,12 +549,12 @@ const CalendarView: React.FC = () => {
     <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-teal-600 transition-all active:scale-95">←</button>
+          <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95">←</button>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Agenda</h2>
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-5 py-3 bg-teal-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-teal-600/20 hover:bg-teal-700 transition-all active:scale-[0.97]"
+          className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-[0.97]"
         >
           <Plus size={16} /> Nueva Cita
         </button>
@@ -501,17 +588,17 @@ const CalendarView: React.FC = () => {
                   setIsAdding(true);
                 }}
                 className={cn(
-                  "min-h-[100px] p-3 rounded-xl border transition-all cursor-pointer group hover:border-teal-200 hover:shadow-md",
-                  isToday ? "bg-teal-50 border-teal-200" : "bg-white border-slate-100"
+                  "min-h-[100px] p-3 rounded-xl border transition-all cursor-pointer group hover:border-blue-200 hover:shadow-md",
+                  isToday ? "bg-blue-50 border-blue-200" : "bg-white border-slate-100"
                 )}
               >
                 <span className={cn(
                   "text-xs font-bold mb-1.5 block",
-                  isToday ? "text-teal-600" : "text-slate-400 group-hover:text-teal-500"
+                  isToday ? "text-blue-600" : "text-slate-400 group-hover:text-blue-500"
                 )}>{d}</span>
                 <div className="space-y-1">
                   {dayApts.map(a => (
-                    <div key={a.id} className="px-2 py-1 bg-teal-600 text-white rounded-md text-[9px] font-medium truncate flex items-center justify-between gap-1">
+                    <div key={a.id} className="px-2 py-1 bg-blue-600 text-white rounded-md text-[9px] font-medium truncate flex items-center justify-between gap-1">
                       <span className="truncate">{a.time} - {a.patientName}</span>
                       <button
                         onClick={(e) => handleDeleteAppointment(e, a.id)}
@@ -523,7 +610,7 @@ const CalendarView: React.FC = () => {
                   ))}
                   {dayApts.length === 0 && (
                     <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Plus size={12} className="text-teal-300" />
+                      <Plus size={12} className="text-blue-300" />
                     </div>
                   )}
                 </div>
@@ -541,7 +628,7 @@ const CalendarView: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Paciente</label>
                 <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                   value={newApt.patientName}
                   onChange={e => setNewApt(p => ({ ...p, patientName: e.target.value }))}
                   placeholder="Nombre del paciente..."
@@ -552,7 +639,7 @@ const CalendarView: React.FC = () => {
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Fecha</label>
                   <input
                     type="date"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-teal-500 transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 transition-all"
                     value={newApt.date}
                     onChange={e => setNewApt(p => ({ ...p, date: e.target.value }))}
                   />
@@ -561,7 +648,7 @@ const CalendarView: React.FC = () => {
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hora</label>
                   <input
                     type="time"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-teal-500 transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 transition-all"
                     value={newApt.time}
                     onChange={e => setNewApt(p => ({ ...p, time: e.target.value }))}
                   />
@@ -578,8 +665,8 @@ const CalendarView: React.FC = () => {
                       className={cn(
                         "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
                         newApt.type === t
-                          ? "bg-teal-600 text-white shadow-sm"
-                          : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-teal-50 hover:text-teal-600"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-blue-50 hover:text-blue-600"
                       )}
                     >
                       {t}
@@ -589,7 +676,7 @@ const CalendarView: React.FC = () => {
               </div>
               <button
                 onClick={handleAddAppointment}
-                className="w-full py-3.5 bg-teal-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-teal-600/20 hover:bg-teal-700 active:scale-[0.98] transition-all mt-3"
+                className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98] transition-all mt-3"
               >
                 Confirmar y Agendar
               </button>
@@ -609,18 +696,28 @@ const CalendarView: React.FC = () => {
 
 const SettingsView: React.FC = () => {
   const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
+  const doctorName = profile?.full_name || 'Doctor';
+  const doctorRole = profile?.role || 'Odontólogo';
+  const doctorInitials = doctorName.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'DR';
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     if (window.confirm('¿Borrar todos los datos? Esto eliminará pacientes, citas y toda la información almacenada. Esta acción no se puede deshacer.')) {
-      localStorage.clear();
+      await persistenceService.clearAllData();
       window.location.reload();
     }
+  };
+
+  const handleSignOut = async () => {
+    persistenceService.reset();
+    bookingService.reset();
+    await signOut();
   };
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
       <header className="flex items-center gap-4 mb-8">
-        <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-teal-600 transition-all active:scale-95">←</button>
+        <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95">←</button>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ajustes</h2>
       </header>
 
@@ -628,10 +725,12 @@ const SettingsView: React.FC = () => {
         <div className="card-premium p-6">
           <h3 className="text-base font-bold text-slate-900 mb-5">Perfil del Doctor</h3>
           <div className="flex items-center gap-5">
-            <img src={DOCTOR_CONFIG.avatar} alt="Doctor" className="w-16 h-16 rounded-xl object-cover ring-2 ring-teal-500/20" />
+            <div className="w-16 h-16 rounded-xl bg-blue-600 flex items-center justify-center ring-2 ring-blue-500/20">
+              <span className="text-white font-bold text-xl">{doctorInitials}</span>
+            </div>
             <div>
-              <p className="text-lg font-bold text-slate-900">{DOCTOR_CONFIG.name}</p>
-              <p className="text-sm font-medium text-slate-400">{DOCTOR_CONFIG.role}</p>
+              <p className="text-lg font-bold text-slate-900">{doctorName}</p>
+              <p className="text-sm font-medium text-slate-400">{doctorRole}</p>
             </div>
           </div>
         </div>
@@ -665,14 +764,119 @@ const SettingsView: React.FC = () => {
             Borrar Todos los Datos
           </button>
         </div>
+
+        <div className="card-premium p-6">
+          <h3 className="text-base font-bold text-slate-900 mb-3">Sesión</h3>
+          <p className="text-sm text-slate-400 mb-4">Cerrar sesión de DienteLink. Tus datos se mantienen seguros en la nube.</p>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-200 transition-all border border-slate-200"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
+// Booking Wrapper Components
+const BookingManagementWrapper: React.FC = () => {
+  const navigate = useNavigate();
+  return <BookingManagementView onBack={() => navigate('/')} />;
+};
+
+// Error boundary component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center p-8">
+            <h2 className="text-xl font-bold text-red-600 mb-4">Error en la aplicación</h2>
+            <p className="text-slate-600 mb-4">Ha ocurrido un error inesperado.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+            >
+              Recargar página
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const Layout: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { user } = useAuth();
+  const [servicesReady, setServicesReady] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Initialize persistence & booking services when user is available
+  useEffect(() => {
+    if (!user) { setServicesReady(false); return; }
+    const initServices = async () => {
+      await Promise.all([
+        persistenceService.init(user.id),
+        bookingService.init(user.id),
+      ]);
+      setPendingCount(bookingService.getPendingRequests().length);
+      setServicesReady(true);
+    };
+    initServices().catch(console.error);
+  }, [user]);
+
+  // Keep pending count in sync when requests change
+  useEffect(() => {
+    const refresh = () => setPendingCount(bookingService.getPendingRequests().length);
+    window.addEventListener('bookingRequestsUpdated', refresh);
+    window.addEventListener('newAppointmentRequest', refresh);
+    // Also refresh when navigating back to dashboard
+    const interval = setInterval(refresh, 5000);
+    return () => {
+      window.removeEventListener('bookingRequestsUpdated', refresh);
+      window.removeEventListener('newAppointmentRequest', refresh);
+      clearInterval(interval);
+    };
+  }, [servicesReady]);
+
+  // Enhanced keyboard shortcuts
+  useKeyboardShortcuts();
+  useFocusManagement();
+
+  // Ensure app always starts on dashboard for first load
+  React.useEffect(() => {
+    if (location.pathname === '/#/' || location.pathname === '/') {
+      // Small delay to ensure the router is ready
+      setTimeout(() => {
+        if (location.pathname !== '/') {
+          navigate('/', { replace: true });
+        }
+      }, 100);
+    }
+  }, []); // Run only on mount
 
   // Ctrl+K keyboard shortcut for global search
   useEffect(() => {
@@ -688,47 +892,100 @@ const Layout: React.FC = () => {
 
   const getActivePath = () => {
     if (location.pathname.startsWith('/patient')) return 'patients';
+    if (location.pathname === '/consultation') return 'consultation';
     if (location.pathname === '/calendar') return 'calendar';
+    if (location.pathname.startsWith('/booking/manage')) return 'solicitudes';
     if (location.pathname === '/settings') return 'settings';
     return 'dashboard';
   };
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar activePath={getActivePath()} />
-      <main className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Global Search Button */}
-        <button
-          onClick={() => setIsSearchOpen(true)}
-          className="fixed top-6 right-6 z-[60] hidden lg:flex items-center gap-3 px-4 py-2.5 bg-white/90 backdrop-blur-md rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all duration-200 group active:scale-95"
-        >
-          <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-200">
-            <Search size={14} strokeWidth={2.5} />
+      {/* Skip link for accessibility */}
+      <a 
+        href="#main-content" 
+        className="skip-link"
+        onFocus={(e) => e.target.scrollIntoView()}
+      >
+        Saltar al contenido principal
+      </a>
+      
+      {!servicesReady ? (
+        <div className="flex items-center justify-center w-full h-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-sm text-slate-400 font-medium">Cargando datos...</p>
           </div>
-          <span className="text-sm font-medium text-slate-400 group-hover:text-slate-700 transition-colors">Buscar...</span>
-          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded-md text-[10px] font-semibold text-slate-400">
-            <kbd>⌘K</kbd>
-          </div>
-        </button>
-
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/patients" element={<PatientsView />} />
-          <Route path="/patient/:id" element={<PatientDetailView />} />
-          <Route path="/calendar" element={<CalendarView />} />
-          <Route path="/settings" element={<SettingsView />} />
-          <Route path="*" element={<Dashboard />} />
-        </Routes>
-        <BottomNav activePath={getActivePath()} />
-      </main>
-      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+        </div>
+      ) : (
+        <>
+          <Sidebar activePath={getActivePath()} pendingRequestsCount={pendingCount} />
+          <main 
+            id="main-content"
+            className="flex-1 flex flex-col relative overflow-hidden" 
+            role="main"
+            aria-label="Contenido principal"
+          >
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/patients" element={<PatientsView />} />
+              <Route path="/patient/:id" element={
+                <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+                  <PatientDetailView />
+                </React.Suspense>
+              } />
+              <Route path="/consultation" element={
+                <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+                  <PatientConsultationView />
+                </React.Suspense>
+              } />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/booking/manage" element={<BookingManagementWrapper />} />
+              <Route path="/settings" element={<SettingsView />} />
+              <Route path="*" element={<Dashboard />} />
+            </Routes>
+            <BottomNav activePath={getActivePath()} onSearchOpen={() => setIsSearchOpen(true)} />
+          </main>
+          <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+        </>
+      )}
     </div>
   );
 };
 
+// Auth guard — shows login when not authenticated
+const AuthGuard: React.FC = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-slate-400 font-medium">Iniciando DienteLink...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <AuthPage />;
+
+  return <Layout />;
+};
+
 const App: React.FC = () => (
   <Router>
-    <Layout />
+    <ErrorBoundary>
+      <AuthProvider>
+        <Toaster position="top-center" theme="light" />
+        <Routes>
+          {/* Public booking page - completely independent, no sidebar/nav */}
+          <Route path="/p/:doctorId" element={<PublicBookingPage />} />
+          {/* Main app with auth guard */}
+          <Route path="/*" element={<AuthGuard />} />
+        </Routes>
+      </AuthProvider>
+    </ErrorBoundary>
   </Router>
 );
 

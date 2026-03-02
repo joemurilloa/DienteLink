@@ -16,7 +16,7 @@ const XRayViewer: React.FC = () => {
   const [color, setColor] = useState('#ef4444'); // Red 500
   const [snapshot, setSnapshot] = useState<ImageData | null>(null);
 
-  const sampleXRay = "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1200";
+  const sampleXRay = ""; // No sample image - user will upload their own
 
   // Inicializar canvas al cargar la imagen
   useEffect(() => {
@@ -141,7 +141,7 @@ const XRayViewer: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="px-3 py-0.5 bg-blue-100 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-[2px]">Módulo de Diagnóstico</div>
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               </div>
               <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Visor de Rayos X</h3>
               <p className="text-slate-400 text-sm font-bold mt-3 uppercase tracking-widest">Anotaciones clínicas de alta precisión</p>
