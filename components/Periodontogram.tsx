@@ -83,62 +83,87 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ depths, onUpdate }) => 
   };
 
   return (
-    <div className="glass-panel p-8 rounded-[48px] shadow-2xl border-white/60">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-10">
-        <div>
-          <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Sondaje Periodontal</h3>
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mt-1">Desliza verticalmente para medir</p>
+    <div className="bg-white/40 backdrop-blur-3xl p-10 lg:p-14 rounded-[64px] select-none border border-white shadow-2xl transition-all duration-700">
+      <div className="flex flex-col xl:flex-row items-start justify-between gap-10 mb-16 animate-in-up">
+        <div className="max-w-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-[9px] font-black uppercase tracking-[2px]">Evaluación Periodontal</div>
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-white/60 text-slate-400 rounded-full text-[9px] font-black uppercase tracking-[2px] border border-slate-100 italic">Sondaje en Vivo</div>
+          </div>
+          <h3 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter italic leading-none mb-6">Estado del Periodonto</h3>
+          <p className="text-slate-400 text-sm font-bold leading-relaxed">
+            Registre y monitoree la profundidad de las bolsas periodontales.
+            <span className="text-blue-500"> Deslice verticalmente</span> sobre cada sonda para ajustar los valores biométricos.
+          </p>
         </div>
 
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-emerald-500 rounded-full" />
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Sano</span>
+        <div className="flex bg-slate-100/40 p-2 rounded-[32px] border border-slate-200/50 backdrop-blur-2xl shadow-inner gap-6 items-center px-8">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/30" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salud (≤3mm)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-rose-500 rounded-full" />
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Bolsa</span>
+          <div className="w-[1px] h-4 bg-slate-200" />
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-rose-500 rounded-full shadow-lg shadow-rose-500/30 animate-pulse" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsa (≥4mm)</span>
           </div>
         </div>
       </div>
 
-      {/* Contenedor Scrollable de Dientes */}
-      <div className="overflow-x-auto hide-scrollbar pb-6 -mx-4 px-4">
-        <div className="flex gap-2 min-w-max px-2">
+      <div className="overflow-x-auto hide-scrollbar -mx-6 px-6 pb-12 cursor-grab active:cursor-grabbing">
+        <div className="flex gap-4 min-w-max">
           {depths.map((d, i) => (
-            <ToothProbe
+            <motion.div
               key={i}
-              index={i}
-              value={depths[i] || 1}
-              onChange={(val) => handleUpdateDepth(i, val)}
-            />
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+            >
+              <ToothProbe
+                index={i}
+                value={depths[i] || 1}
+                onChange={(val) => handleUpdateDepth(i, val)}
+              />
+            </motion.div>
           ))}
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-slate-900 p-6 rounded-[32px] text-white relative overflow-hidden group">
-          <div className="relative z-10">
-            <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest mb-1">Resumen Clínico</p>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-black">
-                {depths.filter(d => d >= 4).length}
-              </span>
-              <span className="text-xs font-bold text-slate-400 mb-1">puntos con riesgo (≥4mm)</span>
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+        <div className="md:col-span-7 bg-slate-900 p-8 rounded-[48px] text-white relative overflow-hidden group shadow-2xl flex flex-col justify-center">
+          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8">
+            <div className="w-24 h-24 bg-white/5 rounded-[36px] flex items-center justify-center border border-white/10 group-hover:rotate-6 transition-transform duration-500">
+              <div className="text-center">
+                <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Riesgo</p>
+                <p className="text-4xl font-black text-rose-500">{depths.filter(d => d >= 4).length}</p>
+              </div>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="font-extrabold text-2xl tracking-tighter italic mb-2">Hallazgos Críticos</p>
+              <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-sm">
+                Se han detectado {depths.filter(d => d >= 4).length} zonas con profundidad de bolsa patológica que requieren atención inmediata.
+              </p>
             </div>
           </div>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-rose-500/10 rounded-full blur-[100px]" />
         </div>
 
-        <div className="glass-panel p-6 rounded-[32px] border-white/40 flex items-center justify-between">
+        <div className="md:col-span-5 bg-white/60 backdrop-blur-3xl p-8 rounded-[48px] border border-white shadow-xl flex items-center justify-between group">
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Promedio</p>
-            <p className="text-2xl font-black text-slate-900">
-              {(depths.reduce((a, b) => a + b, 0) / 16).toFixed(1)}mm
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full" />
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[3px]">Promedio Global</p>
+            </div>
+            <p className="text-5xl font-black text-slate-900 tracking-tighter italic leading-none">
+              {(depths.reduce((a, b) => a + b, 0) / depths.length).toFixed(1)}
+              <span className="text-xl text-slate-300 ml-2">mm</span>
             </p>
           </div>
-          <button className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-slate-100 hover:scale-110 active:scale-95 transition-all text-blue-600">
-            <Save size={20} />
+          <button
+            className="w-20 h-20 bg-slate-900 text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-slate-900/20 hover:bg-blue-600 transition-all hover:scale-105 active:scale-95 group/btn"
+            title="Guardar Mediciones"
+          >
+            <Save size={28} className="group-hover/btn:rotate-12 transition-transform" />
           </button>
         </div>
       </div>

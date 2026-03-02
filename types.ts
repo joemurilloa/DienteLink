@@ -9,14 +9,18 @@ export interface ToothData {
   status: ToothStatus;
 }
 
+export type AppointmentType = 'Consulta' | 'Seguimiento' | 'Cirugía' | 'Revisión';
+export type AppointmentStatus = 'Programada' | 'Completada' | 'Retrasada';
+
 export interface Appointment {
   id: string;
+  patientId: string;
   patientName: string;
   phoneNumber: string;
   time: string;
   date: string;
-  type: 'Consultation' | 'Follow-up' | 'Surgery' | 'Check-up';
-  status: 'Scheduled' | 'Completed' | 'Delayed';
+  type: AppointmentType;
+  status: AppointmentStatus;
   reminderStatus: ReminderStatus;
   patientImage?: string;
 }

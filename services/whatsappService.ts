@@ -1,7 +1,7 @@
 
-import { Appointment } from '../types';
+import { Appointment, AppointmentStatus } from '../types';
 
-type WhatsAppEventListener = (data: { appointmentId: string; status: 'Scheduled' | 'Completed' | 'Delayed' }) => void;
+type WhatsAppEventListener = (data: { appointmentId: string; status: AppointmentStatus }) => void;
 
 /**
  * WhatsAppService maneja la comunicación con Meta Graph API.
@@ -26,7 +26,7 @@ class WhatsAppService {
   /**
    * Emite un evento interno (Simula la llegada de un Webhook de Meta)
    */
-  private emit(appointmentId: string, status: 'Scheduled' | 'Completed' | 'Delayed') {
+  private emit(appointmentId: string, status: AppointmentStatus) {
     this.listeners.forEach(listener => listener({ appointmentId, status }));
   }
 
@@ -37,7 +37,7 @@ class WhatsAppService {
     console.log(`[Webhook Simulator] Recibida confirmación para cita: ${appointmentId}`);
     // Simulamos un pequeño retraso de red del Webhook
     setTimeout(() => {
-      this.emit(appointmentId, 'Completed');
+      this.emit(appointmentId, 'Completada');
     }, 1500);
   }
 
@@ -82,7 +82,7 @@ class WhatsAppService {
       // Auto-simular una respuesta después de 5 segundos para demostrar el flujo
       // setTimeout(() => this.simulateIncomingConfirmation(appointment.id), 5000);
 
-      return { success: true, messageId: `wa_msg_${Math.random().toString(36).substr(2, 9)}` };
+      return { success: true, messageId: `wa_msg_${crypto.randomUUID().slice(0, 9)}` };
     } catch (error) {
       console.error('Error enviando WhatsApp:', error);
       return { success: false };

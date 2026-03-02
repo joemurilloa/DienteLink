@@ -15,23 +15,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
-    <script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "recharts": "https://esm.sh/recharts@^3.7.0",
-    "framer-motion": "https://esm.sh/framer-motion@^11.11.11",
-    "@dnd-kit/core": "https://esm.sh/@dnd-kit/core@^6.1.0",
-    "@dnd-kit/utilities": "https://esm.sh/@dnd-kit/utilities@^3.2.2",
-    "lucide-react": "https://esm.sh/lucide-react@^0.460.0",
-    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.0.1",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0"
-  }
-}
-</script>
 </head>
 
 <body class="h-full overflow-hidden mesh-bg">
@@ -53,8 +36,8 @@
         });
     </script>
     <script>
-        // PWA Service Worker Registration
-        if ('serviceWorker' in navigator) {
+        // PWA Service Worker Registration (production only)
+        if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then((reg) => console.log('DienteLink SW registered:', reg.scope))

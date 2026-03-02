@@ -1,38 +1,43 @@
 import { Appointment, Stats, PatientRecord, ToothData } from '../types';
 
+const today = new Date().toISOString().split('T')[0];
+
 export const getAppointments = (): Appointment[] => [
   {
-    id: '1',
+    id: crypto.randomUUID(),
+    patientId: '1',
     patientName: 'Sarah Jenkins',
     phoneNumber: '34600000001',
     time: '09:00 AM',
-    date: '2024-05-20',
-    type: 'Consultation',
-    status: 'Scheduled',
+    date: today,
+    type: 'Consulta',
+    status: 'Programada',
     reminderStatus: 'not_sent',
     patientImage: 'https://i.pravatar.cc/150?u=sarah'
   },
   {
-    id: '2',
-    patientName: 'Robert Fox',
-    phoneNumber: '34600000002',
+    id: crypto.randomUUID(),
+    patientId: '1',
+    patientName: 'Sarah Jenkins',
+    phoneNumber: '34600000001',
     time: '10:30 AM',
-    date: '2024-05-20',
-    type: 'Check-up',
-    status: 'Delayed',
+    date: today,
+    type: 'Revisión',
+    status: 'Retrasada',
     reminderStatus: 'sent',
-    patientImage: 'https://i.pravatar.cc/150?u=robert'
+    patientImage: 'https://i.pravatar.cc/150?u=sarah'
   },
   {
-    id: '3',
-    patientName: 'Jane Cooper',
-    phoneNumber: '34600000003',
+    id: crypto.randomUUID(),
+    patientId: '1',
+    patientName: 'Sarah Jenkins',
+    phoneNumber: '34600000001',
     time: '01:15 PM',
-    date: '2024-05-20',
-    type: 'Follow-up',
-    status: 'Scheduled',
+    date: today,
+    type: 'Seguimiento',
+    status: 'Programada',
     reminderStatus: 'not_sent',
-    patientImage: 'https://i.pravatar.cc/150?u=jane'
+    patientImage: 'https://i.pravatar.cc/150?u=sarah'
   }
 ];
 
@@ -52,7 +57,7 @@ export const getPatientRecords = (): PatientRecord[] => [
       fullName: 'Sarah Jenkins',
       birthDate: '1988-06-12',
       gender: 'Femenino',
-      address: 'Calle Mayor 123, Madrid',
+      address: 'Calle Mayor 123, Tegucigalpa',
       phone: '34600000001',
       email: 'sarah.j@email.com',
       occupation: 'Arquitecta'

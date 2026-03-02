@@ -11,7 +11,7 @@ interface OdontogramProps {
   onUpdate: (teeth: ToothData[]) => void;
 }
 
-const statusThemes: Record<ToothStatus, { gradient: string; border: string; label: string; dot: string; fill: string; shadowColor: string; textColor: string }> = {
+const statusThemes: Record<ToothStatus, { gradient: string; border: string; label: string; dot: string; fill: string; shadowColor: string; textColor: string; iconColor: string }> = {
   healthy: {
     gradient: 'from-white to-slate-50',
     border: 'border-slate-200',
@@ -19,16 +19,18 @@ const statusThemes: Record<ToothStatus, { gradient: string; border: string; labe
     dot: 'bg-slate-300',
     fill: '#FFFFFF',
     shadowColor: 'rgba(203, 213, 225, 0.2)',
-    textColor: 'text-slate-400'
+    textColor: 'text-slate-400',
+    iconColor: 'bg-slate-100'
   },
   caries: {
-    gradient: 'from-red-500 to-red-600',
-    border: 'border-red-700',
+    gradient: 'from-rose-500 to-rose-600',
+    border: 'border-rose-700',
     label: 'Caries',
-    dot: 'bg-red-500',
-    fill: '#FF0000', // Rojo puro para máxima visibilidad
-    shadowColor: 'rgba(255, 0, 0, 0.4)',
-    textColor: 'text-white'
+    dot: 'bg-rose-500',
+    fill: '#F43F5E',
+    shadowColor: 'rgba(244, 63, 94, 0.4)',
+    textColor: 'text-white',
+    iconColor: 'bg-rose-500'
   },
   missing: {
     gradient: 'from-slate-100 to-slate-200',
@@ -37,16 +39,18 @@ const statusThemes: Record<ToothStatus, { gradient: string; border: string; labe
     dot: 'bg-slate-400',
     fill: '#F1F5F9',
     shadowColor: 'rgba(148, 163, 184, 0.1)',
-    textColor: 'text-slate-300'
+    textColor: 'text-slate-300',
+    iconColor: 'bg-slate-300'
   },
   treated: {
     gradient: 'from-blue-500 to-blue-600',
     border: 'border-blue-700',
     label: 'Tratado',
     dot: 'bg-blue-400',
-    fill: '#2563EB',
-    shadowColor: 'rgba(37, 99, 235, 0.3)',
-    textColor: 'text-white'
+    fill: '#3B82F6',
+    shadowColor: 'rgba(59, 130, 246, 0.3)',
+    textColor: 'text-white',
+    iconColor: 'bg-blue-500'
   }
 };
 
@@ -203,26 +207,30 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate }) =
   );
 
   return (
-    <div className="glass-panel p-10 rounded-[56px] select-none border-white/60 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] overflow-hidden">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-20">
-        <div className="text-center md:text-left">
-          <h3 className="text-3xl font-black text-slate-900 tracking-tighter leading-none mb-2">Exploración Anatómica</h3>
-          <p className="text-blue-500 text-xs font-black uppercase tracking-[2px]">Paciente: Sarah Jenkins • ID: {patientId}</p>
+    <div className="bg-white/40 backdrop-blur-3xl p-10 lg:p-14 rounded-[64px] select-none border border-white shadow-2xl transition-all duration-700">
+      <div className="flex flex-col xl:flex-row items-start justify-between gap-10 mb-20 animate-in-up">
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-[2px]">Módulo Clínico</div>
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-[2px]">Biometría Digital</div>
+          </div>
+          <h3 className="text-5xl font-black text-slate-900 tracking-tighter italic leading-none mb-4">Cartografía Dental</h3>
+          <p className="text-slate-400 text-sm font-bold max-w-lg leading-relaxed">Seleccione un estado clínico y haga clic sobre las piezas dentales para actualizar el historial biométrico del paciente.</p>
         </div>
 
-        <div className="flex bg-slate-100/60 p-1.5 rounded-[28px] border border-slate-200/50 backdrop-blur-2xl shadow-inner">
+        <div className="flex flex-wrap bg-slate-100/40 p-2 rounded-[32px] border border-slate-200/50 backdrop-blur-2xl shadow-inner gap-1">
           {(Object.keys(statusThemes) as ToothStatus[]).map((status) => (
             <button
               key={status}
               onClick={() => setSelectedStatus(status)}
               className={cn(
-                "px-5 py-3 rounded-[24px] text-[10px] font-black transition-all uppercase tracking-[1px] flex items-center gap-2",
+                "px-7 py-4 rounded-[26px] text-xs font-black transition-all uppercase tracking-[2px] flex items-center gap-3 group relative overflow-hidden",
                 selectedStatus === status
-                  ? "bg-white text-slate-900 shadow-xl shadow-slate-200 scale-105"
-                  : "text-slate-400 hover:text-slate-600"
+                  ? "bg-white text-blue-600 shadow-xl shadow-blue-500/10 scale-[1.02]"
+                  : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
               )}
             >
-              <div className={cn("w-2 h-2 rounded-full", statusThemes[status].dot)} />
+              <div className={cn("w-3 h-3 rounded-full transition-all duration-500", statusThemes[status].dot, selectedStatus === status ? "scale-110 shadow-lg" : "scale-75 opacity-50")} />
               {statusThemes[status].label}
             </button>
           ))}

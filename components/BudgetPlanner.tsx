@@ -1,7 +1,7 @@
 import React from 'react';
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Stethoscope, ShieldCheck, Eraser, Syringe, Sparkles, Trash2, PlusCircle, Download } from 'lucide-react';
+import { Stethoscope, ShieldCheck, Eraser, Syringe, Sparkles, Trash2, PlusCircle, Download, Zap, ChevronRight } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Treatment, BudgetItem } from '../types';
 import jsPDF from 'jspdf';
@@ -191,19 +191,35 @@ const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ budget, onUpdate }) => {
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 h-full animate-in fade-in duration-700">
         {/* Izquierda: Odontograma para Presupuesto */}
-        <div className="lg:col-span-8 flex flex-col gap-8">
-          <div className="glass-panel p-8 rounded-[48px] border-white/60 shadow-xl overflow-hidden">
-            <div className="mb-10 text-center sm:text-left">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Planificador de Presupuesto</h3>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Arrastre un tratamiento al diente correspondiente</p>
+        <div className="xl:col-span-8 flex flex-col gap-10">
+          <div className="bg-white/40 backdrop-blur-3xl p-10 lg:p-14 rounded-[64px] border border-white shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+
+            <div className="mb-14 relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-[2px]">Módulo Financiero</div>
+                  <div className="px-3 py-1 bg-white/50 text-slate-400 rounded-full text-[9px] font-black uppercase tracking-[2px] border border-slate-100">Planificador Pro</div>
+                </div>
+                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Mapa de Presupuesto</h3>
+                <p className="text-slate-400 text-sm font-bold mt-4 uppercase tracking-widest">Arrastre servicios hacia las piezas dentales</p>
+              </div>
+              <div className="hidden lg:flex items-center gap-2 px-6 py-3 bg-slate-50 rounded-2xl border border-slate-100 italic font-black text-[10px] text-slate-400">
+                <Zap size={14} className="text-blue-500 animate-pulse" />
+                MODO DRAG & DROP ACTIVO
+              </div>
             </div>
 
-            <div className="space-y-16 py-8">
+            <div className="space-y-20 py-8 relative z-10">
               <div className="flex flex-col items-center">
-                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-6">Arcada Superior</span>
-                <div className="grid grid-cols-8 gap-3 sm:gap-4">
+                <div className="flex items-center gap-6 mb-12">
+                  <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-slate-200" />
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-[5px] whitespace-nowrap">MAXILAR SUPERIOR</span>
+                  <div className="h-[1px] w-20 bg-gradient-to-l from-transparent to-slate-200" />
+                </div>
+                <div className="grid grid-cols-8 gap-3 sm:gap-6">
                   {Array.from({ length: 16 }, (_, i) => (
                     <DroppableTooth key={i + 1} id={i + 1} assignedTreatments={budget} onRemove={removeTreatment} />
                   ))}
@@ -211,55 +227,82 @@ const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ budget, onUpdate }) => {
               </div>
 
               <div className="flex flex-col items-center">
-                <div className="grid grid-cols-8 gap-3 sm:gap-4">
+                <div className="grid grid-cols-8 gap-3 sm:gap-6">
                   {Array.from({ length: 16 }, (_, i) => (
                     <DroppableTooth key={32 - i} id={32 - i} assignedTreatments={budget} onRemove={removeTreatment} />
                   ))}
                 </div>
-                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-6">Arcada Inferior</span>
+                <div className="flex items-center gap-6 mt-12">
+                  <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-slate-200" />
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-[5px] whitespace-nowrap">MANDÍBULA INFERIOR</span>
+                  <div className="h-[1px] w-20 bg-gradient-to-l from-transparent to-slate-200" />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Derecha: Catálogo y Resumen */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          <div className="glass-panel p-6 rounded-[36px] border-white/60 shadow-lg">
-            <h4 className="font-black text-slate-800 mb-6 flex items-center gap-2">
-              <Stethoscope size={18} className="text-blue-600" />
-              Tratamientos
-            </h4>
-            <div className="space-y-3">
-              {AVAILABLE_TREATMENTS.map(t => (
-                <DraggableTreatmentItem key={t.id} treatment={t} />
+        <div className="xl:col-span-4 flex flex-col gap-8">
+          <div className="bg-white/60 backdrop-blur-2xl p-8 rounded-[48px] border border-white shadow-2xl flex flex-col h-full ring-1 ring-slate-100">
+            <div className="flex items-center justify-between mb-8">
+              <h4 className="font-black text-slate-900 text-xl tracking-tighter italic flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+                  <Stethoscope size={18} />
+                </div>
+                Catálogo
+              </h4>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest">
+                {AVAILABLE_TREATMENTS.length} Items
+              </div>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto pr-2 hide-scrollbar flex-1 max-h-[400px] lg:max-h-none mb-8">
+              {AVAILABLE_TREATMENTS.map((t, index) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <DraggableTreatmentItem treatment={t} />
+                </motion.div>
               ))}
             </div>
-          </div>
 
-          <div className="mt-auto bg-slate-900 p-8 rounded-[40px] text-white shadow-2xl relative overflow-hidden group transition-all hover:scale-[1.02]">
-            <div className="relative z-10">
-              <p className="text-[11px] font-black uppercase text-blue-400 tracking-[3px] mb-2">Total Estimado</p>
-              <div className="flex items-baseline gap-2">
-                <h2 className="text-5xl font-black tracking-tighter">{formatCurrency(totalPrice)}</h2>
-                <span className="text-blue-400 font-bold text-xs">USD</span>
-              </div>
+            <div className="mt-auto pt-8 border-t border-slate-100">
+              <div className="bg-slate-900 p-8 rounded-[40px] text-white shadow-2xl relative overflow-hidden group transition-all hover:scale-[1.01] active:scale-[0.99] cursor-default">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/20 rounded-full blur-[60px] -mr-20 -mt-20 group-hover:bg-blue-500/30 transition-all"></div>
 
-              <div className="mt-8 pt-6 border-t border-white/10 space-y-3">
-                <div className="flex justify-between text-xs font-bold text-slate-400">
-                  <span>Tratamientos aplicados:</span>
-                  <span className="text-white">{budget.length}</span>
+                <div className="relative z-10">
+                  <p className="text-[10px] font-black uppercase text-blue-400 tracking-[4px] mb-3 opacity-60">Inversión Estimada</p>
+                  <div className="flex items-baseline gap-2 mb-8">
+                    <h2 className="text-5xl font-black tracking-tighter italic leading-none">{formatCurrency(totalPrice)}</h2>
+                    <span className="text-blue-400 font-black text-xs uppercase tracking-widest italic">USD</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                      <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-1">Items</p>
+                      <p className="text-xl font-black">{budget.length}</p>
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                      <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-1">Ahorro</p>
+                      <p className="text-xl font-black">$0.00</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleGeneratePDF}
+                    disabled={budget.length === 0}
+                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 py-5 rounded-[24px] font-black text-xs uppercase tracking-[3px] transition-all shadow-2xl shadow-blue-500/40 disabled:shadow-none disabled:opacity-50 flex items-center justify-center gap-3 group/btn"
+                  >
+                    <Download size={18} className="group-hover/btn:-translate-y-1 transition-transform" />
+                    Generar Proforma PDF
+                  </button>
                 </div>
-                <button
-                  onClick={handleGeneratePDF}
-                  disabled={budget.length === 0}
-                  className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-sm transition-all active:scale-95 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
-                >
-                  <Download size={16} /> GENERAR PRESUPUESTO PDF
-                </button>
               </div>
             </div>
-
-            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl group-hover:bg-blue-600/20 transition-all" />
           </div>
         </div>
       </div>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DienteLink</string>
+    <string name="title_activity_main">DienteLink</string>
+    <string name="package_name">com.dientelink.app</string>
+    <string name="custom_url_scheme">com.dientelink.app</string>
+</resources>

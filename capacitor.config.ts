@@ -2,8 +2,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.medpulse.app',
-  appName: 'MedPulse',
+  appId: 'com.dientelink.app',
+  appName: 'DienteLink',
   webDir: 'dist',
   server: {
     androidScheme: 'https'
