@@ -5,9 +5,10 @@ import {
   Settings, Share2, Copy, Eye, Plus, Trash2, Save, Globe,
   CheckCircle, Bell, RefreshCw, Link2
 } from 'lucide-react';
-import { DoctorAvailability, PublicBookingSettings, AppointmentRequest } from '../types';
+import { DoctorAvailability, PublicBookingSettings, AppointmentRequest, Appointment } from '../types';
 import { bookingService } from '../services/bookingService';
-import { cn } from '../lib/utils';
+import { persistenceService } from '../services/persistenceService';
+import { cn, generateId } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 
@@ -82,8 +83,33 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   };
 
   const handleApprove = async (id: string) => {
-    await bookingService.approveRequest(id);
-    sileo.success({ title: 'Cita aprobada ✓' });
+    const req = requests.find(r => r.id === id);
+    if (!req) return;
+
+    const approved = await bookingService.approveRequest(id);
+    if (!approved) return;
+
+    // Create a real appointment in the calendar / dashboard
+    const appointment: Appointment = {
+      id: generateId(),
+      patientId: '',
+      patientName: req.patientName,
+      phoneNumber: req.patientPhone || '',
+      time: req.requestedTime,
+      date: req.requestedDate,
+      type: req.appointmentType,
+      status: 'Programada',
+      reminderStatus: 'not_sent',
+    };
+    await persistenceService.saveAppointment(appointment);
+
+    // Dispatch event so Dashboard and Calendar refresh
+    window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: appointment }));
+
+    sileo.success({
+      title: `¡Cita aprobada para ${req.patientName}!`,
+      description: `Agendada el ${req.requestedDate} a las ${req.requestedTime}`,
+    });
     setRequests(bookingService.getAppointmentRequests());
   };
 

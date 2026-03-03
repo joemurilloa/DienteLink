@@ -8,13 +8,14 @@ import PatientList from './components/PatientList';
 import NewPatientModal from './components/NewPatientModal';
 import PatientConsultationView from './components/PatientConsultationView';
 import PublicBookingPage from './components/PublicBookingPage';
-import AppointmentRequestsManager from './components/AppointmentRequestsManager';
+// AppointmentRequestsManager replaced by unified BookingManagementView
 import BookingManagementView from './components/BookingManagementView';
 import { whatsappService } from './services/whatsappService';
 import { persistenceService } from './services/persistenceService';
 import { bookingService } from './services/bookingService';
 import { AuthProvider, useAuth } from './services/authService';
 import AuthPage from './components/AuthPage';
+import ConfirmModal from './components/ConfirmModal';
 import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcuts';
 
 // Lazy loading for better performance
@@ -83,17 +84,23 @@ const Dashboard: React.FC = () => {
 
     window.addEventListener('newAppointmentRequest', handleNewRequest as EventListener);
 
+    // When a request is approved and a real appointment is created, refresh today's list
+    const handleAppointmentCreated = () => {
+      setAppointments(persistenceService.getAppointmentsForDate(today));
+      loadPendingRequests();
+    };
+    window.addEventListener('appointmentCreated', handleAppointmentCreated);
+
     const unsubscribe = whatsappService.subscribe(({ appointmentId, status }) => {
       setAppointments(prev => {
-        const updated = prev.map(apt => apt.id === appointmentId ? { ...apt, status } : apt);
+        const updated = prev.map(apt => apt.id === appointmentId ? { ...apt, status: status as any } : apt);
         const apt = updated.find(a => a.id === appointmentId);
         if (apt) {
           persistenceService.saveAppointment(apt).catch(console.error);
-          // Friendly notification for appointment updates
-          if (status === 'confirmed') {
-            sileo.success({ title: `¡Perfecto! ${apt.patientName} confirmó su cita para hoy`, description: '¿Todo listo para recibirle?' });
-          } else if (status === 'cancelled') {
-            sileo.warning({ title: `${apt.patientName} canceló su cita`, description: 'Puedes reprogramarla cuando gustes' });
+          if ((status as string) === 'confirmed') {
+            sileo.success({ title: `${apt.patientName} confirmo su cita`, description: 'Todo listo para recibirle' });
+          } else if ((status as string) === 'cancelled') {
+            sileo.warning({ title: `${apt.patientName} cancelo su cita`, description: 'Puedes reprogramarla cuando gustes' });
           }
         }
         return updated;
@@ -102,6 +109,7 @@ const Dashboard: React.FC = () => {
 
     return () => {
       window.removeEventListener('newAppointmentRequest', handleNewRequest as EventListener);
+      window.removeEventListener('appointmentCreated', handleAppointmentCreated);
       unsubscribe();
     };
   }, [loadPendingRequests]);
@@ -112,10 +120,9 @@ const Dashboard: React.FC = () => {
       const apt = updated.find(a => a.id === id);
       if (apt) {
         persistenceService.saveAppointment(apt).catch(console.error);
-        // Friendly reminder notifications
         if (status === 'sent') {
-          sileo.success({ title: `Recordatorio enviado a ${apt.patientName} ✨`, description: 'Le llegará por WhatsApp en unos segundos' });
-        } else if (status === 'failed') {
+          sileo.success({ title: `Recordatorio enviado a ${apt.patientName}`, description: 'Le llegará por WhatsApp en unos segundos' });
+        } else if ((status as string) === 'failed') {
           sileo.error({ title: `No pudimos contactar a ${apt.patientName}`, description: 'Revisa el número de teléfono o inténtalo de nuevo' });
         }
       }
@@ -144,10 +151,7 @@ const Dashboard: React.FC = () => {
               {/* Búsqueda integrada - mobile first */}
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => {
-                    setIsSearchOpen(true);
-                    sileo.info({ title: '¡Hola! ¿A quién buscamos hoy?', description: 'Puedes buscar por nombre, cédula o teléfono' });
-                  }}
+                  onClick={() => setIsSearchOpen(true)}
                   className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200 hover:border-blue-200 transition-all group flex-1 lg:flex-none lg:min-w-[280px]"
                 >
                   <Search size={18} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
@@ -171,10 +175,7 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center gap-3">
               <span className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-semibold">{appointments.length} citas</span>
               <button
-                onClick={() => {
-                  navigate('/calendar');
-                  sileo.success({ title: '¡Vamos a programar una nueva cita!', description: 'Selecciona fecha y hora para tu paciente' });
-                }}
+                onClick={() => navigate('/calendar')}
                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25"
               >
                 <Plus size={16} />
@@ -192,10 +193,7 @@ const Dashboard: React.FC = () => {
               <h4 className="text-lg lg:text-xl font-semibold text-slate-600 mb-2">Sin citas programadas</h4>
               <p className="text-slate-400 mb-6 lg:mb-8 max-w-sm mx-auto">No hay citas para el día de hoy. Programa la primera cita del día.</p>
               <button
-                onClick={() => {
-                  navigate('/calendar');
-                  sileo.success({ title: '¡Perfecto! Programa tu primera cita del día', description: '¡Que tengas un excelente día de trabajo!' });
-                }}
+                onClick={() => navigate('/calendar')}
                 className="px-6 py-3 lg:px-8 lg:py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25"
               >
                 Programar Primera Cita
@@ -204,7 +202,16 @@ const Dashboard: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
               {appointments.map(apt => (
-                <AppointmentCard key={apt.id} appointment={apt} onReminderSent={handleReminderStatusUpdate} />
+                <AppointmentCard
+                  key={apt.id}
+                  appointment={apt}
+                  onReminderSent={handleReminderStatusUpdate}
+                  onNavigateToPatient={(a) => {
+                    if (a.patientId) {
+                      navigate(`/patient/${a.patientId}`);
+                    }
+                  }}
+                />
               ))}
             </div>
           )}
@@ -308,10 +315,7 @@ const Dashboard: React.FC = () => {
           <h3 className="text-lg font-semibold text-slate-900 mb-4 lg:mb-6">Herramientas de Gestión</h3>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
             <button
-              onClick={() => {
-                navigate('/patients?new=true');
-                sileo.success({ title: '¡Excelente! Vamos a registrar un nuevo paciente', description: 'Completa la ficha para empezar su historia clínica' });
-              }}
+              onClick={() => navigate('/patients?new=true')}
               className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-white rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all shadow-sm group"
             >
               <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
@@ -322,10 +326,7 @@ const Dashboard: React.FC = () => {
             </button>
             
             <button
-              onClick={() => {
-                navigate('/patients');
-                sileo.info({ title: 'Explorando tu lista de pacientes', description: `Tienes ${allPatients.length} paciente${allPatients.length !== 1 ? 's' : ''} registrado${allPatients.length !== 1 ? 's' : ''}` });
-              }}
+              onClick={() => navigate('/patients')}
               className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-white rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all shadow-sm group"
             >
               <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
@@ -336,10 +337,7 @@ const Dashboard: React.FC = () => {
             </button>
             
             <button
-              onClick={() => {
-                navigate('/settings');
-                sileo.info({ title: 'Configurando tu espacio de trabajo', description: 'Ajusta DienteLink a tu manera de trabajar' });
-              }}
+              onClick={() => navigate('/settings')}
               className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all shadow-sm group"
             >
               <div className="w-10 h-10 lg:w-12 lg:h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 group-hover:bg-slate-600 group-hover:text-white transition-all">
@@ -350,10 +348,7 @@ const Dashboard: React.FC = () => {
             </button>
             
             <button
-              onClick={() => {
-                navigate('/consultation');
-                sileo.success({ title: 'Modo consulta activado 📟', description: 'Herramienta perfecta para atención directa' });
-              }}
+              onClick={() => navigate('/consultation')}
               className="flex flex-col items-center gap-3 lg:gap-4 p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-slate-50 rounded-2xl border border-blue-100 hover:border-blue-200 hover:from-blue-100 hover:to-slate-100 transition-all shadow-sm group col-span-2 lg:col-span-1"
             >
               <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-all">
@@ -409,6 +404,7 @@ const PatientDetailView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState<PatientRecordType | undefined>(persistenceService.getPatientById(id || ''));
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!patient) return (
     <div className="flex items-center justify-center h-screen">
@@ -430,14 +426,22 @@ const PatientDetailView: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (window.confirm(`¿Eliminar el expediente de ${patient.identification.fullName}? Esta acción no se puede deshacer.`)) {
-      await persistenceService.deletePatient(patient.id);
-      navigate('/patients');
-    }
+    await persistenceService.deletePatient(patient.id);
+    navigate('/patients');
+    sileo.info({ title: 'Expediente eliminado', description: `${patient.identification.fullName} fue removido` });
   };
 
   return (
     <div className="flex-1 h-full overflow-hidden flex flex-col p-5 lg:p-8 pb-32 page-transition">
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Eliminar Expediente"
+        description={`¿Estás seguro de eliminar el expediente de ${patient.identification.fullName}? Esta acción no se puede deshacer y se perderán todos los datos clínicos.`}
+        confirmLabel="Sí, Eliminar"
+        variant="danger"
+      />
       <React.Suspense fallback={
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -452,7 +456,7 @@ const PatientDetailView: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleDelete}
+              onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-semibold text-sm hover:bg-red-100 transition-all border border-red-100"
             >
               <Trash2 size={14} /> Eliminar
@@ -482,6 +486,15 @@ const CalendarView: React.FC = () => {
   const [appointments, setAppointments] = useState(persistenceService.getAppointments());
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAdding, setIsAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [formError, setFormError] = useState('');
+
+  // Refresh when a booking request is approved and creates an appointment
+  useEffect(() => {
+    const handleCreated = () => setAppointments(persistenceService.getAppointments());
+    window.addEventListener('appointmentCreated', handleCreated);
+    return () => window.removeEventListener('appointmentCreated', handleCreated);
+  }, []);
 
   const patientNameFromParams = searchParams.get('patient') || '';
   const patientIdFromParams = searchParams.get('id') || '';
@@ -501,22 +514,39 @@ const CalendarView: React.FC = () => {
   const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
 
   const handleAddAppointment = async () => {
-    if (!newApt.patientName) return;
+    setFormError('');
+    if (!newApt.patientName.trim()) {
+      setFormError('Ingresa el nombre del paciente');
+      return;
+    }
+    if (newApt.patientName.trim().length < 3) {
+      setFormError('El nombre debe tener al menos 3 caracteres');
+      return;
+    }
+
+    // Check for schedule conflicts
+    const conflict = appointments.find(a => a.date === newApt.date && a.time === newApt.time);
+    if (conflict) {
+      setFormError(`Ya existe una cita a las ${newApt.time} con ${conflict.patientName}. Elige otra hora.`);
+      return;
+    }
 
     // Try to find patient by name if no patientId is provided
     let patientId = newApt.patientId;
-    if (!patientId) {
-      const found = persistenceService.getPatients().find(
-        p => p.identification.fullName.toLowerCase() === newApt.patientName.toLowerCase()
-      );
-      patientId = found?.id || '';
+    let phoneNumber = '';
+    const found = persistenceService.getPatients().find(
+      p => patientId ? p.id === patientId : p.identification.fullName.toLowerCase() === newApt.patientName.toLowerCase()
+    );
+    if (found) {
+      patientId = found.id;
+      phoneNumber = found.identification.phone || '';
     }
 
     const appointment: Appointment = {
       id: generateId(),
       patientId,
       patientName: newApt.patientName,
-      phoneNumber: '',
+      phoneNumber,
       time: newApt.time,
       date: newApt.date,
       type: newApt.type,
@@ -527,16 +557,13 @@ const CalendarView: React.FC = () => {
     setAppointments(persistenceService.getAppointments());
     setIsAdding(false);
     setNewApt({ patientName: '', patientId: '', time: '09:00', date: newApt.date, type: 'Consulta' });
-    sileo.success({ title: `¡Cita creada para ${appointment.patientName}!`, description: `${appointment.date} a las ${appointment.time} — ${appointment.type}` });
+    sileo.success({ title: `Cita creada para ${appointment.patientName}`, description: `${appointment.date} a las ${appointment.time}` });
   };
 
-  const handleDeleteAppointment = async (e: React.MouseEvent, aptId: string) => {
-    e.stopPropagation();
-    if (window.confirm('¿Eliminar esta cita?')) {
-      await persistenceService.deleteAppointment(aptId);
-      setAppointments(persistenceService.getAppointments());
-      sileo.info({ title: 'Cita eliminada correctamente', description: 'Puedes reprogramarla cuando lo necesites' });
-    }
+  const handleDeleteAppointment = async (aptId: string) => {
+    await persistenceService.deleteAppointment(aptId);
+    setAppointments(persistenceService.getAppointments());
+    setDeleteTarget(null);
   };
 
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -601,7 +628,7 @@ const CalendarView: React.FC = () => {
                     <div key={a.id} className="px-2 py-1 bg-blue-600 text-white rounded-md text-[9px] font-medium truncate flex items-center justify-between gap-1">
                       <span className="truncate">{a.time} - {a.patientName}</span>
                       <button
-                        onClick={(e) => handleDeleteAppointment(e, a.id)}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }}
                         className="text-red-300 hover:text-red-100 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 size={10} />
@@ -625,12 +652,17 @@ const CalendarView: React.FC = () => {
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md page-transition">
             <h3 className="text-xl font-bold text-slate-900 mb-5 tracking-tight">Agendar Cita</h3>
             <div className="space-y-4">
+              {formError && (
+                <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium">
+                  {formError}
+                </div>
+              )}
               <div className="space-y-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Paciente</label>
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Paciente <span className="text-red-400">*</span></label>
                 <input
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                   value={newApt.patientName}
-                  onChange={e => setNewApt(p => ({ ...p, patientName: e.target.value }))}
+                  onChange={e => { setNewApt(p => ({ ...p, patientName: e.target.value })); setFormError(''); }}
                   placeholder="Nombre del paciente..."
                 />
               </div>
@@ -641,7 +673,7 @@ const CalendarView: React.FC = () => {
                     type="date"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 transition-all"
                     value={newApt.date}
-                    onChange={e => setNewApt(p => ({ ...p, date: e.target.value }))}
+                    onChange={e => { setNewApt(p => ({ ...p, date: e.target.value })); setFormError(''); }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -650,7 +682,7 @@ const CalendarView: React.FC = () => {
                     type="time"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 transition-all"
                     value={newApt.time}
-                    onChange={e => setNewApt(p => ({ ...p, time: e.target.value }))}
+                    onChange={e => { setNewApt(p => ({ ...p, time: e.target.value })); setFormError(''); }}
                   />
                 </div>
               </div>
@@ -681,7 +713,7 @@ const CalendarView: React.FC = () => {
                 Confirmar y Agendar
               </button>
               <button
-                onClick={() => setIsAdding(false)}
+                onClick={() => { setIsAdding(false); setFormError(''); }}
                 className="w-full py-3 text-slate-400 text-xs font-semibold hover:text-red-500 transition-colors"
               >
                 Cancelar
@@ -690,6 +722,16 @@ const CalendarView: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDeleteAppointment(deleteTarget)}
+        title="Eliminar Cita"
+        description="¿Estás seguro de eliminar esta cita? Puedes reprogramarla después."
+        confirmLabel="Sí, Eliminar"
+        variant="danger"
+      />
     </div>
   );
 };
@@ -700,12 +742,11 @@ const SettingsView: React.FC = () => {
   const doctorName = profile?.full_name || 'Doctor';
   const doctorRole = profile?.role || 'Odontólogo';
   const doctorInitials = doctorName.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'DR';
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleClearData = async () => {
-    if (window.confirm('¿Borrar todos los datos? Esto eliminará pacientes, citas y toda la información almacenada. Esta acción no se puede deshacer.')) {
-      await persistenceService.clearAllData();
-      window.location.reload();
-    }
+    await persistenceService.clearAllData();
+    window.location.reload();
   };
 
   const handleSignOut = async () => {
@@ -716,6 +757,15 @@ const SettingsView: React.FC = () => {
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleClearData}
+        title="Borrar Todos los Datos"
+        description="Esto eliminará pacientes, citas, presupuestos y toda la información almacenada. Esta acción no se puede deshacer."
+        confirmLabel="Sí, Borrar Todo"
+        variant="danger"
+      />
       <header className="flex items-center gap-4 mb-8">
         <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95">←</button>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ajustes</h2>
@@ -757,7 +807,7 @@ const SettingsView: React.FC = () => {
           <h3 className="text-base font-bold text-red-600 mb-3">Zona de Peligro</h3>
           <p className="text-sm text-slate-400 mb-4">Borrar todos los datos almacenados localmente. Esta acción no se puede deshacer.</p>
           <button
-            onClick={handleClearData}
+            onClick={() => setShowClearConfirm(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-all border border-red-100"
           >
             <Trash2 size={14} />
@@ -787,20 +837,14 @@ const BookingManagementWrapper: React.FC = () => {
 };
 
 // Error boundary component
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
+class ErrorBoundary extends React.Component {
+  state = { hasError: false };
 
   static getDerivedStateFromError(_: Error) {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: any) {
     console.error('Error caught by boundary:', error, errorInfo);
   }
 
@@ -822,7 +866,7 @@ class ErrorBoundary extends React.Component<
       );
     }
 
-    return this.props.children;
+    return (this as any).props.children;
   }
 }
 

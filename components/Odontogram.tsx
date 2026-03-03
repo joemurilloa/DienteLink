@@ -1166,18 +1166,17 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
   const lower = displayTeeth.slice(16, 32);
 
   return (
-    <div className="bg-white/50 backdrop-blur-2xl p-4 lg:p-8 rounded-[48px] select-none border border-white/80 shadow-2xl transition-all duration-700">
+    <div className="bg-white p-4 lg:p-6 rounded-2xl select-none border border-slate-200 shadow-sm transition-all duration-500">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-[2px]">Módulo Clínico</div>
-          <div className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-[2px]">Odontograma</div>
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-semibold">Módulo Clínico</span>
         </div>
-        <h3 className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter italic leading-none mb-1">
-          Cartografía Dental
+        <h3 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight leading-tight mb-1">
+          Odontograma
         </h3>
-        <p className="text-slate-400 text-xs font-bold max-w-md leading-relaxed">
-          Registre hallazgos clínicos por superficie dental con precisión profesional.
+        <p className="text-slate-400 text-sm max-w-md leading-relaxed">
+          Registre hallazgos clínicos por superficie dental.
         </p>
       </div>
 
@@ -1208,10 +1207,10 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
         <div className={cn("flex-1 space-y-8", !isReadOnly && "xl:pb-0 pb-20")}>
           {/* Upper Arch */}
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200" />
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-[3px]">Arcada Superior</span>
-              <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-px w-8 bg-slate-200" />
+              <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Arcada Superior</span>
+              <div className="h-px w-8 bg-slate-200" />
             </div>
             <div className="flex flex-wrap justify-center gap-1 md:gap-2">
               {upper.map(tooth => (
@@ -1248,10 +1247,10 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
                 />
               ))}
             </div>
-            <div className="flex items-center gap-4 mt-4">
-              <div className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200" />
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-[3px]">Arcada Inferior</span>
-              <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
+            <div className="flex items-center gap-3 mt-3">
+              <div className="h-px w-8 bg-slate-200" />
+              <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Arcada Inferior</span>
+              <div className="h-px w-8 bg-slate-200" />
             </div>
           </div>
 
@@ -1275,8 +1274,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
           />
 
           {/* Condition Legend */}
-          <div className="glass-panel p-5 rounded-3xl border border-white/60">
-            <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-400 mb-3">Leyenda de Condiciones</p>
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Leyenda de Condiciones</p>
             <div className="flex flex-wrap gap-2">
               {(Object.entries(conditionThemes) as [ClinicalCondition, ConditionTheme][]).map(([cond, theme]) => (
                 <div key={cond} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded-lg">

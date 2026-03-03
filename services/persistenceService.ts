@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { PatientRecord, Appointment, ClinicalEvent, ToothData, SurfaceData, OdontogramSnapshot } from '../types';
+import { PatientRecord, Appointment, ClinicalEvent, ToothData, SurfaceData, OdontogramSnapshot, BudgetItem, Payment } from '../types';
 
 // ==========================================================
 // In-Memory Cache + Supabase Write-Through Persistence
@@ -22,18 +22,22 @@ class PersistenceService {
     async init(userId: string): Promise<void> {
         this.userId = userId;
         
-        const [patientsRes, aptsRes, notesRes, eventsRes] = await Promise.all([
+        const [patientsRes, aptsRes, notesRes, eventsRes, budgetRes, paymentsRes] = await Promise.all([
             supabase.from('patients').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
             supabase.from('appointments').select('*').eq('doctor_id', userId).order('date').order('time'),
             supabase.from('evolution_notes').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
             supabase.from('clinical_events').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
+            supabase.from('budget_items').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
+            supabase.from('payments').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
         ]);
 
         const notesByPatient = groupBy(notesRes.data || [], 'patient_id');
         const eventsByPatient = groupBy(eventsRes.data || [], 'patient_id');
+        const budgetByPatient = groupBy(budgetRes.data || [], 'patient_id');
+        const paymentsByPatient = groupBy(paymentsRes.data || [], 'patient_id');
 
         this.patients = (patientsRes.data || []).map(p =>
-            dbToPatient(p, notesByPatient[p.id] || [], eventsByPatient[p.id] || [])
+            dbToPatient(p, notesByPatient[p.id] || [], eventsByPatient[p.id] || [], budgetByPatient[p.id] || [], paymentsByPatient[p.id] || [])
         );
         this.appointments = (aptsRes.data || []).map(dbToAppointment);
         this._ready = true;
@@ -95,10 +99,9 @@ class PersistenceService {
 
         if (error) console.error('[Supabase] savePatient error:', error);
 
-        // Sync evolution notes (delete + re-insert for simplicity)
-        await supabase.from('evolution_notes').delete().eq('patient_id', patient.id);
+        // Upsert evolution notes individually (safe for concurrent edits)
         if (patient.evolutionNotes.length > 0) {
-            await supabase.from('evolution_notes').insert(
+            const { error: notesErr } = await supabase.from('evolution_notes').upsert(
                 patient.evolutionNotes.map(n => ({
                     id: n.id,
                     patient_id: patient.id,
@@ -106,14 +109,15 @@ class PersistenceService {
                     date: n.date,
                     content: n.content,
                     procedure: n.procedure,
-                }))
+                })),
+                { onConflict: 'id' }
             );
+            if (notesErr) console.error('[Supabase] evolution_notes upsert error:', notesErr);
         }
 
-        // Sync clinical events
-        await supabase.from('clinical_events').delete().eq('patient_id', patient.id);
+        // Upsert clinical events individually
         if (patient.history.length > 0) {
-            await supabase.from('clinical_events').insert(
+            const { error: eventsErr } = await supabase.from('clinical_events').upsert(
                 patient.history.map(e => ({
                     id: e.id,
                     patient_id: patient.id,
@@ -122,8 +126,46 @@ class PersistenceService {
                     type: e.type,
                     description: e.description,
                     tooth_id: e.toothId || null,
-                }))
+                })),
+                { onConflict: 'id' }
             );
+            if (eventsErr) console.error('[Supabase] clinical_events upsert error:', eventsErr);
+        }
+
+        // Upsert budget items
+        if (patient.budget && patient.budget.length > 0) {
+            const { error: budgetErr } = await supabase.from('budget_items').upsert(
+                patient.budget.map(b => ({
+                    id: b.id,
+                    patient_id: patient.id,
+                    doctor_id: doctorId,
+                    treatment: b.treatment,
+                    tooth_id: b.toothId || null,
+                    unit_cost: b.unitCost,
+                    quantity: b.quantity,
+                    status: b.status,
+                    created_at: b.createdAt,
+                })),
+                { onConflict: 'id' }
+            );
+            if (budgetErr) console.error('[Supabase] budget_items upsert error:', budgetErr);
+        }
+
+        // Upsert payments
+        if (patient.payments && patient.payments.length > 0) {
+            const { error: payErr } = await supabase.from('payments').upsert(
+                patient.payments.map(p => ({
+                    id: p.id,
+                    patient_id: patient.id,
+                    doctor_id: doctorId,
+                    amount: p.amount,
+                    method: p.method,
+                    note: p.note,
+                    date: p.date,
+                })),
+                { onConflict: 'id' }
+            );
+            if (payErr) console.error('[Supabase] payments upsert error:', payErr);
         }
     }
 
@@ -185,6 +227,8 @@ class PersistenceService {
         this.appointments = [];
 
         await Promise.all([
+            supabase.from('payments').delete().eq('doctor_id', doctorId),
+            supabase.from('budget_items').delete().eq('doctor_id', doctorId),
             supabase.from('appointments').delete().eq('doctor_id', doctorId),
             supabase.from('evolution_notes').delete().eq('doctor_id', doctorId),
             supabase.from('clinical_events').delete().eq('doctor_id', doctorId),
@@ -207,7 +251,7 @@ function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
     }, {} as Record<string, T[]>);
 }
 
-function dbToPatient(p: any, notes: any[], events: any[]): PatientRecord {
+function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = []): PatientRecord {
     return {
         id: p.id,
         identification: {
@@ -244,6 +288,23 @@ function dbToPatient(p: any, notes: any[], events: any[]): PatientRecord {
         odontogramHistory: (p.odontogram_history as OdontogramSnapshot[]) || [],
         periodontogram: (p.periodontogram as number[]) || new Array(32).fill(1),
         xrays: [],
+        budget: budgetItems.map(b => ({
+            id: b.id,
+            treatment: b.treatment,
+            toothId: b.tooth_id,
+            unitCost: b.unit_cost,
+            quantity: b.quantity,
+            status: b.status,
+            createdAt: b.created_at,
+        })),
+        payments: payments.map(pay => ({
+            id: pay.id,
+            amount: pay.amount,
+            method: pay.method,
+            note: pay.note || '',
+            date: pay.date,
+        })),
+        balance: 0, // will be computed by UI
     };
 }
 

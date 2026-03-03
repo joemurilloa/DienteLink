@@ -22,16 +22,40 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
         email: '',
         occupation: ''
     });
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     if (!isOpen) return null;
 
+    const validate = (): boolean => {
+        const newErrors: Record<string, string> = {};
+        const name = formData.fullName.trim();
+        if (!name) {
+            newErrors.fullName = 'El nombre es obligatorio';
+        } else if (name.length < 3) {
+            newErrors.fullName = 'Mínimo 3 caracteres';
+        }
+        if (!formData.birthDate) {
+            newErrors.birthDate = 'La fecha de nacimiento es obligatoria';
+        } else {
+            const birth = new Date(formData.birthDate);
+            if (birth > new Date()) newErrors.birthDate = 'La fecha no puede ser futura';
+        }
+        const phone = formData.phone.trim();
+        if (!phone) {
+            newErrors.phone = 'El teléfono es obligatorio';
+        } else if (phone.replace(/[\s\-\+\(\)]/g, '').length < 8) {
+            newErrors.phone = 'Teléfono inválido (mínimo 8 dígitos)';
+        }
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = 'Correo electrónico inválido';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (!formData.fullName.trim() || !formData.birthDate || !formData.phone.trim()) {
-            sileo.error({ title: '¡Ups! Faltan algunos datos importantes', description: 'Por favor completa el nombre, fecha de nacimiento y teléfono' });
-            return;
-        }
+        if (!validate()) return;
 
         const newPatient: PatientRecord = {
             id: crypto.randomUUID(),
@@ -49,81 +73,73 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
             odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
             periodontogram: new Array(32).fill(1),
             budget: [],
+            payments: [],
             xrays: [],
             balance: 0
         };
 
         onSave(newPatient);
-        
-        sileo.success({ title: `¡Bienvenido/a ${formData.fullName}! 🎉`, description: 'Su expediente ha sido creado exitosamente' });
-        
         onClose();
-        setFormData({
-            fullName: '',
-            birthDate: '',
-            gender: 'Otro',
-            address: '',
-            phone: '',
-            email: '',
-            occupation: ''
-        });
+        setFormData({ fullName: '', birthDate: '', gender: 'Otro', address: '', phone: '', email: '', occupation: '' });
+        setErrors({});
     };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-12 overflow-hidden">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-500" onClick={onClose} />
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative bg-white w-full max-w-2xl rounded-[48px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 backdrop-saturate-150 duration-500 flex flex-col max-h-[90vh]">
-                <header className="p-10 border-b border-slate-50 flex justify-between items-start bg-slate-50/50">
+            <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <header className="p-6 lg:p-8 border-b border-slate-100 flex justify-between items-start">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-[2px]">Ficha Maestra</div>
-                            <div className="px-3 py-1 bg-white text-slate-400 rounded-full text-[9px] font-black uppercase tracking-[2px] border border-slate-100">Paso 1 de 1</div>
+                            <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-semibold uppercase tracking-wider">Nuevo Paciente</span>
                         </div>
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic leading-none">Nuevo Expediente</h2>
-                        <p className="text-slate-400 font-bold text-sm mt-3">Complete los datos básicos para iniciar el historial clínico.</p>
+                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Crear Expediente</h2>
+                        <p className="text-slate-400 text-sm mt-1">Complete los datos básicos del paciente</p>
                     </div>
-                    <button onClick={onClose} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all shadow-sm border border-slate-100 active:scale-90">
-                        <X size={20} />
+                    <button onClick={onClose} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-slate-100 active:scale-95">
+                        <X size={18} />
                     </button>
                 </header>
 
-                <form onSubmit={handleSubmit} className="p-10 space-y-8 overflow-y-auto hide-scrollbar flex-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6 overflow-y-auto hide-scrollbar flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="md:col-span-2">
-                            <InputGroup
+                            <InputField
                                 icon={User}
-                                label="Nombre Completo del Paciente"
+                                label="Nombre Completo"
                                 name="fullName"
                                 value={formData.fullName}
                                 onChange={val => setFormData(p => ({ ...p, fullName: val }))}
                                 placeholder="Ej. Carlos Roberto Rodríguez"
+                                error={errors.fullName}
                                 required
                             />
                         </div>
 
-                        <InputGroup
+                        <InputField
                             icon={Calendar}
                             label="Fecha de Nacimiento"
                             type="date"
                             name="birthDate"
                             value={formData.birthDate}
                             onChange={val => setFormData(p => ({ ...p, birthDate: val }))}
+                            error={errors.birthDate}
                             required
                         />
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[2px] text-slate-400 ml-2">Género</label>
-                            <div className="flex gap-2 p-1.5 bg-slate-50 rounded-2xl border border-slate-100">
+                            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1">Género</label>
+                            <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
                                 {['Masculino', 'Femenino', 'Otro'].map(g => (
                                     <button
                                         key={g}
                                         type="button"
                                         onClick={() => setFormData(p => ({ ...p, gender: g as any }))}
                                         className={cn(
-                                            "flex-1 py-3 rounded-xl text-xs font-black transition-all",
+                                            "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all",
                                             formData.gender === g
-                                                ? "bg-white text-blue-600 shadow-md ring-1 ring-slate-100"
+                                                ? "bg-white text-blue-600 shadow-sm border border-slate-200"
                                                 : "text-slate-400 hover:text-slate-600"
                                         )}
                                     >
@@ -133,17 +149,18 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                             </div>
                         </div>
 
-                        <InputGroup
+                        <InputField
                             icon={Phone}
                             label="Teléfono de Contacto"
                             name="phone"
                             value={formData.phone}
                             onChange={val => setFormData(p => ({ ...p, phone: val }))}
                             placeholder="+504 0000-0000"
+                            error={errors.phone}
                             required
                         />
 
-                        <InputGroup
+                        <InputField
                             icon={Mail}
                             label="Correo Electrónico"
                             type="email"
@@ -151,9 +168,10 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                             value={formData.email}
                             onChange={val => setFormData(p => ({ ...p, email: val }))}
                             placeholder="paciente@ejemplo.com"
+                            error={errors.email}
                         />
 
-                        <InputGroup
+                        <InputField
                             icon={Briefcase}
                             label="Ocupación / Oficio"
                             name="occupation"
@@ -163,7 +181,7 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                         />
 
                         <div className="md:col-span-2">
-                            <InputGroup
+                            <InputField
                                 icon={MapPin}
                                 label="Dirección Domiciliaria"
                                 name="address"
@@ -175,15 +193,14 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                     </div>
                 </form>
 
-                <footer className="p-10 pt-0 bg-white">
+                <footer className="p-6 lg:p-8 pt-0 bg-white">
                     <button
                         type="submit"
                         onClick={handleSubmit}
-                        className="w-full py-5 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[28px] font-black uppercase tracking-[3px] text-xs shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-3 group"
+                        className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                        <Plus size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+                        <Plus size={18} />
                         Crear Expediente Clínico
-                        <ChevronRight size={16} className="opacity-40 group-hover:translate-x-1 transition-transform" />
                     </button>
                 </footer>
             </div>
@@ -191,7 +208,7 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
     );
 };
 
-const InputGroup: React.FC<{
+const InputField: React.FC<{
     icon: any;
     label: string;
     value: string;
@@ -200,12 +217,15 @@ const InputGroup: React.FC<{
     name: string;
     placeholder?: string;
     required?: boolean;
-}> = ({ icon: Icon, label, value, onChange, type = "text", name, placeholder, required }) => (
-    <div className="space-y-2.5 group">
-        <label className="text-[10px] font-black uppercase tracking-[2px] text-slate-400 ml-2 group-focus-within:text-blue-500 transition-colors">{label}</label>
+    error?: string;
+}> = ({ icon: Icon, label, value, onChange, type = "text", name, placeholder, required, error }) => (
+    <div className="space-y-2 group">
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">
+            {label} {required && <span className="text-red-400">*</span>}
+        </label>
         <div className="relative">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
-                <Icon size={18} strokeWidth={2.5} />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
+                <Icon size={16} strokeWidth={2} />
             </div>
             <input
                 type={type}
@@ -213,10 +233,13 @@ const InputGroup: React.FC<{
                 value={value}
                 onChange={e => onChange(e.target.value)}
                 placeholder={placeholder}
-                required={required}
-                className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-[22px] text-sm font-black focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 outline-none transition-all text-slate-800 placeholder:text-slate-300 shadow-inner"
+                className={cn(
+                    "w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300",
+                    error ? "border-red-300 bg-red-50/50" : "border-slate-200"
+                )}
             />
         </div>
+        {error && <p className="text-xs text-red-500 font-medium ml-1">{error}</p>}
     </div>
 );
 

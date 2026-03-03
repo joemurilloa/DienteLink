@@ -108,6 +108,26 @@ export interface ClinicalEvent {
   toothId?: number;
 }
 
+// --- Presupuestos y Pagos ---
+
+export interface BudgetItem {
+  id: string;
+  treatment: string;
+  toothId?: number;
+  unitCost: number;
+  quantity: number;
+  status: 'pending' | 'in_progress' | 'completed';
+  createdAt: string;
+}
+
+export interface Payment {
+  id: string;
+  amount: number;
+  method: 'cash' | 'card' | 'transfer' | 'other';
+  note: string;
+  date: string;
+}
+
 export interface PatientRecord {
   id: string;
   identification: PatientIdentification;
@@ -119,6 +139,9 @@ export interface PatientRecord {
   odontogramHistory?: OdontogramSnapshot[];
   periodontogram: number[]; // Profundidades de sondaje (mm)
   xrays: string[];
+  budget: BudgetItem[];
+  payments?: Payment[];
+  balance: number;
 }
 
 // --- Sistema de Reservas Públicas (Calendly Clone) ---

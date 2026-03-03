@@ -75,22 +75,21 @@ export const getPatientRecords = (): PatientRecord[] => [
         id: 'h1',
         date: '2024-01-10',
         type: 'cleaning',
-        description: 'Limpieza dental semestral',
-        cost: 80
+        description: 'Limpieza dental semestral'
       },
       {
         id: 'h2',
         date: '2024-03-05',
         type: 'diagnose',
-        description: 'Evaluación general y detección de caries en pieza 16',
-        cost: 30
+        description: 'Evaluación general y detección de caries en pieza 16'
       }
     ],
     consentSigned: true,
     odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
     periodontogram: new Array(32).fill(1),
     budget: [],
+    payments: [],
     xrays: [],
-    balance: 110
+    balance: 0
   }
 ];

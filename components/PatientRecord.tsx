@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { PatientRecord as PatientRecordType, EvolutionNote, ClinicalEvent } from '../types';
-import { cn } from '../lib/utils';
+import { PatientRecord as PatientRecordType, EvolutionNote, ClinicalEvent, BudgetItem, Payment } from '../types';
+import { cn, formatCurrency } from '../lib/utils';
 import { persistenceService } from '../services/persistenceService';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
@@ -25,7 +25,13 @@ import {
     Phone,
     MapPin,
     ChevronRight,
-    ArrowRight
+    ArrowRight,
+    DollarSign,
+    CreditCard,
+    Check,
+    Clock,
+    Loader2,
+    Trash2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -40,12 +46,18 @@ interface Props {
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [searchParams] = useSearchParams();
     const initialTab = (searchParams.get('tab') as any) || 'id';
-    const [activeTab, setActiveTab] = useState<'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'citas' | 'history'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'budget' | 'citas' | 'history'>(initialTab);
     const [newNote, setNewNote] = useState({ content: '', procedure: '' });
     const [newEvent, setNewEvent] = useState({ description: '', type: 'treatment' as ClinicalEvent['type'] });
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [snapshotRefresh, setSnapshotRefresh] = useState(0);
     const handleSnapshotSaved = () => setSnapshotRefresh(n => n + 1);
+
+    // Budget state
+    const [newTreatment, setNewTreatment] = useState({ treatment: '', unitCost: '', quantity: '1', toothId: '' });
+    const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash' as Payment['method'], note: '' });
+    const [budgetError, setBudgetError] = useState('');
+    const [paymentError, setPaymentError] = useState('');
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -58,6 +70,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         { id: 'anamnesis', label: 'Anamnesis', icon: History },
         { id: 'periodontogram', label: 'Periodonto', icon: BarChart3 },
         { id: 'notes', label: 'Evolución', icon: ClipboardList },
+        { id: 'budget', label: 'Presupuesto', icon: DollarSign },
         { id: 'citas', label: 'Agenda', icon: Calendar },
         { id: 'history', label: 'Historial', icon: Activity },
     ];
@@ -67,7 +80,14 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     );
 
     const handleAddNote = () => {
-        if (!newNote.content || !newNote.procedure) return;
+        if (!newNote.procedure.trim()) {
+            sileo.error({ title: 'Falta el procedimiento', description: 'Ingresa el nombre del procedimiento realizado' });
+            return;
+        }
+        if (!newNote.content.trim()) {
+            sileo.error({ title: 'Falta la descripción', description: 'Describe la evolución del tratamiento' });
+            return;
+        }
         const note: EvolutionNote = {
             id: crypto.randomUUID(),
             date: new Date().toISOString().split('T')[0],
@@ -80,7 +100,10 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     };
 
     const handleAddEvent = () => {
-        if (!newEvent.description) return;
+        if (!newEvent.description.trim()) {
+            sileo.error({ title: 'Falta la descripción', description: 'Describe el procedimiento realizado' });
+            return;
+        }
         const event: ClinicalEvent = {
             id: crypto.randomUUID(),
             date: new Date().toISOString().split('T')[0],
@@ -92,6 +115,69 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         });
         setNewEvent({ description: '', type: 'treatment' });
         sileo.success({ title: '¡Evento clínico registrado!', description: `${newEvent.type === 'treatment' ? 'Tratamiento' : newEvent.type === 'diagnosis' ? 'Diagnóstico' : 'Consulta'} añadido al historial` });
+    };
+
+    // Budget helpers
+    const budgetItems = patient.budget || [];
+    const payments = patient.payments || [];
+    const totalBudget = budgetItems.reduce((sum, b) => sum + (b.unitCost * b.quantity), 0);
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const pendingBalance = totalBudget - totalPaid;
+
+    const handleAddTreatment = () => {
+        setBudgetError('');
+        if (!newTreatment.treatment.trim()) { setBudgetError('Ingresa el nombre del tratamiento'); return; }
+        const cost = parseFloat(newTreatment.unitCost);
+        if (isNaN(cost) || cost <= 0) { setBudgetError('Ingresa un costo válido mayor a 0'); return; }
+        const qty = parseInt(newTreatment.quantity) || 1;
+        if (qty < 1) { setBudgetError('La cantidad debe ser al menos 1'); return; }
+
+        const item: BudgetItem = {
+            id: crypto.randomUUID(),
+            treatment: newTreatment.treatment.trim(),
+            toothId: newTreatment.toothId ? parseInt(newTreatment.toothId) : undefined,
+            unitCost: cost,
+            quantity: qty,
+            status: 'pending',
+            createdAt: new Date().toISOString().split('T')[0],
+        };
+        onUpdate({ ...patient, budget: [...budgetItems, item] });
+        setNewTreatment({ treatment: '', unitCost: '', quantity: '1', toothId: '' });
+    };
+
+    const handleDeleteTreatment = (id: string) => {
+        onUpdate({ ...patient, budget: budgetItems.filter(b => b.id !== id) });
+    };
+
+    const handleToggleTreatmentStatus = (id: string) => {
+        const updated = budgetItems.map(b => {
+            if (b.id !== id) return b;
+            const next = b.status === 'pending' ? 'in_progress' : b.status === 'in_progress' ? 'completed' : 'pending';
+            return { ...b, status: next as BudgetItem['status'] };
+        });
+        onUpdate({ ...patient, budget: updated });
+    };
+
+    const handleAddPayment = () => {
+        setPaymentError('');
+        const amount = parseFloat(newPayment.amount);
+        if (isNaN(amount) || amount <= 0) { setPaymentError('Ingresa un monto válido mayor a 0'); return; }
+        if (amount > pendingBalance && pendingBalance > 0) { setPaymentError(`El monto excede el saldo pendiente (${formatCurrency(pendingBalance)})`); return; }
+
+        const payment: Payment = {
+            id: crypto.randomUUID(),
+            amount,
+            method: newPayment.method,
+            note: newPayment.note.trim(),
+            date: new Date().toISOString().split('T')[0],
+        };
+        onUpdate({ ...patient, payments: [...payments, payment] });
+        setNewPayment({ amount: '', method: 'cash', note: '' });
+        sileo.success({ title: 'Abono registrado', description: `${formatCurrency(amount)} aplicado al presupuesto` });
+    };
+
+    const handleDeletePayment = (id: string) => {
+        onUpdate({ ...patient, payments: payments.filter(p => p.id !== id) });
     };
 
     const handleExportPDF = () => {
@@ -176,66 +262,64 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     );
 
     return (
-        <div className="flex flex-col lg:flex-row gap-10 h-full overflow-hidden animate-in fade-in duration-700 pb-20 lg:pb-0">
+        <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden animate-in fade-in duration-500 pb-20 lg:pb-0">
             {isFocusMode && createPortal(FocusModeContent, document.body)}
 
+            {/* Sidebar Tabs */}
             <div className={cn(
-                "lg:w-80 flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto gap-3 pb-4 lg:pb-0 hide-scrollbar transition-all duration-700",
+                "lg:w-56 flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto gap-1.5 pb-3 lg:pb-0 hide-scrollbar transition-all duration-500",
                 isFocusMode ? "lg:w-0 opacity-0 pointer-events-none -ml-8 overflow-hidden" : "opacity-100"
             )}>
-                <nav className="flex flex-row lg:flex-col gap-2.5">
+                <nav className="flex flex-row lg:flex-col gap-1 w-full">
                     {tabs.map((tab, index) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={cn(
-                                "flex items-center gap-4 px-7 py-4 rounded-[24px] font-black text-xs uppercase tracking-[2px] transition-all whitespace-nowrap min-w-max animate-in-up duration-300",
+                                "flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap min-w-max animate-in-up duration-200",
                                 activeTab === tab.id
-                                    ? "bg-white text-blue-600 shadow-xl shadow-slate-200/50 translate-x-1"
-                                    : "text-slate-400 hover:text-slate-900 hover:bg-white/50"
+                                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                             )}
-                            style={{ animationDelay: `${index * 50}ms` }}
+                            style={{ animationDelay: `${index * 40}ms` }}
                         >
-                            <div className={cn(
-                                "w-2 h-2 rounded-full transition-all duration-500",
-                                activeTab === tab.id ? "bg-blue-600 scale-100" : "bg-slate-200 scale-0"
-                            )}></div>
-                            <tab.icon size={18} strokeWidth={activeTab === tab.id ? 3 : 2} />
+                            <tab.icon size={16} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
                             {tab.label}
                         </button>
                     ))}
                 </nav>
             </div>
 
-            <div className="flex-1 bg-white/60 backdrop-blur-xl rounded-[48px] border border-white shadow-2xl shadow-slate-200/50 overflow-hidden relative flex flex-col transition-all duration-500">
-                <div className="flex-1 overflow-y-auto hide-scrollbar p-6 lg:p-12">
+            {/* Main Content */}
+            <div className="flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm">
+                <div className="flex-1 overflow-y-auto hide-scrollbar p-5 lg:p-8">
                     {isClinicalTab && (
                         <button
                             onClick={() => setIsFocusMode(true)}
-                            className="absolute top-10 right-10 z-10 w-16 h-16 bg-blue-600 text-white rounded-[24px] hover:bg-blue-700 shadow-2xl shadow-blue-500/30 flex items-center justify-center transition-all active:scale-95 group overflow-hidden"
+                            className="absolute top-5 right-5 z-10 w-10 h-10 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md shadow-blue-500/20 flex items-center justify-center transition-all active:scale-95"
                             title="Ver en Pantalla Completa"
                         >
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                            <Maximize2 size={24} className="relative z-10" />
+                            <Maximize2 size={18} />
                         </button>
                     )}
 
+                    {/* ══════ Ficha ══════ */}
                     {activeTab === 'id' && (
-                        <div className="space-y-12 animate-in-up duration-700">
-                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div className="space-y-8 animate-in-up duration-500">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
-                                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Ficha Maestra</h3>
-                                    <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Información personal y contacto</p>
+                                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Ficha del Paciente</h3>
+                                    <p className="text-slate-400 text-sm mt-1">Información personal y de contacto</p>
                                 </div>
                                 <button
                                     onClick={handleExportPDF}
-                                    className="flex items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-[2.5px] text-[11px] hover:bg-blue-600 transition-all shadow-2xl shadow-slate-900/20 active:scale-95 group"
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all shadow-sm active:scale-95"
                                 >
-                                    <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
-                                    Generar Reporte PDF
+                                    <Download size={16} />
+                                    Exportar PDF
                                 </button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 <InputGroup
                                     label="Nombre Completo"
                                     icon={User}
@@ -250,22 +334,22 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                     value={patient.identification.birthDate}
                                     onChange={(val) => onUpdate({ ...patient, identification: { ...patient.identification, birthDate: val } })}
                                 />
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black uppercase tracking-[2px] text-slate-400 ml-2">Género</label>
-                                    <div className="flex gap-2 p-1.5 bg-slate-50/50 rounded-[22px] border border-slate-100">
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1">Género</label>
+                                    <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
                                         {['Masculino', 'Femenino', 'Otro'].map(g => (
                                             <button
                                                 key={g}
                                                 type="button"
                                                 onClick={() => onUpdate({ ...patient, identification: { ...patient.identification, gender: g as any } })}
                                                 className={cn(
-                                                    "flex-1 py-3 rounded-[14px] text-[10px] font-black transition-all uppercase tracking-widest",
+                                                    "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all",
                                                     patient.identification.gender === g
-                                                        ? "bg-white text-blue-600 shadow-sm border border-slate-100"
+                                                        ? "bg-white text-blue-600 shadow-sm border border-slate-200"
                                                         : "text-slate-400 hover:text-slate-600"
                                                 )}
                                             >
-                                                {g.slice(0, 3)}
+                                                {g}
                                             </button>
                                         ))}
                                     </div>
@@ -304,73 +388,79 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         </div>
                     )}
 
+                    {/* ══════ Anamnesis ══════ */}
                     {activeTab === 'anamnesis' && (
-                        <div className="space-y-12 animate-in-up duration-700">
+                        <div className="space-y-8 animate-in-up duration-500">
                             <div>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Anamnesis</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Antecedentes clínicos y médicos</p>
+                                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Anamnesis</h3>
+                                <p className="text-slate-400 text-sm mt-1">Antecedentes clínicos y médicos</p>
                             </div>
-                            <div className="space-y-8">
-                                <div className="p-8 bg-red-50 rounded-[32px] border border-red-100 shadow-inner group">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="w-10 h-10 bg-red-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-200">
-                                            <Activity size={20} />
-                                        </div>
-                                        <label className="text-[10px] font-black uppercase tracking-[2px] text-red-600">Alergias Conocidas</label>
+
+                            {/* Allergies card */}
+                            <div className="p-5 bg-red-50 rounded-2xl border border-red-100">
+                                <div className="flex items-center gap-2.5 mb-4">
+                                    <div className="w-8 h-8 bg-red-600 text-white rounded-xl flex items-center justify-center">
+                                        <Activity size={16} />
                                     </div>
-                                    <div className="flex flex-wrap gap-3">
-                                        {patient.clinicalHistory.allergies.map(a => (
-                                            <span key={a} className="px-5 py-2 bg-white text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm border border-red-100">{a}</span>
-                                        ))}
-                                        {patient.clinicalHistory.allergies.length === 0 && <span className="text-red-300 font-bold text-xs italic">Ninguna alergia registrada</span>}
-                                        <button className="px-5 py-2 bg-red-600/10 text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">Editar Alergias</button>
-                                    </div>
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-red-600">Alergias Conocidas</label>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="flex flex-wrap gap-2">
+                                    {patient.clinicalHistory.allergies.map(a => (
+                                        <span key={a} className="px-3 py-1.5 bg-white text-red-600 rounded-lg text-xs font-semibold border border-red-100">{a}</span>
+                                    ))}
+                                    {patient.clinicalHistory.allergies.length === 0 && <span className="text-red-300 text-sm">Ninguna alergia registrada</span>}
+                                    <button className="px-3 py-1.5 bg-red-600/10 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-600 hover:text-white transition-all">Editar</button>
+                                </div>
+                            </div>
+
+                            {/* Clinical fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <InputGroup
+                                    label="Medicamentos actuales"
+                                    icon={Zap}
+                                    value={patient.clinicalHistory.medications}
+                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, medications: val } })}
+                                />
+                                <InputGroup
+                                    label="Enfermedades previas"
+                                    icon={Activity}
+                                    value={patient.clinicalHistory.previousDiseases}
+                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, previousDiseases: val } })}
+                                />
+                                <div className="md:col-span-2">
                                     <InputGroup
-                                        label="Medicamentos actuales"
-                                        icon={Zap}
-                                        value={patient.clinicalHistory.medications}
-                                        onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, medications: val } })}
-                                    />
-                                    <InputGroup
-                                        label="Enfermedades previas"
-                                        icon={Activity}
-                                        value={patient.clinicalHistory.previousDiseases}
-                                        onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, previousDiseases: val } })}
-                                    />
-                                    <div className="md:col-span-2">
-                                        <InputGroup
-                                            label="Antecedentes familiares"
-                                            icon={User}
-                                            value={patient.clinicalHistory.familyHistory}
-                                            onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, familyHistory: val } })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="p-8 bg-blue-50/50 rounded-[40px] border border-blue-100 shadow-inner group">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
-                                            <ClipboardList size={20} />
-                                        </div>
-                                        <label className="text-[10px] font-black uppercase tracking-[2px] text-blue-600">Motivo de Consulta Principal</label>
-                                    </div>
-                                    <textarea
-                                        className="w-full bg-white px-8 py-6 rounded-[28px] border border-blue-100 outline-none text-slate-700 font-bold leading-relaxed resize-none h-40 shadow-sm focus:border-blue-500 transition-all placeholder:text-blue-200"
-                                        placeholder="Describa el motivo por el cual el paciente asiste a consulta..."
-                                        value={patient.clinicalHistory.motiveOfConsult}
-                                        onChange={(e) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, motiveOfConsult: e.target.value } })}
+                                        label="Antecedentes familiares"
+                                        icon={User}
+                                        value={patient.clinicalHistory.familyHistory}
+                                        onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, familyHistory: val } })}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Motive */}
+                            <div className="p-5 bg-blue-50 rounded-2xl border border-blue-100">
+                                <div className="flex items-center gap-2.5 mb-4">
+                                    <div className="w-8 h-8 bg-blue-600 text-white rounded-xl flex items-center justify-center">
+                                        <ClipboardList size={16} />
+                                    </div>
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-blue-600">Motivo de Consulta Principal</label>
+                                </div>
+                                <textarea
+                                    className="w-full bg-white px-5 py-4 rounded-xl border border-blue-100 outline-none text-sm text-slate-700 leading-relaxed resize-none h-32 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 transition-all placeholder:text-blue-200"
+                                    placeholder="Describa el motivo por el cual el paciente asiste a consulta..."
+                                    value={patient.clinicalHistory.motiveOfConsult}
+                                    onChange={(e) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, motiveOfConsult: e.target.value } })}
+                                />
                             </div>
                         </div>
                     )}
 
+                    {/* ══════ Odontograma ══════ */}
                     {activeTab === 'odontogram' && (
-                        <div className="space-y-12 animate-in-up duration-700 min-h-[600px]">
+                        <div className="space-y-6 animate-in-up duration-500 min-h-[600px]">
                             <div>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Odontograma</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Mapa dental interactivo</p>
+                                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Odontograma</h3>
+                                <p className="text-slate-400 text-sm mt-1">Mapa dental interactivo</p>
                             </div>
                             <Odontogram
                                 patientId={patient.id}
@@ -382,11 +472,12 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         </div>
                     )}
 
+                    {/* ══════ Periodontograma ══════ */}
                     {activeTab === 'periodontogram' && (
-                        <div className="space-y-12 animate-in-up duration-700 min-h-[600px]">
+                        <div className="space-y-6 animate-in-up duration-500 min-h-[600px]">
                             <div>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Periodontograma</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Estado de salud periodontal</p>
+                                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Periodontograma</h3>
+                                <p className="text-slate-400 text-sm mt-1">Estado de salud periodontal</p>
                             </div>
                             <Periodontogram
                                 depths={patient.periodontogram || new Array(32).fill(1)}
@@ -395,108 +486,372 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         </div>
                     )}
 
-
-
+                    {/* ══════ Evolución ══════ */}
                     {activeTab === 'notes' && (
-                        <div className="space-y-12 animate-in-up duration-700">
+                        <div className="space-y-8 animate-in-up duration-500">
                             <div>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Evolución</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Bitácora de seguimiento clínico</p>
+                                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Evolución</h3>
+                                <p className="text-slate-400 text-sm mt-1">Bitácora de seguimiento clínico</p>
                             </div>
-                            <div className="p-10 bg-slate-50 border border-slate-100 rounded-[48px] space-y-6 shadow-inner">
+
+                            {/* Add note form */}
+                            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <input
                                         placeholder="Procedimiento (Ej. Resina, Extracción...)"
-                                        className="w-full bg-white px-8 py-4 rounded-[22px] border border-slate-200 outline-none text-sm font-black text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-300 shadow-sm"
+                                        className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
                                         value={newNote.procedure}
                                         onChange={e => setNewNote(prev => ({ ...prev, procedure: e.target.value }))}
                                     />
-                                    <div className="hidden md:flex items-center gap-2 px-6">
-                                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Modo de registro activo</span>
+                                    <div className="hidden md:flex items-center gap-2 px-4">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                        <span className="text-[11px] font-medium text-slate-400">Nuevo registro</span>
                                     </div>
                                 </div>
                                 <textarea
                                     placeholder="Describa la evolución del tratamiento en esta sesión..."
-                                    className="w-full bg-white px-8 py-6 rounded-[28px] border border-slate-200 outline-none text-sm font-bold text-slate-700 min-h-[160px] resize-none focus:border-blue-500 transition-all placeholder:text-slate-300 shadow-sm"
+                                    className="w-full bg-white px-4 py-4 rounded-xl border border-slate-200 outline-none text-sm text-slate-700 min-h-[120px] resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
                                     value={newNote.content}
                                     onChange={e => setNewNote(prev => ({ ...prev, content: e.target.value }))}
                                 />
                                 <button
                                     onClick={handleAddNote}
-                                    className="w-full py-5 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-[3px] text-[11px] flex items-center justify-center gap-3 hover:bg-blue-600 transition-all shadow-2xl shadow-slate-900/10 active:scale-95 group"
+                                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 active:scale-[0.98]"
                                 >
-                                    <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+                                    <Plus size={18} />
                                     Guardar Nota Evolutiva
                                 </button>
                             </div>
-                            <div className="space-y-8 mt-12">
+
+                            {/* Notes timeline */}
+                            <div className="space-y-4">
                                 {patient.evolutionNotes.map((note, index) => (
-                                    <div key={note.id} className="relative pl-12 group animate-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-100 rounded-full" />
-                                        <div className="absolute left-[-6px] top-6 w-4 h-4 bg-white border-4 border-slate-100 rounded-full group-hover:border-blue-500 transition-all group-hover:scale-125" />
-                                        <div className="bg-white p-8 rounded-[36px] border border-slate-50 group-hover:border-blue-100 transition-all hover:shadow-2xl hover:shadow-slate-200/50">
-                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                                                        <Calendar size={16} />
-                                                    </div>
-                                                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">{note.date}</span>
+                                    <div key={note.id} className="relative pl-8 group animate-in-up" style={{ animationDelay: `${index * 60}ms` }}>
+                                        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-200 rounded-full" />
+                                        <div className="absolute left-[-3px] top-5 w-2.5 h-2.5 bg-white border-[3px] border-slate-200 rounded-full group-hover:border-blue-500 transition-all" />
+                                        <div className="bg-white p-5 rounded-xl border border-slate-100 group-hover:border-blue-100 transition-all hover:shadow-md">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar size={14} className="text-slate-400" />
+                                                    <span className="text-xs font-medium text-slate-500">{note.date}</span>
                                                 </div>
-                                                <div className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/10">
+                                                <span className="inline-flex px-3 py-1 bg-slate-900 text-white rounded-lg text-[11px] font-semibold w-fit">
                                                     {note.procedure}
-                                                </div>
+                                                </span>
                                             </div>
-                                            <p className="text-slate-600 font-bold leading-relaxed">{note.content}</p>
+                                            <p className="text-sm text-slate-600 leading-relaxed">{note.content}</p>
                                         </div>
                                     </div>
                                 ))}
+                                {patient.evolutionNotes.length === 0 && (
+                                    <div className="text-center py-12 text-slate-400">
+                                        <ClipboardList size={32} className="mx-auto mb-3 text-slate-200" />
+                                        <p className="text-sm font-medium">Aún no hay notas de evolución</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {activeTab === 'citas' && (
-                        <div className="space-y-12 animate-in-up duration-700">
-                            <div>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Próximas Visitas</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Seguimiento de citas programadas</p>
+                    {/* ══════ Presupuesto y Pagos ══════ */}
+                    {activeTab === 'budget' && (
+                        <div className="space-y-8 animate-in-up duration-500">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Presupuesto</h3>
+                                    <p className="text-slate-400 text-sm mt-1">Plan de tratamiento y control de pagos</p>
+                                </div>
                             </div>
-                            {patientAppointments.length === 0 ? (
-                                <div className="p-20 text-center bg-slate-50/50 rounded-[64px] border-4 border-dashed border-slate-100">
-                                    <div className="w-24 h-24 bg-white rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-slate-200/50">
-                                        <Calendar size={40} className="text-slate-200" />
+
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-500 mb-1">Total</p>
+                                    <p className="text-lg font-bold text-blue-700">{formatCurrency(totalBudget)}</p>
+                                </div>
+                                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500 mb-1">Pagado</p>
+                                    <p className="text-lg font-bold text-emerald-700">{formatCurrency(totalPaid)}</p>
+                                </div>
+                                <div className={cn("p-4 rounded-xl border", pendingBalance > 0 ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-100")}>
+                                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-1", pendingBalance > 0 ? "text-amber-500" : "text-slate-400")}>Saldo</p>
+                                    <p className={cn("text-lg font-bold", pendingBalance > 0 ? "text-amber-700" : "text-slate-500")}>{formatCurrency(pendingBalance)}</p>
+                                </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            {totalBudget > 0 && (
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-500 mb-2">
+                                        <span className="font-medium">Progreso de pago</span>
+                                        <span className="font-semibold">{Math.min(100, Math.round((totalPaid / totalBudget) * 100))}%</span>
                                     </div>
-                                    <h4 className="text-2xl font-black text-slate-900 mb-2 italic tracking-tighter leading-none">Sin actividad programada</h4>
-                                    <p className="text-slate-400 font-bold max-w-sm mx-auto leading-relaxed">No hay citas registradas para este paciente. Agende una nueva visita desde el calendario general.</p>
-                                    <button className="mt-10 px-8 py-4 bg-slate-900 text-white rounded-[24px] text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all">Ir al Calendario →</button>
+                                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={cn("h-full rounded-full transition-all duration-500", totalPaid >= totalBudget ? "bg-emerald-500" : "bg-blue-500")}
+                                            style={{ width: `${Math.min(100, (totalPaid / totalBudget) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Add Treatment Form */}
+                            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+                                <div className="flex items-center gap-2.5 mb-4">
+                                    <div className="w-8 h-8 bg-blue-600 text-white rounded-xl flex items-center justify-center">
+                                        <Plus size={16} />
+                                    </div>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Agregar Tratamiento</p>
+                                </div>
+                                {budgetError && (
+                                    <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium mb-4">{budgetError}</div>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                    <div className="md:col-span-5">
+                                        <input
+                                            placeholder="Tratamiento (Ej. Resina, Corona...)"
+                                            className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
+                                            value={newTreatment.treatment}
+                                            onChange={e => { setNewTreatment(p => ({ ...p, treatment: e.target.value })); setBudgetError(''); }}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <input
+                                            placeholder="Costo"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
+                                            value={newTreatment.unitCost}
+                                            onChange={e => { setNewTreatment(p => ({ ...p, unitCost: e.target.value })); setBudgetError(''); }}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <input
+                                            placeholder="Cant."
+                                            type="number"
+                                            min="1"
+                                            className="w-full bg-white px-3 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-300 text-center"
+                                            value={newTreatment.quantity}
+                                            onChange={e => setNewTreatment(p => ({ ...p, quantity: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <input
+                                            placeholder="Pieza #"
+                                            type="number"
+                                            min="1"
+                                            max="32"
+                                            className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-300"
+                                            value={newTreatment.toothId}
+                                            onChange={e => setNewTreatment(p => ({ ...p, toothId: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 flex items-stretch">
+                                        <button
+                                            onClick={handleAddTreatment}
+                                            className="w-full py-3 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 font-semibold text-sm active:scale-[0.98]"
+                                        >
+                                            <Plus size={16} /> Agregar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Treatment Items List */}
+                            {budgetItems.length === 0 ? (
+                                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                    <DollarSign size={28} className="mx-auto mb-3 text-slate-200" />
+                                    <p className="text-slate-400 text-sm font-medium">Sin tratamientos en el presupuesto</p>
+                                    <p className="text-slate-300 text-xs mt-1">Agrega tratamientos arriba para crear el plan</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {patientAppointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(apt => (
-                                        <div key={apt.id} className="flex items-center justify-between p-8 bg-white border border-slate-50 rounded-[40px] hover:shadow-2xl hover:shadow-slate-200/50 transition-all group hover:border-blue-100">
-                                            <div className="flex items-center gap-6">
-                                                <div className={cn(
-                                                    "w-16 h-16 rounded-[24px] flex items-center justify-center shadow-inner group-hover:rotate-6 transition-all duration-500",
-                                                    apt.status === 'Completada' ? "bg-blue-50 text-blue-600" :
-                                                        apt.status === 'Retrasada' ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"
-                                                )}>
-                                                    <Calendar size={28} strokeWidth={2.5} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-black text-xl text-slate-900 leading-none mb-2 italic tracking-tight uppercase">{apt.type}</h4>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                                        <Zap size={10} className="text-blue-500" />
-                                                        {apt.date} • {apt.time}
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+                                        Tratamientos ({budgetItems.length})
+                                    </p>
+                                    {budgetItems.map((item) => (
+                                        <div key={item.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-sm transition-all group">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <button
+                                                    onClick={() => handleToggleTreatmentStatus(item.id)}
+                                                    className={cn(
+                                                        "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
+                                                        item.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
+                                                        item.status === 'in_progress' ? "bg-amber-100 text-amber-600" :
+                                                        "bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-600"
+                                                    )}
+                                                    title={item.status === 'pending' ? 'Pendiente → En progreso' : item.status === 'in_progress' ? 'En progreso → Completado' : 'Completado → Pendiente'}
+                                                >
+                                                    {item.status === 'completed' ? <Check size={16} /> :
+                                                     item.status === 'in_progress' ? <Loader2 size={16} /> :
+                                                     <Clock size={16} />}
+                                                </button>
+                                                <div className="min-w-0">
+                                                    <h4 className={cn("font-semibold text-sm truncate", item.status === 'completed' ? "text-slate-400 line-through" : "text-slate-900")}>
+                                                        {item.treatment}
+                                                    </h4>
+                                                    <p className="text-xs text-slate-400 flex items-center gap-2">
+                                                        {item.toothId && <span>Pieza #{item.toothId}</span>}
+                                                        <span>{item.quantity > 1 ? `${item.quantity} × ${formatCurrency(item.unitCost)}` : formatCurrency(item.unitCost)}</span>
+                                                        <span className={cn(
+                                                            "px-1.5 py-0.5 rounded text-[10px] font-semibold",
+                                                            item.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
+                                                            item.status === 'in_progress' ? "bg-amber-50 text-amber-600" :
+                                                            "bg-slate-50 text-slate-400"
+                                                        )}>
+                                                            {item.status === 'completed' ? 'Hecho' : item.status === 'in_progress' ? 'En curso' : 'Pendiente'}
+                                                        </span>
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className={cn(
-                                                "px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm",
-                                                apt.status === 'Completada' ? "bg-blue-100 text-blue-700" :
-                                                    apt.status === 'Retrasada' ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                                            )}>
-                                                {apt.status === 'Completada' ? 'Exitosa' : apt.status === 'Retrasada' ? 'Retraso' : 'Activa'}
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-bold text-sm text-slate-800">{formatCurrency(item.unitCost * item.quantity)}</span>
+                                                <button
+                                                    onClick={() => handleDeleteTreatment(item.id)}
+                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
                                             </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Payments Section */}
+                            <div className="border-t border-slate-100 pt-8">
+                                <div className="flex items-center gap-2.5 mb-5">
+                                    <div className="w-8 h-8 bg-emerald-600 text-white rounded-xl flex items-center justify-center">
+                                        <CreditCard size={16} />
+                                    </div>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Registrar Abono / Pago</p>
+                                </div>
+
+                                {paymentError && (
+                                    <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium mb-4">{paymentError}</div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
+                                    <div className="md:col-span-3">
+                                        <input
+                                            placeholder="Monto"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-slate-300"
+                                            value={newPayment.amount}
+                                            onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <select
+                                            className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-800 transition-all focus:border-emerald-500 appearance-none"
+                                            value={newPayment.method}
+                                            onChange={e => setNewPayment(p => ({ ...p, method: e.target.value as Payment['method'] }))}
+                                        >
+                                            <option value="cash">Efectivo</option>
+                                            <option value="card">Tarjeta</option>
+                                            <option value="transfer">Transferencia</option>
+                                            <option value="other">Otro</option>
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-4">
+                                        <input
+                                            placeholder="Nota (opcional)"
+                                            className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 transition-all placeholder:text-slate-300"
+                                            value={newPayment.note}
+                                            onChange={e => setNewPayment(p => ({ ...p, note: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 flex items-stretch">
+                                        <button
+                                            onClick={handleAddPayment}
+                                            className="w-full py-3 bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/15 font-semibold text-sm active:scale-[0.98]"
+                                        >
+                                            <Plus size={16} /> Aplicar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Payments History */}
+                                {payments.length > 0 && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+                                            Historial de Pagos ({payments.length})
+                                        </p>
+                                        {payments.map((pay) => (
+                                            <div key={pay.id} className="flex items-center justify-between p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                                        <CreditCard size={14} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-slate-800">{formatCurrency(pay.amount)}</p>
+                                                        <p className="text-xs text-slate-400">
+                                                            {pay.date} · {pay.method === 'cash' ? 'Efectivo' : pay.method === 'card' ? 'Tarjeta' : pay.method === 'transfer' ? 'Transferencia' : 'Otro'}
+                                                            {pay.note && ` · ${pay.note}`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeletePayment(pay.id)}
+                                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ══════ Agenda ══════ */}
+                    {activeTab === 'citas' && (
+                        <div className="space-y-8 animate-in-up duration-500">
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Próximas Visitas</h3>
+                                <p className="text-slate-400 text-sm mt-1">Seguimiento de citas programadas</p>
+                            </div>
+                            {patientAppointments.length === 0 ? (
+                                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                        <Calendar size={28} className="text-slate-300" />
+                                    </div>
+                                    <h4 className="text-lg font-bold text-slate-700 mb-1">Sin citas programadas</h4>
+                                    <p className="text-slate-400 text-sm max-w-xs mx-auto mb-6">No hay citas registradas para este paciente.</p>
+                                    <button className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20">
+                                        Ir al Calendario
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {patientAppointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(apt => (
+                                        <div key={apt.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-100 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "w-11 h-11 rounded-xl flex items-center justify-center",
+                                                    apt.status === 'Completada' ? "bg-emerald-50 text-emerald-600" :
+                                                        apt.status === 'Retrasada' ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"
+                                                )}>
+                                                    <Calendar size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-slate-900 text-sm">{apt.type}</h4>
+                                                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                                        {apt.date} &middot; {apt.time}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className={cn(
+                                                "px-3 py-1 rounded-lg text-[11px] font-semibold",
+                                                apt.status === 'Completada' ? "bg-emerald-50 text-emerald-700" :
+                                                    apt.status === 'Retrasada' ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
+                                            )}>
+                                                {apt.status}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -504,35 +859,35 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         </div>
                     )}
 
+                    {/* ══════ Historial Clínico ══════ */}
                     {activeTab === 'history' && (
-                        <div className="space-y-12 animate-in-up duration-700">
+                        <div className="space-y-8 animate-in-up duration-500">
                             <div>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Historial Clínico</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-3 uppercase tracking-widest">Registro de tratamientos realizados</p>
+                                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Historial Clínico</h3>
+                                <p className="text-slate-400 text-sm mt-1">Registro de tratamientos realizados</p>
                             </div>
 
-                            <div className="glass-panel p-10 rounded-[48px] bg-blue-600/5 border-blue-100/30 grid grid-cols-1 lg:grid-cols-12 gap-8 shadow-2xl shadow-blue-500/5">
-                                <div className="lg:col-span-12">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="w-8 h-8 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-                                            <Zap size={16} />
-                                        </div>
-                                        <p className="text-[10px] font-black uppercase tracking-[2px] text-blue-600">Registro Rápido de Servicio</p>
+                            {/* Quick add event */}
+                            <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl">
+                                <div className="flex items-center gap-2.5 mb-4">
+                                    <div className="w-8 h-8 bg-blue-600 text-white rounded-xl flex items-center justify-center">
+                                        <Zap size={16} />
                                     </div>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Registro Rápido</p>
                                 </div>
-                                <div className="lg:col-span-5">
-                                    <InputGroup
-                                        label="Descripción del procedimiento"
-                                        placeholder="Ej. Limpieza Dental Profunda"
-                                        value={newEvent.description}
-                                        onChange={val => setNewEvent(p => ({ ...p, description: val }))}
-                                    />
-                                </div>
-                                <div className="lg:col-span-4 space-y-3">
-                                    <label className="text-[10px] font-black uppercase tracking-[2.5px] text-slate-400 ml-2 italic">Tipo de Cargo</label>
-                                    <div className="flex gap-2">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                                    <div className="lg:col-span-5">
+                                        <InputGroup
+                                            label="Descripción del procedimiento"
+                                            placeholder="Ej. Limpieza Dental Profunda"
+                                            value={newEvent.description}
+                                            onChange={val => setNewEvent(p => ({ ...p, description: val }))}
+                                        />
+                                    </div>
+                                    <div className="lg:col-span-4 space-y-2">
+                                        <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1">Tipo</label>
                                         <select
-                                            className="flex-1 bg-white px-6 py-4 rounded-[22px] border border-blue-100 outline-none text-sm font-black text-slate-800 transition-all focus:border-blue-500 shadow-sm appearance-none"
+                                            className="w-full bg-white px-4 py-3 rounded-xl border border-blue-100 outline-none text-sm font-medium text-slate-800 transition-all focus:border-blue-500 appearance-none"
                                             value={newEvent.type}
                                             onChange={e => setNewEvent(p => ({ ...p, type: e.target.value as any }))}
                                         >
@@ -541,45 +896,44 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                             <option value="extraction">Extracción</option>
                                             <option value="diagnose">Diagnóstico</option>
                                         </select>
+                                    </div>
+                                    <div className="lg:col-span-3 flex items-end">
                                         <button
                                             onClick={handleAddEvent}
-                                            className="w-16 h-16 bg-blue-600 text-white rounded-[22px] flex items-center justify-center hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95 group"
+                                            className="w-full py-3 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 font-semibold text-sm active:scale-[0.98]"
                                         >
-                                            <Plus size={24} className="group-hover:rotate-90 transition-transform duration-500" />
+                                            <Plus size={18} />
+                                            Agregar
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
+                            {/* Events list */}
+                            <div className="space-y-3">
                                 {patient.history.length === 0 ? (
-                                    <div className="p-20 text-center bg-slate-50/50 rounded-[64px] border-4 border-dashed border-slate-100">
-                                        <p className="text-slate-400 font-bold">No hay transacciones registradas</p>
+                                    <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                        <Activity size={28} className="mx-auto mb-3 text-slate-200" />
+                                        <p className="text-slate-400 text-sm font-medium">No hay procedimientos registrados</p>
                                     </div>
                                 ) : (
                                     patient.history.map((event, index) => (
-                                        <div key={event.id} className="flex items-center justify-between p-8 bg-white border border-slate-50 rounded-[40px] hover:shadow-2xl hover:shadow-slate-200/50 transition-all group animate-in-up" style={{ animationDelay: `${index * 50}ms` }}>
-                                            <div className="flex items-center gap-6">
+                                        <div key={event.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-100 transition-all group animate-in-up" style={{ animationDelay: `${index * 40}ms` }}>
+                                            <div className="flex items-center gap-4">
                                                 <div className={cn(
-                                                    "w-16 h-16 rounded-[24px] flex items-center justify-center shadow-inner group-hover:scale-110 transition-all duration-500",
+                                                    "w-11 h-11 rounded-xl flex items-center justify-center",
                                                     event.type === 'treatment' ? "bg-blue-50 text-blue-600" :
                                                         event.type === 'extraction' ? "bg-red-50 text-red-600" :
-                                                            event.type === 'cleaning' ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"
+                                                            event.type === 'cleaning' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                                                 )}>
-                                                    <Activity size={24} strokeWidth={2.5} />
+                                                    <Activity size={18} />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-black text-xl text-slate-900 leading-none mb-2 italic tracking-tight">{event.description}</h4>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <h4 className="font-semibold text-slate-900 text-sm">{event.description}</h4>
+                                                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
                                                         <Calendar size={10} />
-                                                        {event.date} • <span className="text-blue-500">{event.type.toUpperCase()}</span>
+                                                        {event.date} &middot; <span className="text-blue-500 font-medium">{event.type === 'treatment' ? 'Tratamiento' : event.type === 'extraction' ? 'Extracción' : event.type === 'cleaning' ? 'Limpieza' : 'Diagnóstico'}</span>
                                                     </p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="flex items-center gap-1 justify-end mt-1 animate-pulse">
-                                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                                    <span className="text-[8px] font-black uppercase tracking-[2px] text-slate-300">Sincronizado</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -602,19 +956,19 @@ const InputGroup: React.FC<{
     placeholder?: string;
     type?: string;
 }> = ({ label, value, onChange, icon: Icon, placeholder, type = "text" }) => (
-    <div className="space-y-3 group">
-        <label className="text-[10px] font-black uppercase tracking-[2.5px] text-slate-400 ml-2 group-focus-within:text-blue-500 transition-colors uppercase italic">{label}</label>
+    <div className="space-y-2 group">
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">{label}</label>
         <div className="relative">
             {Icon && (
-                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
-                    <Icon size={18} strokeWidth={2.5} />
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
+                    <Icon size={16} />
                 </div>
             )}
             <input
                 type={type}
                 className={cn(
-                    "w-full py-4 bg-slate-50/50 border border-slate-100 rounded-[22px] text-sm font-black focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 outline-none transition-all text-slate-800 placeholder:text-slate-300 shadow-inner",
-                    Icon ? "pl-14 pr-6" : "px-6"
+                    "w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300",
+                    Icon ? "pl-11 pr-4" : "px-4"
                 )}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
