@@ -45,7 +45,7 @@ export interface OdontogramSnapshot {
 }
 
 export type AppointmentType = 'Consulta' | 'Seguimiento' | 'Cirugía' | 'Revisión';
-export type AppointmentStatus = 'Programada' | 'Completada' | 'Retrasada';
+export type AppointmentStatus = 'Programada' | 'Completada' | 'Retrasada' | 'Eliminada';
 
 export interface Appointment {
   id: string;
@@ -57,6 +57,7 @@ export interface Appointment {
   type: AppointmentType;
   status: AppointmentStatus;
   reminderStatus: ReminderStatus;
+  deletedAt?: string;
 }
 
 export interface Stats {

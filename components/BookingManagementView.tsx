@@ -119,6 +119,41 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     setRequests(bookingService.getAppointmentRequests());
   };
 
+  const handleDelete = async (id: string) => {
+    await bookingService.deleteRequest(id);
+    sileo.info({ title: 'Solicitud eliminada' });
+    setRequests(bookingService.getAppointmentRequests());
+  };
+
+  const handleChangeStatus = async (id: string, newStatus: 'pending' | 'approved' | 'rejected') => {
+    const req = requests.find(r => r.id === id);
+    if (!req) return;
+
+    if (newStatus === 'approved') {
+      // When re-approving, also create the appointment
+      await bookingService.updateRequestStatus(id, 'approved');
+      const appointment: Appointment = {
+        id: generateId(),
+        patientId: '',
+        patientName: req.patientName,
+        phoneNumber: req.patientPhone || '',
+        time: req.requestedTime,
+        date: req.requestedDate,
+        type: req.appointmentType,
+        status: 'Programada',
+        reminderStatus: 'not_sent',
+      };
+      await persistenceService.saveAppointment(appointment);
+      window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: appointment }));
+      sileo.success({ title: `Cita re-aprobada para ${req.patientName}`, description: `${req.requestedDate} a las ${req.requestedTime}` });
+    } else {
+      await bookingService.updateRequestStatus(id, newStatus);
+      sileo.info({ title: newStatus === 'pending' ? 'Solicitud marcada como pendiente' : 'Solicitud rechazada' });
+    }
+
+    setRequests(bookingService.getAppointmentRequests());
+  };
+
   // ── Config actions ──
   const handleDayToggle = (dayOfWeek: number) => {
     setAvailability(prev => ({
@@ -353,22 +388,57 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                       <p className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg mb-3 italic">"{req.message}"</p>
                     )}
 
-                    {req.status === 'pending' && (
-                      <div className="flex gap-2 pt-3 border-t border-slate-100">
+                    {/* Action buttons — shown for ALL statuses */}
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+                      {req.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(req.id)}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors"
+                          >
+                            <Check size={16} /> Aprobar
+                          </button>
+                          <button
+                            onClick={() => handleReject(req.id)}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
+                          >
+                            <X size={16} /> Rechazar
+                          </button>
+                        </>
+                      )}
+                      {req.status === 'approved' && (
                         <button
-                          onClick={() => handleApprove(req.id)}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors"
+                          onClick={() => handleChangeStatus(req.id, 'rejected')}
+                          className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors"
                         >
-                          <Check size={16} /> Aprobar
+                          <X size={14} /> Revocar aprobación
                         </button>
-                        <button
-                          onClick={() => handleReject(req.id)}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
-                        >
-                          <X size={16} /> Rechazar
-                        </button>
-                      </div>
-                    )}
+                      )}
+                      {req.status === 'rejected' && (
+                        <>
+                          <button
+                            onClick={() => handleChangeStatus(req.id, 'approved')}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700 transition-colors"
+                          >
+                            <Check size={14} /> Aprobar
+                          </button>
+                          <button
+                            onClick={() => handleChangeStatus(req.id, 'pending')}
+                            className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-colors"
+                          >
+                            <RefreshCw size={14} /> Reabrir
+                          </button>
+                        </>
+                      )}
+                      {/* Delete button always visible */}
+                      <button
+                        onClick={() => handleDelete(req.id)}
+                        className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-colors ml-auto"
+                        title="Eliminar solicitud"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
 
                     <p className="text-[11px] text-slate-300 mt-3">
                       Solicitado {new Date(req.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

@@ -576,3 +576,148 @@ body {
     transform: translate3d(0, 0, 0);
   }
 }
+
+/* ================================
+   MOBILE OPTIMIZATIONS
+   ================================ */
+
+/* Prevent iOS zoom on input focus (font-size < 16px triggers zoom) */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Ensure minimum touch target size (44px) */
+  button,
+  [role="button"],
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Better spacing for mobile forms */
+  .space-y-8 > * + * {
+    margin-top: 1.5rem;
+  }
+
+  /* Prevent horizontal overflow on mobile */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Full width cards on mobile */
+  .grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+
+  /* Improve bottom navigation touch area */
+  nav button {
+    padding: 0.75rem 0.5rem;
+  }
+
+  /* Ensure modals don't overflow on mobile */
+  .fixed.inset-0 {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Better text wrapping for small screens */
+  h3, h4, p, span {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Compact patient record tabs on mobile */
+  .hide-scrollbar {
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+
+  .hide-scrollbar > nav > button {
+    scroll-snap-align: start;
+    min-width: max-content;
+  }
+}
+
+/* ================================
+   iPAD / TABLET OPTIMIZATIONS (768px - 1024px)
+   ================================ */
+
+@media screen and (min-width: 768px) and (max-width: 1023px) {
+  /* Show sidebar in compact icon-only mode for tablets */
+  .sidebar-dark {
+    width: 72px !important;
+    padding: 1rem 0.5rem !important;
+  }
+
+  .sidebar-dark .flex.items-center.gap-3\\.5 {
+    justify-content: center;
+    padding: 0 !important;
+  }
+
+  /* Hide sidebar text labels (show only icons) */
+  .sidebar-dark nav button span,
+  .sidebar-dark nav button .ml-auto,
+  .sidebar-dark h1,
+  .sidebar-dark .text-\\[10px\\] {
+    display: none !important;
+  }
+
+  .sidebar-dark nav button {
+    justify-content: center !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Compact doctor profile at bottom */
+  .sidebar-dark > .relative.z-10.mt-auto .overflow-hidden,
+  .sidebar-dark > .relative.z-10.mt-auto svg {
+    display: none !important;
+  }
+
+  .sidebar-dark > .relative.z-10.mt-auto .flex.items-center.gap-3 {
+    justify-content: center;
+  }
+
+  /* -- Bottom nav: hide on iPad since we show sidebar -- */
+  /* handled by component class overrides below */
+
+  /* Reduce main padding for more content space */
+  .page-transition {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+
+  /* Better grid layouts for tablet */
+  .grid.grid-cols-1.md\\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Touch targets for tablets */
+  button,
+  [role="button"] {
+    min-height: 40px;
+  }
+
+  /* Safe bottom padding for iPad home indicator */
+  .pb-32 {
+    padding-bottom: 2rem !important;
+  }
+
+  /* Better card sizing */
+  .card-premium {
+    padding: 1.25rem;
+  }
+
+  /* Ensure text doesn't overflow */
+  .truncate {
+    max-width: 100%;
+  }
+}

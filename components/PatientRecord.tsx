@@ -68,7 +68,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [paymentError, setPaymentError] = useState('');
 
     // Allergies editing state
-    const [editingAllergies, setEditingAllergies] = useState(false);
     const [allergyInput, setAllergyInput] = useState('');
 
     useEffect(() => {
@@ -578,7 +577,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 <p className="text-slate-400 text-sm mt-1">Antecedentes clínicos y médicos</p>
                             </div>
 
-                            {/* Allergies card */}
+                            {/* Allergies card with quick-select */}
                             <div className="p-5 bg-red-50 rounded-2xl border border-red-100">
                                 <div className="flex items-center gap-2.5 mb-4">
                                     <div className="w-8 h-8 bg-red-600 text-white rounded-xl flex items-center justify-center">
@@ -586,54 +585,154 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                     </div>
                                     <label className="text-xs font-semibold uppercase tracking-wider text-red-600">Alergias Conocidas</label>
                                 </div>
-                                <div className="flex flex-wrap gap-2 items-center">
+                                {/* Selected allergies */}
+                                <div className="flex flex-wrap gap-2 items-center mb-3">
                                     {patient.clinicalHistory.allergies.map(a => (
                                         <span key={a} className="px-3 py-1.5 bg-white text-red-600 rounded-lg text-xs font-semibold border border-red-100 flex items-center gap-1.5">
                                             {a}
-                                            {editingAllergies && (
-                                                <button onClick={() => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, allergies: patient.clinicalHistory.allergies.filter(al => al !== a) } })} className="text-red-400 hover:text-red-700 transition-colors"><X size={12} /></button>
-                                            )}
+                                            <button onClick={() => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, allergies: patient.clinicalHistory.allergies.filter(al => al !== a) } })} className="text-red-400 hover:text-red-700 transition-colors"><X size={12} /></button>
                                         </span>
                                     ))}
-                                    {patient.clinicalHistory.allergies.length === 0 && !editingAllergies && <span className="text-red-300 text-sm">Ninguna alergia registrada</span>}
-                                    {editingAllergies && (
-                                        <form onSubmit={(e) => { e.preventDefault(); const v = allergyInput.trim(); if (v && !patient.clinicalHistory.allergies.includes(v)) { onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, allergies: [...patient.clinicalHistory.allergies, v] } }); setAllergyInput(''); } }} className="flex items-center gap-1.5">
-                                            <input value={allergyInput} onChange={e => setAllergyInput(e.target.value)} placeholder="Nueva alergia..." className="px-3 py-1.5 rounded-lg text-xs border border-red-200 outline-none focus:border-red-400 w-36" autoFocus />
-                                            <button type="submit" className="px-2.5 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-all"><Plus size={12} /></button>
-                                        </form>
-                                    )}
-                                    <button onClick={() => { setEditingAllergies(!editingAllergies); setAllergyInput(''); }} className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all", editingAllergies ? "bg-slate-200 text-slate-600 hover:bg-slate-300" : "bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white")}>
-                                        {editingAllergies ? 'Listo' : 'Editar'}
-                                    </button>
+                                    {patient.clinicalHistory.allergies.length === 0 && <span className="text-red-300 text-sm">Ninguna alergia registrada</span>}
                                 </div>
+                                {/* Quick-select common allergies */}
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {['Penicilina', 'Lidocaína', 'Látex', 'Aspirina', 'Ibuprofeno', 'Sulfas', 'Yodo', 'AINES', 'Metales', 'Acrílico dental'].map(a => (
+                                        <button key={a} type="button"
+                                            onClick={() => { if (!patient.clinicalHistory.allergies.includes(a)) onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, allergies: [...patient.clinicalHistory.allergies, a] } }); }}
+                                            disabled={patient.clinicalHistory.allergies.includes(a)}
+                                            className={cn("px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border",
+                                                patient.clinicalHistory.allergies.includes(a) ? "bg-red-100 text-red-300 border-red-100 cursor-default" : "bg-white text-red-500 border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600 active:scale-95"
+                                            )}>
+                                            + {a}
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* Custom allergy input */}
+                                <form onSubmit={(e) => { e.preventDefault(); const v = allergyInput.trim(); if (v && !patient.clinicalHistory.allergies.includes(v)) { onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, allergies: [...patient.clinicalHistory.allergies, v] } }); setAllergyInput(''); } }} className="flex items-center gap-1.5">
+                                    <input value={allergyInput} onChange={e => setAllergyInput(e.target.value)} placeholder="Otra alergia..." className="flex-1 px-3 py-2 rounded-lg text-xs border border-red-200 outline-none focus:border-red-400 bg-white" />
+                                    <button type="submit" className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-all"><Plus size={12} /></button>
+                                </form>
                             </div>
 
-                            {/* Clinical fields */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            {/* Medications with quick-select */}
+                            <div className="p-5 bg-purple-50 rounded-2xl border border-purple-100">
+                                <div className="flex items-center gap-2.5 mb-3">
+                                    <div className="w-8 h-8 bg-purple-600 text-white rounded-xl flex items-center justify-center">
+                                        <Zap size={16} />
+                                    </div>
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-purple-600">Medicamentos Actuales</label>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {['Antihipertensivos', 'Anticoagulantes', 'Insulina', 'Metformina', 'Anticonceptivos', 'Antidepresivos', 'Corticoides', 'Bifosfonatos', 'Ansiolíticos', 'Ninguno'].map(m => (
+                                        <button key={m} type="button"
+                                            onClick={() => {
+                                                const current = patient.clinicalHistory.medications;
+                                                const val = current ? (current.toLowerCase().includes(m.toLowerCase()) ? current : `${current}, ${m}`) : m;
+                                                onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, medications: val } });
+                                            }}
+                                            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white text-purple-500 border border-purple-200 hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all active:scale-95">
+                                            + {m}
+                                        </button>
+                                    ))}
+                                </div>
                                 <InputGroup
-                                    label="Medicamentos actuales"
+                                    label=""
                                     icon={Zap}
                                     value={patient.clinicalHistory.medications}
                                     onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, medications: val } })}
+                                    placeholder="Ej: Losartan 50mg, Metformina 850mg..."
                                 />
+                            </div>
+
+                            {/* Diseases with quick-select */}
+                            <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
+                                <div className="flex items-center gap-2.5 mb-3">
+                                    <div className="w-8 h-8 bg-orange-500 text-white rounded-xl flex items-center justify-center">
+                                        <Activity size={16} />
+                                    </div>
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-orange-600">Enfermedades Previas</label>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {['Diabetes', 'Hipertensión', 'Asma', 'Cardiopatía', 'Hepatitis', 'VIH', 'Epilepsia', 'Artritis', 'Anemia', 'Tiroides', 'Ninguna'].map(d => (
+                                        <button key={d} type="button"
+                                            onClick={() => {
+                                                const current = patient.clinicalHistory.previousDiseases;
+                                                const val = current ? (current.toLowerCase().includes(d.toLowerCase()) ? current : `${current}, ${d}`) : d;
+                                                onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, previousDiseases: val } });
+                                            }}
+                                            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white text-orange-500 border border-orange-200 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all active:scale-95">
+                                            + {d}
+                                        </button>
+                                    ))}
+                                </div>
                                 <InputGroup
-                                    label="Enfermedades previas"
+                                    label=""
                                     icon={Activity}
                                     value={patient.clinicalHistory.previousDiseases}
                                     onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, previousDiseases: val } })}
+                                    placeholder="Ej: Diabetes tipo 2, Hipertensión..."
                                 />
-                                <InputGroup
-                                    label="Antecedentes familiares"
-                                    icon={User}
-                                    value={patient.clinicalHistory.familyHistory}
-                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, familyHistory: val } })}
-                                />
-                                <InputGroup
-                                    label="Hábitos (bruxismo, onicofagia, etc.)"
-                                    icon={Activity}
-                                    value={patient.clinicalHistory.habits || ''}
-                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, habits: val } })}
-                                />
+                            </div>
+
+                            {/* Family history + Habits side by side */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="p-5 bg-white rounded-2xl border border-slate-200">
+                                    <div className="flex items-center gap-2.5 mb-3">
+                                        <div className="w-8 h-8 bg-slate-700 text-white rounded-xl flex items-center justify-center">
+                                            <User size={16} />
+                                        </div>
+                                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Antecedentes Familiares</label>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {['Diabetes', 'Hipertensión', 'Cáncer', 'Cardiopatía', 'Hemofilia', 'Ninguno'].map(f => (
+                                            <button key={f} type="button"
+                                                onClick={() => {
+                                                    const current = patient.clinicalHistory.familyHistory;
+                                                    const val = current ? (current.toLowerCase().includes(f.toLowerCase()) ? current : `${current}, ${f}`) : f;
+                                                    onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, familyHistory: val } });
+                                                }}
+                                                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-700 hover:text-white hover:border-slate-700 transition-all active:scale-95">
+                                                + {f}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <InputGroup
+                                        label=""
+                                        icon={User}
+                                        value={patient.clinicalHistory.familyHistory}
+                                        onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, familyHistory: val } })}
+                                        placeholder="Ej: Padre diabético, madre hipertensa..."
+                                    />
+                                </div>
+                                <div className="p-5 bg-white rounded-2xl border border-slate-200">
+                                    <div className="flex items-center gap-2.5 mb-3">
+                                        <div className="w-8 h-8 bg-indigo-500 text-white rounded-xl flex items-center justify-center">
+                                            <Activity size={16} />
+                                        </div>
+                                        <label className="text-xs font-semibold uppercase tracking-wider text-indigo-500">Hábitos</label>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {['Bruxismo', 'Onicofagia', 'Respirador bucal', 'Succión digital', 'Morder objetos', 'Tabaquismo', 'Alcoholismo', 'Ninguno'].map(h => (
+                                            <button key={h} type="button"
+                                                onClick={() => {
+                                                    const current = patient.clinicalHistory.habits || '';
+                                                    const val = current ? (current.toLowerCase().includes(h.toLowerCase()) ? current : `${current}, ${h}`) : h;
+                                                    onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, habits: val } });
+                                                }}
+                                                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-50 text-indigo-500 border border-indigo-200 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all active:scale-95">
+                                                + {h}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <InputGroup
+                                        label=""
+                                        icon={Activity}
+                                        value={patient.clinicalHistory.habits || ''}
+                                        onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, habits: val } })}
+                                        placeholder="Ej: Bruxismo nocturno, onicofagia..."
+                                    />
+                                </div>
                             </div>
 
                             {/* Quick toggles & selects */}
@@ -683,11 +782,11 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                     </div>
                                     <label className="text-xs font-semibold uppercase tracking-wider text-amber-600">Observaciones Generales</label>
                                 </div>
-                                <textarea
+                                <DebouncedTextarea
                                     className="w-full bg-white px-5 py-4 rounded-xl border border-amber-100 outline-none text-sm text-slate-700 leading-relaxed resize-none h-24 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 transition-all placeholder:text-amber-200"
                                     placeholder="Notas adicionales sobre el estado de salud del paciente..."
                                     value={patient.clinicalHistory.observations || ''}
-                                    onChange={(e) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, observations: e.target.value } })}
+                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, observations: val } })}
                                 />
                             </div>
 
@@ -699,11 +798,24 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                     </div>
                                     <label className="text-xs font-semibold uppercase tracking-wider text-blue-600">Motivo de Consulta Principal</label>
                                 </div>
-                                <textarea
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {['Dolor dental', 'Revisión general', 'Limpieza dental', 'Sangrado de encías', 'Diente fracturado', 'Sensibilidad dental', 'Blanqueamiento', 'Ortodoncia', 'Prótesis', 'Extracción', 'Implante dental', 'Caries visible', 'Mal aliento', 'Inflamación'].map(m => (
+                                        <button key={m} type="button"
+                                            onClick={() => {
+                                                const current = patient.clinicalHistory.motiveOfConsult;
+                                                const val = current ? `${current}. ${m}` : m;
+                                                onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, motiveOfConsult: val } });
+                                            }}
+                                            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white text-blue-500 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all active:scale-95">
+                                            + {m}
+                                        </button>
+                                    ))}
+                                </div>
+                                <DebouncedTextarea
                                     className="w-full bg-white px-5 py-4 rounded-xl border border-blue-100 outline-none text-sm text-slate-700 leading-relaxed resize-none h-32 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10 transition-all placeholder:text-blue-200"
                                     placeholder="Describa el motivo por el cual el paciente asiste a consulta..."
                                     value={patient.clinicalHistory.motiveOfConsult}
-                                    onChange={(e) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, motiveOfConsult: e.target.value } })}
+                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, motiveOfConsult: val } })}
                                 />
                             </div>
                         </div>
@@ -1222,6 +1334,28 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     );
 };
 
+const DebouncedTextarea: React.FC<{
+    value: string;
+    onChange: (val: string) => void;
+    className?: string;
+    placeholder?: string;
+}> = ({ value, onChange, className, placeholder }) => {
+    const [localValue, setLocalValue] = React.useState(value);
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    React.useEffect(() => { setLocalValue(value); }, [value]);
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const v = e.target.value;
+        setLocalValue(v);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => onChange(v), 400);
+    };
+    const handleBlur = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        if (localValue !== value) onChange(localValue);
+    };
+    return <textarea className={className} placeholder={placeholder} value={localValue} onChange={handleChange} onBlur={handleBlur} />;
+};
+
 const InputGroup: React.FC<{
     label: string;
     value: string;
@@ -1229,27 +1363,50 @@ const InputGroup: React.FC<{
     icon?: any;
     placeholder?: string;
     type?: string;
-}> = ({ label, value, onChange, icon: Icon, placeholder, type = "text" }) => (
-    <div className="space-y-2 group">
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">{label}</label>
-        <div className="relative">
-            {Icon && (
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
-                    <Icon size={16} />
-                </div>
-            )}
-            <input
-                type={type}
-                className={cn(
-                    "w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300",
-                    Icon ? "pl-11 pr-4" : "px-4"
+}> = ({ label, value, onChange, icon: Icon, placeholder, type = "text" }) => {
+    // Debounce: keep local state for fast typing, flush to parent after 400ms idle
+    const [localValue, setLocalValue] = React.useState(value);
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Sync external changes (e.g. when patient switches)
+    React.useEffect(() => { setLocalValue(value); }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const v = e.target.value;
+        setLocalValue(v);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => onChange(v), 400);
+    };
+
+    // Flush on blur so data is never lost
+    const handleBlur = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        if (localValue !== value) onChange(localValue);
+    };
+
+    return (
+        <div className="space-y-2 group">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">{label}</label>
+            <div className="relative">
+                {Icon && (
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
+                        <Icon size={16} />
+                    </div>
                 )}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-            />
+                <input
+                    type={type}
+                    className={cn(
+                        "w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300",
+                        Icon ? "pl-11 pr-4" : "px-4"
+                    )}
+                    value={localValue}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder={placeholder}
+                />
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 export default PatientRecord;

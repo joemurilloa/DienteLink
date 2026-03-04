@@ -67,9 +67,12 @@ const AuthPage: React.FC = () => {
               <span className="text-3xl">✉️</span>
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-3">¡Revisa tu email!</h2>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+            <p className="text-slate-500 text-sm mb-2 leading-relaxed">
               Te enviamos un enlace de confirmación a <strong className="text-slate-700">{email}</strong>. 
               Haz clic en el enlace para activar tu cuenta.
+            </p>
+            <p className="text-xs text-slate-400 mb-6">
+              ¿No lo encuentras? Revisa tu carpeta de spam o correo no deseado.
             </p>
             <button
               onClick={() => { setSignupSuccess(false); setIsLogin(true); }}

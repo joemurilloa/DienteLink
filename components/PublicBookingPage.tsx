@@ -39,6 +39,7 @@ const PublicBookingPage: React.FC = () => {
   // UI state
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -81,16 +82,27 @@ const PublicBookingPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedDate && availability) {
-      const loadSlots = async () => {
-        const times = bookingService.generateAvailableSlots(selectedDate, availability);
-        const available: string[] = [];
-        for (const time of times) {
-          const ok = await bookingService.isSlotAvailable(selectedDate, time, doctorId);
-          if (ok) available.push(time);
+      let cancelled = false;
+      const loadSlots = async (showLoader = true) => {
+        if (showLoader) setLoadingSlots(true);
+        try {
+          const times = bookingService.generateAvailableSlots(selectedDate, availability);
+          const available: string[] = [];
+          for (const time of times) {
+            if (cancelled) return;
+            const ok = await bookingService.isSlotAvailable(selectedDate, time, doctorId);
+            if (ok) available.push(time);
+          }
+          if (!cancelled) setAvailableTimes(available);
+        } finally {
+          if (!cancelled) setLoadingSlots(false);
         }
-        setAvailableTimes(available);
       };
-      loadSlots();
+      loadSlots(true);
+
+      // Auto-refresh available slots every 30 seconds (silently, no skeleton)
+      const interval = setInterval(() => loadSlots(false), 30000);
+      return () => { cancelled = true; clearInterval(interval); };
     }
   }, [selectedDate, availability, doctorId]);
 
@@ -134,7 +146,7 @@ const PublicBookingPage: React.FC = () => {
       return;
     }
 
-    if (!formData.email.trim() || !formData.email.includes('@')) {
+    if (formData.email.trim() && !formData.email.includes('@')) {
       setError('Por favor ingresa un email válido');
       return;
     }
@@ -152,6 +164,28 @@ const PublicBookingPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // Re-verify the selected slot is still available right before booking
+      const stillAvailable = await bookingService.isSlotAvailable(selectedDate, selectedTime, doctorId);
+      if (!stillAvailable) {
+        setError('Lo sentimos, este horario acaba de ser reservado por otro paciente. Por favor elige otro horario.');
+        setIsSubmitting(false);
+        // Refresh available times so user sees correct availability
+        if (availability) {
+          setLoadingSlots(true);
+          const times = bookingService.generateAvailableSlots(selectedDate, availability);
+          const available: string[] = [];
+          for (const time of times) {
+            const ok = await bookingService.isSlotAvailable(selectedDate, time, doctorId);
+            if (ok) available.push(time);
+          }
+          setAvailableTimes(available);
+          setLoadingSlots(false);
+        }
+        setStep('select-time');
+        setSelectedTime('');
+        return;
+      }
+
       // Create appointment request
       const request = await bookingService.createAppointmentRequest(
         formData.name,
@@ -230,29 +264,37 @@ const PublicBookingPage: React.FC = () => {
   return (
     <div className="min-h-screen min-h-[100dvh] bg-white flex flex-col">
       {/* Compact Header */}
-      <header className="border-b border-slate-100 px-5 py-4 flex items-center gap-3 bg-white sticky top-0 z-10">
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
-          <CalendarIcon size={20} className="text-white" />
+      <header className="border-b border-slate-100 px-4 py-3 flex items-center gap-3 bg-white sticky top-0 z-10">
+        <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+          <CalendarIcon size={18} className="text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="text-sm font-bold text-slate-900 truncate">{settings.clinicName || 'Clínica Dental'}</h1>
-          {settings.doctorName && <p className="text-xs text-slate-400 truncate">{settings.doctorName}</p>}
+          {settings.doctorName && <p className="text-[11px] text-slate-400 truncate">{settings.doctorName}</p>}
         </div>
-        {/* Step indicator */}
-        <div className="flex items-center gap-1.5">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className={cn(
-              'h-1.5 rounded-full transition-all',
-              i <= ['select-date', 'select-time', 'fill-info', 'confirmation'].indexOf(step)
-                ? 'w-6 bg-blue-600' : 'w-1.5 bg-slate-200'
-            )} />
-          ))}
+        {/* Step indicator with label */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-[10px] font-semibold text-slate-400 hidden min-[380px]:block">
+            {step === 'select-date' && 'Fecha'}
+            {step === 'select-time' && 'Hora'}
+            {step === 'fill-info' && 'Datos'}
+            {step === 'confirmation' && 'Listo'}
+          </span>
+          <div className="flex items-center gap-1">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className={cn(
+                'h-1.5 rounded-full transition-all',
+                i <= ['select-date', 'select-time', 'fill-info', 'confirmation'].indexOf(step)
+                  ? 'w-5 bg-blue-600' : 'w-1.5 bg-slate-200'
+              )} />
+            ))}
+          </div>
         </div>
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-lg mx-auto px-5 py-6">
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="max-w-lg mx-auto px-4 py-4">
           <AnimatePresence mode="wait">
             {/* ===== STEP 1: SELECT DATE (Calendar) ===== */}
             {step === 'select-date' && (
@@ -316,7 +358,18 @@ const PublicBookingPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-slate-900 mb-1">Elige un horario</h2>
                 <p className="text-sm text-slate-400 mb-5">{formatDate(selectedDate)}</p>
 
-                {availableTimes.length === 0 ? (
+                {loadingSlots ? (
+                  <div>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {Array.from({ length: 9 }).map((_, i) => (
+                        <div key={i} className="py-3 px-2 rounded-xl border border-slate-100 bg-slate-50 animate-pulse">
+                          <div className="h-4 bg-slate-200 rounded-md mx-auto w-16"></div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-400 text-center">Consultando disponibilidad...</p>
+                  </div>
+                ) : availableTimes.length === 0 ? (
                   <div className="text-center py-10">
                     <Clock size={36} className="text-slate-200 mx-auto mb-3" />
                     <p className="text-sm text-slate-500 mb-4">No hay horarios disponibles para esta fecha</p>
@@ -343,54 +396,54 @@ const PublicBookingPage: React.FC = () => {
             {/* ===== STEP 3: FILL INFO ===== */}
             {step === 'fill-info' && (
               <motion.div key="info" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-                <button onClick={goBack} className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold mb-4 hover:text-blue-700">
+                <button onClick={goBack} className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold mb-3 hover:text-blue-700">
                   <ArrowLeft size={16} /> Cambiar hora
                 </button>
 
                 {/* Summary chip */}
-                <div className="flex items-center gap-2 bg-blue-50 px-4 py-2.5 rounded-xl mb-5">
-                  <CalendarIcon size={16} className="text-blue-600" />
-                  <span className="text-sm font-semibold text-blue-700">{formatDate(selectedDate)} — {formatTime(selectedTime)}</span>
+                <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-xl mb-3">
+                  <CalendarIcon size={14} className="text-blue-600 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-blue-700">{formatDate(selectedDate)} — {formatTime(selectedTime)}</span>
                 </div>
 
-                <h2 className="text-xl font-bold text-slate-900 mb-5">Tus datos</h2>
+                <h2 className="text-lg font-bold text-slate-900 mb-3">Completa tus datos</h2>
 
-                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Nombre completo *</label>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nombre completo *</label>
                     <div className="relative">
                       <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
                       <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu nombre completo" />
+                        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu nombre completo" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Correo electrónico *</label>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Correo electrónico <span className="text-slate-300 normal-case">(opcional)</span></label>
                     <div className="relative">
                       <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
-                      <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="tu@email.com" />
+                      <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="tu@email.com (opcional)" />
                     </div>
                   </div>
 
                   {settings.requirePhone && (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Teléfono *</label>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Teléfono *</label>
                       <div className="relative">
                         <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
                         <input type="tel" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu número" />
+                          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu número" />
                       </div>
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Tipo de cita</label>
-                    <div className="flex gap-2 flex-wrap">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo de cita</label>
+                    <div className="flex gap-1.5 flex-wrap">
                       {settings.availableTypes.map(type => (
                         <button key={type} type="button" onClick={() => setFormData({ ...formData, appointmentType: type })}
-                          className={cn('px-4 py-2 rounded-xl text-xs font-semibold transition-all',
+                          className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
                             formData.appointmentType === type
                               ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600'
                           )}>
@@ -400,21 +453,26 @@ const PublicBookingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {settings.requireMessage && (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Mensaje *</label>
-                      <textarea required value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        rows={3} className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm resize-none"
-                        placeholder="Motivo de tu consulta..." />
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                      Motivo de consulta {settings.requireMessage ? '*' : <span className="text-slate-300 normal-case">(opcional)</span>}
+                    </label>
+                    <textarea
+                      required={settings.requireMessage}
+                      value={formData.message}
+                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      rows={2}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm resize-none"
+                      placeholder="Ej: dolor en muela, limpieza dental, revisión..."
+                    />
+                  </div>
 
                   {error && (
-                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">{error}</div>
+                    <div className="p-2.5 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">{error}</div>
                   )}
 
                   <button type="submit" disabled={isSubmitting}
-                    className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25">
+                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 sticky bottom-0">
                     {isSubmitting ? (
                       <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Enviando...</>
                     ) : (
@@ -459,10 +517,12 @@ const PublicBookingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-100 px-5 py-3 text-center">
-        <p className="text-[10px] text-slate-300 font-medium">Agenda proporcionada por DienteLink</p>
-      </footer>
+      {/* Footer — hidden during form step to maximize space */}
+      {step !== 'fill-info' && (
+        <footer className="border-t border-slate-100 px-5 py-2 text-center flex-shrink-0">
+          <p className="text-[10px] text-slate-300 font-medium">Agenda proporcionada por DienteLink</p>
+        </footer>
+      )}
     </div>
   );
 };

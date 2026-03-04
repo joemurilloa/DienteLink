@@ -222,11 +222,15 @@ class PersistenceService {
     // ===================== APPOINTMENTS (sync reads) =====================
 
     getAppointments(): Appointment[] {
-        return this.appointments;
+        return this.appointments.filter(a => a.status !== 'Eliminada');
+    }
+
+    getDeletedAppointments(): Appointment[] {
+        return this.appointments.filter(a => a.status === 'Eliminada');
     }
 
     getAppointmentsForDate(dateStr: string): Appointment[] {
-        return this.appointments.filter(a => a.date === dateStr);
+        return this.appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada');
     }
 
     // ===================== APPOINTMENTS (async writes) =====================
@@ -255,6 +259,25 @@ class PersistenceService {
     }
 
     async deleteAppointment(appointmentId: string): Promise<void> {
+        // Soft-delete: mark as 'Eliminada' with timestamp
+        const apt = this.appointments.find(a => a.id === appointmentId);
+        if (apt) {
+            apt.status = 'Eliminada';
+            apt.deletedAt = new Date().toISOString();
+        }
+        await supabase.from('appointments').update({ status: 'Eliminada' }).eq('id', appointmentId).eq('doctor_id', this.uid());
+    }
+
+    async restoreAppointment(appointmentId: string): Promise<void> {
+        const apt = this.appointments.find(a => a.id === appointmentId);
+        if (apt) {
+            apt.status = 'Programada';
+            apt.deletedAt = undefined;
+        }
+        await supabase.from('appointments').update({ status: 'Programada' }).eq('id', appointmentId).eq('doctor_id', this.uid());
+    }
+
+    async permanentlyDeleteAppointment(appointmentId: string): Promise<void> {
         this.appointments = this.appointments.filter(a => a.id !== appointmentId);
         await supabase.from('appointments').delete().eq('id', appointmentId).eq('doctor_id', this.uid());
     }

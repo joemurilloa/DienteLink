@@ -2,25 +2,26 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { LayoutDashboard, Calendar, Users, Settings, Search } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Bell, Search } from 'lucide-react';
 
 interface BottomNavProps {
   activePath: string;
   onSearchOpen?: () => void;
+  pendingRequestsCount?: number;
 }
 
-const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOpen }) => {
+const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOpen, pendingRequestsCount = 0 }) => {
   const navigate = useNavigate();
   const items = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio', path: '/' },
     { id: 'patients', icon: Users, label: 'Pacientes', path: '/patients' },
     { id: 'search', icon: Search, label: 'Buscar', action: () => onSearchOpen?.(), isCenter: true },
+    { id: 'solicitudes', icon: Bell, label: 'Solicitudes', path: '/booking/manage' },
     { id: 'calendar', icon: Calendar, label: 'Agenda', path: '/calendar' },
-    { id: 'settings', icon: Settings, label: 'Ajustes', path: '/settings' },
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 rounded-t-2xl safe-bottom z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 rounded-t-2xl safe-bottom z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
       <div className="flex items-center justify-around h-18 px-4">
         {items.map((item) => {
           const isActive = activePath === item.id;
@@ -41,8 +42,13 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center group">
+                <div className="flex flex-col items-center group relative">
                   <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} className={cn("mb-1 transition-transform", isActive ? "scale-110" : "group-hover:scale-105")} />
+                  {item.id === 'solicitudes' && pendingRequestsCount > 0 && (
+                    <span className="absolute -top-1 right-0.5 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                      {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                    </span>
+                  )}
                   <span className={cn("text-[9px] uppercase tracking-widest font-bold transition-opacity", isActive ? "opacity-100" : "opacity-40")}>{item.label}</span>
                   {isActive && (
                     <div className="w-1 h-1 bg-blue-600 rounded-full mt-0.5" />

@@ -72,6 +72,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
         <button
           onClick={handleSendReminder}
+          title={appointment.reminderStatus === 'sent' ? 'Recordatorio ya enviado' : 'Enviar recordatorio por WhatsApp'}
           className={cn(
             "w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0",
             appointment.reminderStatus === 'sent'
@@ -192,7 +193,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                 ) : appointment.reminderStatus === 'sent' ? (
                   <><CheckCircle2 size={14} /> Enviado</>
                 ) : (
-                  <><Send size={14} /> Recordatorio</>
+                  <><Send size={14} /> Enviar Recordatorio</>
                 )}
               </button>
               {onNavigateToPatient && appointment.patientId && (

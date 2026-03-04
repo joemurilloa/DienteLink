@@ -23,7 +23,7 @@ const PatientRecord = React.lazy(() => import('./components/PatientRecord'));
 import GlobalSearch from './components/GlobalSearch';
 import { Appointment, ReminderStatus, PatientRecord as PatientRecordType, AppointmentType, AppointmentRequest } from './types';
 import { cn, generateId } from './lib/utils';
-import { Plus, Calendar as CalendarIcon, History, Search, Settings, Trash2, Users, Activity, Clock, Bell } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, History, Search, Settings, Trash2, Users, Activity, Clock, Bell, RotateCcw, Archive } from 'lucide-react';
 import { sileo, Toaster } from 'sileo';
 import 'sileo/styles.css';
 
@@ -127,7 +127,7 @@ const Dashboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 lg:pb-8 p-5 lg:p-8 page-transition">
+    <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 md:pb-8 p-5 lg:p-8 page-transition">
         {/* Eliminar el header anterior ya integrado arriba */}
 
       <div className="space-y-6 lg:space-y-8">
@@ -157,7 +157,11 @@ const Dashboard: React.FC = () => {
                   </div>
                 </button>
                 
-                <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-100 shadow-sm bg-blue-600 flex items-center justify-center">
+                <div 
+                  onClick={() => navigate('/settings')}
+                  className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-blue-100 shadow-sm bg-blue-600 flex items-center justify-center cursor-pointer hover:ring-blue-300 transition-all active:scale-95"
+                  title="Ir a Ajustes"
+                >
                   <span className="text-white font-bold text-sm">{doctorInitials}</span>
                 </div>
               </div>
@@ -351,7 +355,7 @@ const Dashboard: React.FC = () => {
                 <Activity size={20} className="lg:hidden" />
                 <Activity size={24} className="hidden lg:block" />
               </div>
-              <span className="font-semibold text-blue-700 text-sm lg:text-base text-center leading-tight">Recibir Paciente</span>
+              <span className="font-semibold text-blue-700 text-sm lg:text-base text-center leading-tight">Iniciar Consulta</span>
             </button>
           </div>
         </section>
@@ -400,7 +404,6 @@ const PatientDetailView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState<PatientRecordType | undefined>(persistenceService.getPatientById(id || ''));
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!patient) return (
     <div className="flex items-center justify-center h-screen">
@@ -421,23 +424,8 @@ const PatientDetailView: React.FC = () => {
     setPatient(updated);
   };
 
-  const handleDelete = async () => {
-    await persistenceService.deletePatient(patient.id);
-    navigate('/patients');
-    sileo.info({ title: 'Expediente eliminado', description: `${patient.identification.fullName} fue removido` });
-  };
-
   return (
     <div className="flex-1 h-full overflow-hidden flex flex-col p-5 lg:p-8 pb-32 page-transition">
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleDelete}
-        title="Eliminar Expediente"
-        description={`¿Estás seguro de eliminar el expediente de ${patient.identification.fullName}? Esta acción no se puede deshacer y se perderán todos los datos clínicos.`}
-        confirmLabel="Sí, Eliminar"
-        variant="danger"
-      />
       <React.Suspense fallback={
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -451,12 +439,6 @@ const PatientDetailView: React.FC = () => {
             <p className="text-slate-400 font-medium text-xs mt-0.5">Expediente #{patient.id.slice(0, 8)}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-semibold text-sm hover:bg-red-100 transition-all border border-red-100"
-            >
-              <Trash2 size={14} /> Eliminar
-            </button>
             <button
               onClick={() => navigate(`/calendar?patient=${encodeURIComponent(patient.identification.fullName)}&id=${patient.id}`)}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
@@ -575,6 +557,7 @@ const CalendarView: React.FC = () => {
     await persistenceService.deleteAppointment(aptId);
     setAppointments(persistenceService.getAppointments());
     setDeleteTarget(null);
+    sileo.info({ title: 'Cita movida a la papelera', description: 'Puedes recuperarla desde Ajustes → Papelera' });
   };
 
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -663,6 +646,9 @@ const CalendarView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Hint for new users */}
+      <p className="text-xs text-slate-400 text-center mb-4 md:hidden">Toca en una fecha o hora para agregar una cita</p>
 
       {/* ══════ MONTHLY VIEW ══════ */}
       {viewMode === 'month' && (
@@ -892,12 +878,39 @@ const CalendarView: React.FC = () => {
               )}
               <div className="space-y-2">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Paciente <span className="text-red-400">*</span></label>
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
-                  value={newApt.patientName}
-                  onChange={e => { setNewApt(p => ({ ...p, patientName: e.target.value })); setFormError(''); }}
-                  placeholder="Nombre del paciente..."
-                />
+                <div className="relative">
+                  <input
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                    value={newApt.patientName}
+                    onChange={e => { setNewApt(p => ({ ...p, patientName: e.target.value, patientId: '' })); setFormError(''); }}
+                    placeholder="Escribe el nombre del paciente..."
+                  />
+                  {/* Patient suggestions */}
+                  {newApt.patientName.length >= 2 && !newApt.patientId && (() => {
+                    const matches = persistenceService.getPatients()
+                      .filter(p => p.identification.fullName.toLowerCase().includes(newApt.patientName.toLowerCase()))
+                      .slice(0, 4);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-10 overflow-hidden">
+                        {matches.map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => { setNewApt(prev => ({ ...prev, patientName: p.identification.fullName, patientId: p.id })); setFormError(''); }}
+                            className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2 border-b border-slate-50 last:border-0"
+                          >
+                            <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-[10px] font-bold flex-shrink-0">
+                              {p.identification.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <span>{p.identification.fullName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-[10px] text-slate-300 ml-1">Puedes seleccionar un paciente existente o escribir un nombre nuevo</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -960,10 +973,10 @@ const CalendarView: React.FC = () => {
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteTarget && handleDeleteAppointment(deleteTarget)}
-        title="Eliminar Cita"
-        description="¿Estás seguro de eliminar esta cita? Puedes reprogramarla después."
-        confirmLabel="Sí, Eliminar"
-        variant="danger"
+        title="Mover a papelera"
+        description="La cita se moverá a la papelera. Podrás recuperarla desde Ajustes → Papelera si fue un error."
+        confirmLabel="Sí, mover a papelera"
+        variant="warning"
       />
     </div>
   );
@@ -975,6 +988,8 @@ const SettingsView: React.FC = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletedAppointments, setDeletedAppointments] = useState(persistenceService.getDeletedAppointments());
+  const [showTrash, setShowTrash] = useState(false);
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
     role: profile?.role || 'Odontólogo',
@@ -1010,6 +1025,18 @@ const SettingsView: React.FC = () => {
     persistenceService.reset();
     bookingService.reset();
     await signOut();
+  };
+
+  const handleRestoreAppointment = async (aptId: string) => {
+    await persistenceService.restoreAppointment(aptId);
+    setDeletedAppointments(persistenceService.getDeletedAppointments());
+    sileo.success('Cita restaurada correctamente');
+  };
+
+  const handlePermanentDelete = async (aptId: string) => {
+    await persistenceService.permanentlyDeleteAppointment(aptId);
+    setDeletedAppointments(persistenceService.getDeletedAppointments());
+    sileo.info('Cita eliminada permanentemente');
   };
 
   const SettingsInput = ({ label, value, field }: { label: string; value: string; field: keyof typeof form }) => (
@@ -1089,6 +1116,63 @@ const SettingsView: React.FC = () => {
               <span className="text-sm font-bold text-slate-900">{persistenceService.getAppointments().length}</span>
             </div>
           </div>
+        </div>
+
+        {/* Papelera (Trash / Recycle Bin) */}
+        <div className="card-premium p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                <Archive size={18} className="text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Papelera</h3>
+                <p className="text-xs text-slate-400">{deletedAppointments.length} cita{deletedAppointments.length !== 1 ? 's' : ''} eliminada{deletedAppointments.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            {deletedAppointments.length > 0 && (
+              <button
+                onClick={() => setShowTrash(!showTrash)}
+                className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-xs font-semibold hover:bg-amber-100 transition-all border border-amber-100"
+              >
+                {showTrash ? 'Ocultar' : 'Ver papelera'}
+              </button>
+            )}
+          </div>
+          {deletedAppointments.length === 0 && (
+            <p className="text-sm text-slate-300 text-center py-4">La papelera está vacía</p>
+          )}
+          {showTrash && deletedAppointments.length > 0 && (
+            <div className="space-y-3 mt-3 border-t border-slate-100 pt-4">
+              {deletedAppointments.map(apt => (
+                <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-700 truncate">{apt.patientName}</p>
+                    <p className="text-xs text-slate-400">{apt.date} · {apt.time} · {apt.type}</p>
+                    {apt.deletedAt && (
+                      <p className="text-[10px] text-slate-300 mt-0.5">Eliminada el {new Date(apt.deletedAt).toLocaleDateString('es-MX')}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                    <button
+                      onClick={() => handleRestoreAppointment(apt.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-100 transition-all border border-green-100"
+                      title="Restaurar cita"
+                    >
+                      <RotateCcw size={12} /> Restaurar
+                    </button>
+                    <button
+                      onClick={() => handlePermanentDelete(apt.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-semibold transition-all"
+                      title="Eliminar permanentemente"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="card-premium p-6 border-red-100">
@@ -1276,7 +1360,7 @@ const Layout: React.FC = () => {
               <Route path="/settings" element={<SettingsView />} />
               <Route path="*" element={<Dashboard />} />
             </Routes>
-            <BottomNav activePath={getActivePath()} onSearchOpen={() => setIsSearchOpen(true)} />
+            <BottomNav activePath={getActivePath()} onSearchOpen={() => setIsSearchOpen(true)} pendingRequestsCount={pendingCount} />
           </main>
           <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
         </>

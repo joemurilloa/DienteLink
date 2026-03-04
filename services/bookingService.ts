@@ -193,6 +193,31 @@ export class BookingService {
     return request;
   }
 
+  /** Change status of any request (re-approve, re-reject, or set back to pending) */
+  async updateRequestStatus(requestId: string, newStatus: 'pending' | 'approved' | 'rejected'): Promise<AppointmentRequest | null> {
+    const request = this.requests.find(r => r.id === requestId);
+    if (!request) return null;
+
+    request.status = newStatus;
+    request.respondedAt = newStatus === 'pending' ? undefined : new Date().toISOString();
+
+    const { error } = await supabase.from('appointment_requests').update({
+      status: newStatus,
+      responded_at: request.respondedAt || null,
+    }).eq('id', requestId);
+
+    if (error) console.error('[Supabase] updateRequestStatus error:', error);
+    return request;
+  }
+
+  /** Delete a request permanently */
+  async deleteRequest(requestId: string): Promise<void> {
+    this.requests = this.requests.filter(r => r.id !== requestId);
+
+    const { error } = await supabase.from('appointment_requests').delete().eq('id', requestId);
+    if (error) console.error('[Supabase] deleteRequest error:', error);
+  }
+
   // ===================== PUBLIC METHODS (no auth required) =====================
 
   async getPublicBookingSettings(doctorId: string): Promise<PublicBookingSettings | null> {
@@ -225,6 +250,17 @@ export class BookingService {
       .in('status', ['pending', 'approved']);
 
     return (data || []).map(dbToRequest);
+  }
+
+  /** Fetch confirmed appointments from the appointments table (for public slot checking) */
+  async getPublicAppointments(doctorId: string): Promise<{ date: string; time: string }[]> {
+    const { data } = await supabase
+      .from('appointments')
+      .select('date, time')
+      .eq('doctor_id', doctorId)
+      .in('status', ['Programada', 'Completada']);
+
+    return (data || []).map(a => ({ date: a.date, time: a.time }));
   }
 
   async createAppointmentRequest(
@@ -311,19 +347,46 @@ export class BookingService {
     const availableSlots = this.generateAvailableSlots(date, availability);
     if (!availableSlots.includes(time)) return false;
 
-    // Check conflicts (use in-memory if available, else query)
+    // Check conflicts against BOTH appointment_requests AND appointments tables
     let requests: AppointmentRequest[];
+    let confirmedAppointments: { date: string; time: string }[] = [];
+
     if (this.userId === did) {
       requests = this.requests;
+      // Also check in-memory appointments from persistenceService
+      // (we import it dynamically to avoid circular dependency at module level)
+      try {
+        const { persistenceService } = await import('./persistenceService');
+        const allAppointments = persistenceService.getAppointments();
+        confirmedAppointments = allAppointments
+          .filter(a => a.status !== 'Completada' || a.date >= new Date().toISOString().split('T')[0])
+          .map(a => ({ date: a.date, time: a.time }));
+      } catch { /* ignore if not initialized */ }
     } else {
-      requests = await this.getPublicAppointmentRequests(did);
+      // Public page: query both tables from Supabase
+      const [reqs, appts] = await Promise.all([
+        this.getPublicAppointmentRequests(did),
+        this.getPublicAppointments(did),
+      ]);
+      requests = reqs;
+      confirmedAppointments = appts;
     }
 
-    return !requests.some(r =>
+    // Block if any pending/approved request occupies this slot
+    const requestConflict = requests.some(r =>
       r.requestedDate === date &&
       r.requestedTime === time &&
       r.status !== 'rejected'
     );
+    if (requestConflict) return false;
+
+    // Block if any confirmed appointment occupies this slot
+    const appointmentConflict = confirmedAppointments.some(a =>
+      a.date === date && a.time === time
+    );
+    if (appointmentConflict) return false;
+
+    return true;
   }
 
   getAvailableDates(daysAhead: number = 30, externalAvailability?: DoctorAvailability): string[] {
