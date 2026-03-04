@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { PatientRecord as PatientRecordType, EvolutionNote, ClinicalEvent, BudgetItem, Payment } from '../types';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, ensurePeriodontogramData } from '../lib/utils';
 import { persistenceService } from '../services/persistenceService';
+import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import {
@@ -31,12 +32,16 @@ import {
     Check,
     Clock,
     Loader2,
-    Trash2
+    Trash2,
+    FileCheck,
+    Pill
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Odontogram from './Odontogram';
 import Periodontogram from './Periodontogram';
+import ConsentManager from './ConsentManager';
+import PrescriptionManager from './PrescriptionManager';
 
 interface Props {
     patient: PatientRecordType;
@@ -44,9 +49,12 @@ interface Props {
 }
 
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
+    const { profile } = useAuth();
+    const doctorName = profile?.full_name || 'Doctor';
+    const clinicName = profile?.clinic_name || 'DienteLink';
     const [searchParams] = useSearchParams();
     const initialTab = (searchParams.get('tab') as any) || 'id';
-    const [activeTab, setActiveTab] = useState<'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'budget' | 'citas' | 'history'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'budget' | 'consent' | 'prescriptions' | 'citas' | 'history'>(initialTab);
     const [newNote, setNewNote] = useState({ content: '', procedure: '' });
     const [newEvent, setNewEvent] = useState({ description: '', type: 'treatment' as ClinicalEvent['type'] });
     const [isFocusMode, setIsFocusMode] = useState(false);
@@ -58,6 +66,10 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash' as Payment['method'], note: '' });
     const [budgetError, setBudgetError] = useState('');
     const [paymentError, setPaymentError] = useState('');
+
+    // Allergies editing state
+    const [editingAllergies, setEditingAllergies] = useState(false);
+    const [allergyInput, setAllergyInput] = useState('');
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -71,6 +83,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         { id: 'periodontogram', label: 'Periodonto', icon: BarChart3 },
         { id: 'notes', label: 'Evolución', icon: ClipboardList },
         { id: 'budget', label: 'Presupuesto', icon: DollarSign },
+        { id: 'consent', label: 'Consentimiento', icon: FileCheck },
+        { id: 'prescriptions', label: 'Recetas', icon: Pill },
         { id: 'citas', label: 'Agenda', icon: Calendar },
         { id: 'history', label: 'Historial', icon: Activity },
     ];
@@ -181,43 +195,211 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     };
 
     const handleExportPDF = () => {
-        sileo.info({ title: 'Generando expediente... 📄', description: 'Esto puede tomar unos segundos' });
+        sileo.info({ title: 'Generando expediente...', description: 'Esto puede tomar unos segundos' });
         
         const doc = new jsPDF() as any;
-        doc.setFontSize(22);
-        doc.setTextColor(15, 23, 42);
-        doc.text("Resumen Clínico - DienteLink", 20, 20);
-        doc.setFontSize(10);
-        doc.setTextColor(148, 163, 184);
-        doc.text(`Expediente #${patient.id} | Fecha: ${new Date().toLocaleDateString()}`, 20, 28);
-        doc.setFontSize(14);
-        doc.setTextColor(15, 23, 42);
-        doc.text("Datos del Paciente", 20, 45);
-        doc.setFontSize(10);
-        doc.text(`Nombre: ${patient.identification.fullName}`, 20, 55);
-        doc.text(`Fecha de Nacimiento: ${patient.identification.birthDate}`, 20, 60);
-        doc.text(`Teléfono: ${patient.identification.phone}`, 20, 65);
-        doc.text(`Email: ${patient.identification.email}`, 20, 70);
-        doc.setFontSize(14);
-        doc.text("Historial Clínico", 20, 85);
-        doc.setFontSize(10);
-        doc.text(`Alergias: ${patient.clinicalHistory.allergies.join(', ') || 'Ninguna'}`, 20, 95);
-        doc.text(`Medicamentos: ${patient.clinicalHistory.medications || 'Ninguno'}`, 20, 100);
-        doc.text(`Enfermedades: ${patient.clinicalHistory.previousDiseases || 'Ninguna'}`, 20, 105);
-        doc.setFontSize(14);
-        doc.text("Tratamientos Realizados", 20, 120);
-        const historyData = patient.history.map(e => [e.date, e.description]);
-        doc.autoTable({
-            startY: 125,
-            head: [['Fecha', 'Descripción']],
-            body: historyData,
-            theme: 'striped',
-            headStyles: { fillStyle: [59, 130, 246] }
-        });
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        let y = 15;
 
-        doc.save(`Expediente_${patient.identification.fullName.replace(/\s+/g, '_')}.pdf`);
-        
-        sileo.success({ title: '¡Expediente descargado exitosamente! ✅', description: `Archivo guardado como PDF para ${patient.identification.fullName}` });
+        const checkPage = (needed: number) => {
+            if (y + needed > pageH - 20) { doc.addPage(); y = 20; }
+        };
+
+        const sectionTitle = (title: string) => {
+            checkPage(20);
+            y += 6;
+            doc.setFillColor(241, 245, 249);
+            doc.roundedRect(15, y - 5, pageW - 30, 12, 2, 2, 'F');
+            doc.setFontSize(12);
+            doc.setTextColor(15, 23, 42);
+            doc.text(title, 20, y + 3);
+            y += 14;
+        };
+
+        const addField = (label: string, value: string) => {
+            if (!value) return;
+            checkPage(8);
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text(label + ':', 20, y);
+            doc.setTextColor(15, 23, 42);
+            doc.text(value, 65, y);
+            y += 6;
+        };
+
+        // ── Header ──
+        doc.setFillColor(37, 99, 235);
+        doc.rect(0, 0, pageW, 35, 'F');
+        doc.setFontSize(20);
+        doc.setTextColor(255, 255, 255);
+        doc.text('Expediente Clínico', pageW / 2, 16, { align: 'center' });
+        doc.setFontSize(10);
+        doc.text(clinicName || 'DienteLink', pageW / 2, 24, { align: 'center' });
+        doc.setFontSize(8);
+        doc.text(`Generado: ${new Date().toLocaleString('es-HN')} | Dr(a). ${doctorName}`, pageW / 2, 31, { align: 'center' });
+        y = 45;
+
+        // ── 1. Datos del Paciente ──
+        sectionTitle('1. Datos del Paciente');
+        addField('Nombre', patient.identification.fullName);
+        addField('Nacimiento', patient.identification.birthDate);
+        addField('Género', patient.identification.gender);
+        addField('Teléfono', patient.identification.phone);
+        addField('Email', patient.identification.email);
+        addField('Dirección', patient.identification.address);
+        addField('Ocupación', patient.identification.occupation);
+        addField('Expediente #', patient.id.slice(0, 8));
+
+        // ── 2. Antecedentes Clínicos ──
+        sectionTitle('2. Antecedentes Clínicos');
+        addField('Alergias', patient.clinicalHistory.allergies.join(', ') || 'Ninguna');
+        addField('Medicamentos', patient.clinicalHistory.medications || 'Ninguno');
+        addField('Enfermedades', patient.clinicalHistory.previousDiseases || 'Ninguna');
+        addField('Ant. Familiares', patient.clinicalHistory.familyHistory || 'Sin datos');
+        if (patient.clinicalHistory.motiveOfConsult) {
+            checkPage(20);
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Motivo de consulta:', 20, y);
+            y += 5;
+            doc.setTextColor(15, 23, 42);
+            const motive = doc.splitTextToSize(patient.clinicalHistory.motiveOfConsult, pageW - 45);
+            doc.text(motive, 25, y);
+            y += motive.length * 4 + 2;
+        }
+
+        // ── 3. Odontograma ──
+        const teethWithConditions = (patient.odontogram || []).filter(t => t.surfaces && t.surfaces.length > 0);
+        if (teethWithConditions.length > 0) {
+            sectionTitle('3. Odontograma – Hallazgos');
+            const odontoData = teethWithConditions.map(t => [
+                `#${t.id}`,
+                t.surfaces.map(s => `${s.surface}: ${s.condition}`).join(', ')
+            ]);
+            doc.autoTable({
+                startY: y,
+                head: [['Pieza', 'Condiciones']],
+                body: odontoData,
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
+                styles: { fontSize: 8 },
+                margin: { left: 20, right: 20 }
+            });
+            y = doc.lastAutoTable.finalY + 8;
+        }
+
+        // ── 4. Notas de Evolución ──
+        if (patient.evolutionNotes.length > 0) {
+            sectionTitle('4. Notas de Evolución');
+            const notesData = patient.evolutionNotes.map(n => [n.date, n.procedure, n.content]);
+            doc.autoTable({
+                startY: y,
+                head: [['Fecha', 'Procedimiento', 'Descripción']],
+                body: notesData,
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
+                styles: { fontSize: 8, cellPadding: 3 },
+                columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 35 } },
+                margin: { left: 20, right: 20 }
+            });
+            y = doc.lastAutoTable.finalY + 8;
+        }
+
+        // ── 5. Historial Clínico ──
+        if (patient.history.length > 0) {
+            sectionTitle('5. Historial de Procedimientos');
+            const historyData = patient.history.map(e => [
+                e.date,
+                e.type === 'treatment' ? 'Tratamiento' : e.type === 'extraction' ? 'Extracción' : e.type === 'cleaning' ? 'Limpieza' : 'Diagnóstico',
+                e.description,
+                e.toothId ? `#${e.toothId}` : ''
+            ]);
+            doc.autoTable({
+                startY: y,
+                head: [['Fecha', 'Tipo', 'Descripción', 'Pieza']],
+                body: historyData,
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
+                styles: { fontSize: 8 },
+                margin: { left: 20, right: 20 }
+            });
+            y = doc.lastAutoTable.finalY + 8;
+        }
+
+        // ── 6. Presupuesto ──
+        if (budgetItems.length > 0) {
+            sectionTitle('6. Plan de Tratamiento y Presupuesto');
+            const budgetData = budgetItems.map(b => [
+                b.treatment,
+                b.toothId ? `#${b.toothId}` : '',
+                b.quantity.toString(),
+                formatCurrency(b.unitCost),
+                formatCurrency(b.unitCost * b.quantity),
+                b.status === 'completed' ? 'Completado' : b.status === 'in_progress' ? 'En curso' : 'Pendiente'
+            ]);
+            doc.autoTable({
+                startY: y,
+                head: [['Tratamiento', 'Pieza', 'Cant.', 'P. Unitario', 'Total', 'Estado']],
+                body: budgetData,
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
+                styles: { fontSize: 8 },
+                margin: { left: 20, right: 20 }
+            });
+            y = doc.lastAutoTable.finalY + 4;
+            checkPage(20);
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text(`Total: ${formatCurrency(totalBudget)}  |  Pagado: ${formatCurrency(totalPaid)}  |  Saldo: ${formatCurrency(pendingBalance)}`, 20, y + 4);
+            y += 12;
+        }
+
+        // ── 7. Recetas ──
+        const rxList = patient.prescriptions || [];
+        if (rxList.length > 0) {
+            sectionTitle('7. Recetas Emitidas');
+            rxList.forEach((rx, i) => {
+                checkPage(15);
+                doc.setFontSize(10);
+                doc.setTextColor(15, 23, 42);
+                doc.text(`${rx.date} — ${rx.diagnosis}`, 20, y);
+                y += 5;
+                rx.medications.forEach(med => {
+                    checkPage(10);
+                    doc.setFontSize(9);
+                    doc.setTextColor(51, 65, 85);
+                    doc.text(`  • ${med.name} — ${med.dosage} — ${med.frequency} — ${med.duration}`, 25, y);
+                    y += 4.5;
+                });
+                y += 3;
+            });
+        }
+
+        // ── 8. Consentimientos ──
+        const consentList = patient.consents || [];
+        if (consentList.length > 0) {
+            sectionTitle('8. Consentimientos Firmados');
+            consentList.forEach(c => {
+                checkPage(10);
+                doc.setFontSize(9);
+                doc.setTextColor(51, 65, 85);
+                doc.text(`• ${c.title} — Firmado: ${new Date(c.signedAt).toLocaleDateString('es-HN')}${c.witnessName ? ` — Testigo: ${c.witnessName}` : ''}`, 20, y);
+                y += 5;
+            });
+        }
+
+        // ── Footer ──
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(7);
+            doc.setTextColor(148, 163, 184);
+            doc.text(`DienteLink — Expediente de ${patient.identification.fullName} — Pág. ${i}/${pageCount}`, pageW / 2, pageH - 8, { align: 'center' });
+        }
+
+        doc.save(`Expediente_${patient.identification.fullName.replace(/\\s+/g, '_')}.pdf`);
+        sileo.success({ title: 'Expediente descargado', description: `PDF completo de ${patient.identification.fullName}` });
     };
 
     const isClinicalTab = ['odontogram', 'periodontogram'].includes(activeTab);
@@ -235,8 +417,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
             );
             case 'periodontogram': return (
                 <Periodontogram
-                    depths={patient.periodontogram || new Array(32).fill(1)}
-                    onUpdate={(depths) => onUpdate({ ...patient, periodontogram: depths })}
+                    data={ensurePeriodontogramData(patient.periodontogram)}
+                    onUpdate={(periodontogram) => onUpdate({ ...patient, periodontogram })}
                 />
             );
             default: return null;
@@ -404,12 +586,25 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                     </div>
                                     <label className="text-xs font-semibold uppercase tracking-wider text-red-600">Alergias Conocidas</label>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-2 items-center">
                                     {patient.clinicalHistory.allergies.map(a => (
-                                        <span key={a} className="px-3 py-1.5 bg-white text-red-600 rounded-lg text-xs font-semibold border border-red-100">{a}</span>
+                                        <span key={a} className="px-3 py-1.5 bg-white text-red-600 rounded-lg text-xs font-semibold border border-red-100 flex items-center gap-1.5">
+                                            {a}
+                                            {editingAllergies && (
+                                                <button onClick={() => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, allergies: patient.clinicalHistory.allergies.filter(al => al !== a) } })} className="text-red-400 hover:text-red-700 transition-colors"><X size={12} /></button>
+                                            )}
+                                        </span>
                                     ))}
-                                    {patient.clinicalHistory.allergies.length === 0 && <span className="text-red-300 text-sm">Ninguna alergia registrada</span>}
-                                    <button className="px-3 py-1.5 bg-red-600/10 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-600 hover:text-white transition-all">Editar</button>
+                                    {patient.clinicalHistory.allergies.length === 0 && !editingAllergies && <span className="text-red-300 text-sm">Ninguna alergia registrada</span>}
+                                    {editingAllergies && (
+                                        <form onSubmit={(e) => { e.preventDefault(); const v = allergyInput.trim(); if (v && !patient.clinicalHistory.allergies.includes(v)) { onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, allergies: [...patient.clinicalHistory.allergies, v] } }); setAllergyInput(''); } }} className="flex items-center gap-1.5">
+                                            <input value={allergyInput} onChange={e => setAllergyInput(e.target.value)} placeholder="Nueva alergia..." className="px-3 py-1.5 rounded-lg text-xs border border-red-200 outline-none focus:border-red-400 w-36" autoFocus />
+                                            <button type="submit" className="px-2.5 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-all"><Plus size={12} /></button>
+                                        </form>
+                                    )}
+                                    <button onClick={() => { setEditingAllergies(!editingAllergies); setAllergyInput(''); }} className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all", editingAllergies ? "bg-slate-200 text-slate-600 hover:bg-slate-300" : "bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white")}>
+                                        {editingAllergies ? 'Listo' : 'Editar'}
+                                    </button>
                                 </div>
                             </div>
 
@@ -427,14 +622,73 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                     value={patient.clinicalHistory.previousDiseases}
                                     onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, previousDiseases: val } })}
                                 />
-                                <div className="md:col-span-2">
-                                    <InputGroup
-                                        label="Antecedentes familiares"
-                                        icon={User}
-                                        value={patient.clinicalHistory.familyHistory}
-                                        onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, familyHistory: val } })}
-                                    />
+                                <InputGroup
+                                    label="Antecedentes familiares"
+                                    icon={User}
+                                    value={patient.clinicalHistory.familyHistory}
+                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, familyHistory: val } })}
+                                />
+                                <InputGroup
+                                    label="Hábitos (bruxismo, onicofagia, etc.)"
+                                    icon={Activity}
+                                    value={patient.clinicalHistory.habits || ''}
+                                    onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, habits: val } })}
+                                />
+                            </div>
+
+                            {/* Quick toggles & selects */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="p-4 bg-white rounded-2xl border border-slate-200">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 block">Tipo de Sangre</label>
+                                    <select
+                                        value={patient.clinicalHistory.bloodType || ''}
+                                        onChange={(e) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, bloodType: e.target.value } })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 outline-none focus:border-blue-500 transition-all bg-white"
+                                    >
+                                        <option value="">No registrado</option>
+                                        {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
                                 </div>
+                                <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">Fumador</label>
+                                        <p className="text-sm font-medium text-slate-600 mt-1">{patient.clinicalHistory.smoker ? 'Sí' : 'No'}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, smoker: !patient.clinicalHistory.smoker } })}
+                                        className={cn("w-12 h-7 rounded-full transition-all relative", patient.clinicalHistory.smoker ? 'bg-orange-500' : 'bg-slate-200')}
+                                    >
+                                        <div className={cn("w-5 h-5 bg-white rounded-full absolute top-1 transition-all shadow-sm", patient.clinicalHistory.smoker ? 'left-6' : 'left-1')} />
+                                    </button>
+                                </div>
+                                <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">Embarazo</label>
+                                        <p className="text-sm font-medium text-slate-600 mt-1">{patient.clinicalHistory.pregnant ? 'Sí' : 'No'}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, pregnant: !patient.clinicalHistory.pregnant } })}
+                                        className={cn("w-12 h-7 rounded-full transition-all relative", patient.clinicalHistory.pregnant ? 'bg-pink-500' : 'bg-slate-200')}
+                                    >
+                                        <div className={cn("w-5 h-5 bg-white rounded-full absolute top-1 transition-all shadow-sm", patient.clinicalHistory.pregnant ? 'left-6' : 'left-1')} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Observations */}
+                            <div className="p-5 bg-amber-50 rounded-2xl border border-amber-100">
+                                <div className="flex items-center gap-2.5 mb-3">
+                                    <div className="w-8 h-8 bg-amber-500 text-white rounded-xl flex items-center justify-center">
+                                        <ClipboardList size={16} />
+                                    </div>
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-amber-600">Observaciones Generales</label>
+                                </div>
+                                <textarea
+                                    className="w-full bg-white px-5 py-4 rounded-xl border border-amber-100 outline-none text-sm text-slate-700 leading-relaxed resize-none h-24 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 transition-all placeholder:text-amber-200"
+                                    placeholder="Notas adicionales sobre el estado de salud del paciente..."
+                                    value={patient.clinicalHistory.observations || ''}
+                                    onChange={(e) => onUpdate({ ...patient, clinicalHistory: { ...patient.clinicalHistory, observations: e.target.value } })}
+                                />
                             </div>
 
                             {/* Motive */}
@@ -480,8 +734,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 <p className="text-slate-400 text-sm mt-1">Estado de salud periodontal</p>
                             </div>
                             <Periodontogram
-                                depths={patient.periodontogram || new Array(32).fill(1)}
-                                onUpdate={(depths) => onUpdate({ ...patient, periodontogram: depths })}
+                                data={ensurePeriodontogramData(patient.periodontogram)}
+                                onUpdate={(periodontogram) => onUpdate({ ...patient, periodontogram })}
                             />
                         </div>
                     )}
@@ -806,6 +1060,26 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 )}
                             </div>
                         </div>
+                    )}
+
+                    {/* ══════ Consentimiento ══════ */}
+                    {activeTab === 'consent' && (
+                        <ConsentManager
+                            patient={patient}
+                            onUpdate={onUpdate}
+                            doctorName={doctorName}
+                            clinicName={clinicName}
+                        />
+                    )}
+
+                    {/* ══════ Recetas ══════ */}
+                    {activeTab === 'prescriptions' && (
+                        <PrescriptionManager
+                            patient={patient}
+                            onUpdate={onUpdate}
+                            doctorName={doctorName}
+                            clinicName={clinicName}
+                        />
                     )}
 
                     {/* ══════ Agenda ══════ */}

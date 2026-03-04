@@ -1,6 +1,7 @@
 
 import { supabase } from '../lib/supabase';
-import { PatientRecord, Appointment, ClinicalEvent, ToothData, SurfaceData, OdontogramSnapshot, BudgetItem, Payment } from '../types';
+import { PatientRecord, Appointment, ClinicalEvent, ToothData, SurfaceData, OdontogramSnapshot, BudgetItem, Payment, ConsentForm, Prescription } from '../types';
+import { ensurePeriodontogramData } from '../lib/utils';
 
 // ==========================================================
 // In-Memory Cache + Supabase Write-Through Persistence
@@ -22,22 +23,26 @@ class PersistenceService {
     async init(userId: string): Promise<void> {
         this.userId = userId;
         
-        const [patientsRes, aptsRes, notesRes, eventsRes, budgetRes, paymentsRes] = await Promise.all([
+        const [patientsRes, aptsRes, notesRes, eventsRes, budgetRes, paymentsRes, consentsRes, prescriptionsRes] = await Promise.all([
             supabase.from('patients').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
             supabase.from('appointments').select('*').eq('doctor_id', userId).order('date').order('time'),
             supabase.from('evolution_notes').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
             supabase.from('clinical_events').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
             supabase.from('budget_items').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
             supabase.from('payments').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
+            supabase.from('consent_forms').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
+            supabase.from('prescriptions').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
         ]);
 
         const notesByPatient = groupBy(notesRes.data || [], 'patient_id');
         const eventsByPatient = groupBy(eventsRes.data || [], 'patient_id');
         const budgetByPatient = groupBy(budgetRes.data || [], 'patient_id');
         const paymentsByPatient = groupBy(paymentsRes.data || [], 'patient_id');
+        const consentsByPatient = groupBy(consentsRes.data || [], 'patient_id');
+        const prescriptionsByPatient = groupBy(prescriptionsRes.data || [], 'patient_id');
 
         this.patients = (patientsRes.data || []).map(p =>
-            dbToPatient(p, notesByPatient[p.id] || [], eventsByPatient[p.id] || [], budgetByPatient[p.id] || [], paymentsByPatient[p.id] || [])
+            dbToPatient(p, notesByPatient[p.id] || [], eventsByPatient[p.id] || [], budgetByPatient[p.id] || [], paymentsByPatient[p.id] || [], consentsByPatient[p.id] || [], prescriptionsByPatient[p.id] || [])
         );
         this.appointments = (aptsRes.data || []).map(dbToAppointment);
         this._ready = true;
@@ -167,6 +172,41 @@ class PersistenceService {
             );
             if (payErr) console.error('[Supabase] payments upsert error:', payErr);
         }
+
+        // Upsert consent forms
+        if (patient.consents && patient.consents.length > 0) {
+            const { error: consentErr } = await supabase.from('consent_forms').upsert(
+                patient.consents.map(c => ({
+                    id: c.id,
+                    patient_id: patient.id,
+                    doctor_id: doctorId,
+                    title: c.title,
+                    content: c.content,
+                    signature_data: c.signatureData,
+                    signed_at: c.signedAt,
+                    witness_name: c.witnessName || null,
+                })),
+                { onConflict: 'id' }
+            );
+            if (consentErr) console.error('[Supabase] consent_forms upsert error:', consentErr);
+        }
+
+        // Upsert prescriptions
+        if (patient.prescriptions && patient.prescriptions.length > 0) {
+            const { error: rxErr } = await supabase.from('prescriptions').upsert(
+                patient.prescriptions.map(rx => ({
+                    id: rx.id,
+                    patient_id: patient.id,
+                    doctor_id: doctorId,
+                    date: rx.date,
+                    diagnosis: rx.diagnosis,
+                    medications: rx.medications,
+                    notes: rx.notes,
+                })),
+                { onConflict: 'id' }
+            );
+            if (rxErr) console.error('[Supabase] prescriptions upsert error:', rxErr);
+        }
     }
 
     async deletePatient(patientId: string): Promise<void> {
@@ -229,6 +269,8 @@ class PersistenceService {
         await Promise.all([
             supabase.from('payments').delete().eq('doctor_id', doctorId),
             supabase.from('budget_items').delete().eq('doctor_id', doctorId),
+            supabase.from('consent_forms').delete().eq('doctor_id', doctorId),
+            supabase.from('prescriptions').delete().eq('doctor_id', doctorId),
             supabase.from('appointments').delete().eq('doctor_id', doctorId),
             supabase.from('evolution_notes').delete().eq('doctor_id', doctorId),
             supabase.from('clinical_events').delete().eq('doctor_id', doctorId),
@@ -251,7 +293,7 @@ function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
     }, {} as Record<string, T[]>);
 }
 
-function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = []): PatientRecord {
+function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = [], consents: any[] = [], prescriptions: any[] = []): PatientRecord {
     return {
         id: p.id,
         identification: {
@@ -286,7 +328,7 @@ function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [
         consentSigned: p.consent_signed || false,
         odontogram: (p.odontogram as ToothData[]) || Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] as SurfaceData[] })),
         odontogramHistory: (p.odontogram_history as OdontogramSnapshot[]) || [],
-        periodontogram: (p.periodontogram as number[]) || new Array(32).fill(1),
+        periodontogram: ensurePeriodontogramData(p.periodontogram),
         xrays: [],
         budget: budgetItems.map(b => ({
             id: b.id,
@@ -305,6 +347,21 @@ function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [
             date: pay.date,
         })),
         balance: 0, // will be computed by UI
+        consents: consents.map(c => ({
+            id: c.id,
+            title: c.title,
+            content: c.content,
+            signatureData: c.signature_data || '',
+            signedAt: c.signed_at || '',
+            witnessName: c.witness_name || '',
+        })),
+        prescriptions: prescriptions.map(rx => ({
+            id: rx.id,
+            date: rx.date,
+            diagnosis: rx.diagnosis || '',
+            medications: rx.medications || [],
+            notes: rx.notes || '',
+        })),
     };
 }
 

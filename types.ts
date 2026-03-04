@@ -57,7 +57,6 @@ export interface Appointment {
   type: AppointmentType;
   status: AppointmentStatus;
   reminderStatus: ReminderStatus;
-  patientImage?: string;
 }
 
 export interface Stats {
@@ -91,6 +90,11 @@ export interface ClinicalHistory {
   previousDiseases: string;
   familyHistory: string;
   motiveOfConsult: string;
+  bloodType?: string;
+  smoker?: boolean;
+  pregnant?: boolean;
+  habits?: string;
+  observations?: string;
 }
 
 export interface EvolutionNote {
@@ -106,6 +110,35 @@ export interface ClinicalEvent {
   type: 'treatment' | 'extraction' | 'cleaning' | 'diagnose' | 'other';
   description: string;
   toothId?: number;
+}
+
+// --- Consentimiento Informado ---
+
+export interface ConsentForm {
+  id: string;
+  title: string;
+  content: string;
+  signatureData: string; // base64 canvas image
+  signedAt: string;
+  witnessName?: string;
+}
+
+// --- Recetas Médicas ---
+
+export interface PrescriptionMedication {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+}
+
+export interface Prescription {
+  id: string;
+  date: string;
+  diagnosis: string;
+  medications: PrescriptionMedication[];
+  notes: string;
 }
 
 // --- Presupuestos y Pagos ---
@@ -128,6 +161,26 @@ export interface Payment {
   date: string;
 }
 
+// --- Periodontograma Clínico ---
+
+export interface PerioSite {
+  depth: number;      // Profundidad de sondaje (mm) 0-15
+  recession: number;  // Recesión gingival (mm) 0-15
+  bleeding: boolean;  // Sangrado al sondaje (BOP)
+}
+
+export interface PerioToothData {
+  toothId: number;
+  buccal: [PerioSite, PerioSite, PerioSite];   // [Mesial, Central, Distal]
+  lingual: [PerioSite, PerioSite, PerioSite];   // [Mesial, Central, Distal]
+  mobility: 0 | 1 | 2 | 3;
+  furcation: 0 | 1 | 2 | 3;
+}
+
+export interface PeriodontogramData {
+  teeth: PerioToothData[];
+}
+
 export interface PatientRecord {
   id: string;
   identification: PatientIdentification;
@@ -137,11 +190,13 @@ export interface PatientRecord {
   consentSigned: boolean;
   odontogram: ToothData[];
   odontogramHistory?: OdontogramSnapshot[];
-  periodontogram: number[]; // Profundidades de sondaje (mm)
+  periodontogram: PeriodontogramData;
   xrays: string[];
   budget: BudgetItem[];
   payments?: Payment[];
   balance: number;
+  consents: ConsentForm[];
+  prescriptions: Prescription[];
 }
 
 // --- Sistema de Reservas Públicas (Calendly Clone) ---

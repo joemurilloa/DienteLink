@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, User, Phone, MapPin, Mail, Briefcase, Calendar, Plus, ChevronRight } from 'lucide-react';
 import { PatientRecord, PatientIdentification } from '../types';
-import { cn } from '../lib/utils';
+import { cn, createDefaultPeriodontogramData } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 
@@ -71,11 +71,13 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
             history: [],
             consentSigned: false,
             odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
-            periodontogram: new Array(32).fill(1),
+            periodontogram: createDefaultPeriodontogramData(),
             budget: [],
             payments: [],
             xrays: [],
-            balance: 0
+            balance: 0,
+            consents: [],
+            prescriptions: []
         };
 
         onSave(newPatient);

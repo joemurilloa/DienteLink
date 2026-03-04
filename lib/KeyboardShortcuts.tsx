@@ -52,7 +52,7 @@ export const useKeyboardShortcuts = () => {
             break;
           case 'b':
             event.preventDefault();
-            navigate('/booking/config');
+            navigate('/booking/manage');
             break;
           case 'm':
             event.preventDefault();
@@ -137,7 +137,7 @@ const showShortcutsHelp = () => {
     { keys: 'Ctrl+L', action: 'Ir a Calendario' },
     { keys: 'Ctrl+K', action: 'Búsqueda Global' },
     { keys: 'Ctrl+N', action: 'Nuevo Paciente' },
-    { keys: 'Ctrl+B', action: 'Configurar Booking' },
+    { keys: 'Ctrl+B', action: 'Gestión de Reservas' },
     { keys: 'Ctrl+M', action: 'Gestionar Solicitudes' },
     { keys: 'Alt+1-5', action: 'Navegación Rápida' },
     { keys: 'ESC', action: 'Cancelar/Cerrar' },

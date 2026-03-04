@@ -8,7 +8,7 @@ import PatientList from './components/PatientList';
 import NewPatientModal from './components/NewPatientModal';
 import PatientConsultationView from './components/PatientConsultationView';
 import PublicBookingPage from './components/PublicBookingPage';
-// AppointmentRequestsManager replaced by unified BookingManagementView
+// BookingManagementView handles booking requests
 import BookingManagementView from './components/BookingManagementView';
 import { whatsappService } from './services/whatsappService';
 import { persistenceService } from './services/persistenceService';
@@ -20,8 +20,6 @@ import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcut
 
 // Lazy loading for better performance
 const PatientRecord = React.lazy(() => import('./components/PatientRecord'));
-const Odontogram = React.lazy(() => import('./components/Odontogram'));
-const XRayViewer = React.lazy(() => import('./components/XRayViewer'));
 import GlobalSearch from './components/GlobalSearch';
 import { Appointment, ReminderStatus, PatientRecord as PatientRecordType, AppointmentType, AppointmentRequest } from './types';
 import { cn, generateId } from './lib/utils';
@@ -45,8 +43,6 @@ const Dashboard: React.FC = () => {
   const [allPatients, setAllPatients] = useState(() => persistenceService.getPatients());
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
-  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
   const navigate = useNavigate();
 
   const today = new Date().toISOString().split('T')[0];
@@ -488,6 +484,7 @@ const CalendarView: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
 
   // Refresh when a booking request is approved and creates an appointment
   useEffect(() => {
@@ -510,8 +507,22 @@ const CalendarView: React.FC = () => {
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
-  const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  // Navigation helpers per view
+  const handlePrev = () => {
+    const d = new Date(currentDate);
+    if (viewMode === 'month') d.setMonth(d.getMonth() - 1);
+    else if (viewMode === 'week') d.setDate(d.getDate() - 7);
+    else d.setDate(d.getDate() - 1);
+    setCurrentDate(d);
+  };
+  const handleNext = () => {
+    const d = new Date(currentDate);
+    if (viewMode === 'month') d.setMonth(d.getMonth() + 1);
+    else if (viewMode === 'week') d.setDate(d.getDate() + 7);
+    else d.setDate(d.getDate() + 1);
+    setCurrentDate(d);
+  };
+  const handleToday = () => setCurrentDate(new Date());
 
   const handleAddAppointment = async () => {
     setFormError('');
@@ -567,14 +578,47 @@ const CalendarView: React.FC = () => {
   };
 
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const dayNamesShort = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const dayNamesFull = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const days = daysInMonth(year, month);
   const skip = firstDayOfMonth(year, month);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 - 20:00
+
+  // Week helpers
+  const getWeekDates = () => {
+    const d = new Date(currentDate);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Start on Monday
+    const monday = new Date(d.setDate(diff));
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      return date;
+    });
+  };
+
+  const fmtDate = (d: Date) => d.toISOString().split('T')[0];
+  const fmtHour = (h: number) => `${String(h).padStart(2, '0')}:00`;
+
+  // Header label
+  const headerLabel = viewMode === 'month'
+    ? `${monthNames[month]} ${year}`
+    : viewMode === 'week'
+      ? (() => {
+        const dates = getWeekDates();
+        const s = dates[0]; const e = dates[6];
+        return s.getMonth() === e.getMonth()
+          ? `${s.getDate()} – ${e.getDate()} ${monthNames[s.getMonth()]} ${s.getFullYear()}`
+          : `${s.getDate()} ${monthNames[s.getMonth()].slice(0, 3)} – ${e.getDate()} ${monthNames[e.getMonth()].slice(0, 3)} ${e.getFullYear()}`;
+      })()
+      : `${dayNamesFull[currentDate.getDay()]} ${currentDate.getDate()} de ${monthNames[currentDate.getMonth()]} ${year}`;
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95">←</button>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Agenda</h2>
@@ -587,65 +631,254 @@ const CalendarView: React.FC = () => {
         </button>
       </header>
 
-      <div className="card-premium p-6 mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-slate-900">{monthNames[month]} {year}</h3>
-          <div className="flex gap-2">
-            <button onClick={handlePrevMonth} className="p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-600">←</button>
-            <button onClick={handleNextMonth} className="p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-600">→</button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-7 gap-4">
-          {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(d => (
-            <div key={d} className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 py-3">{d}</div>
-          ))}
-          {Array.from({ length: skip }).map((_, i) => <div key={`skip-${i}`} />)}
-          {Array.from({ length: days }).map((_, i) => {
-            const d = i + 1;
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const dayApts = appointments.filter(a => a.date === dateStr);
-            const isToday = new Date().toISOString().split('T')[0] === dateStr;
-
-            return (
-              <div
-                key={d}
-                onClick={() => {
-                  setNewApt(prev => ({ ...prev, date: dateStr }));
-                  setIsAdding(true);
-                }}
+      {/* View Mode Toggle + Navigation */}
+      <div className="card-premium p-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* View selector */}
+          <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+            {([['month', 'Mes'], ['week', 'Semana'], ['day', 'Día']] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
                 className={cn(
-                  "min-h-[100px] p-3 rounded-xl border transition-all cursor-pointer group hover:border-blue-200 hover:shadow-md",
-                  isToday ? "bg-blue-50 border-blue-200" : "bg-white border-slate-100"
+                  "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
+                  viewMode === mode
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
                 )}
               >
-                <span className={cn(
-                  "text-xs font-bold mb-1.5 block",
-                  isToday ? "text-blue-600" : "text-slate-400 group-hover:text-blue-500"
-                )}>{d}</span>
-                <div className="space-y-1">
-                  {dayApts.map(a => (
-                    <div key={a.id} className="px-2 py-1 bg-blue-600 text-white rounded-md text-[9px] font-medium truncate flex items-center justify-between gap-1">
-                      <span className="truncate">{a.time} - {a.patientName}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }}
-                        className="text-red-300 hover:text-red-100 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={10} />
-                      </button>
-                    </div>
-                  ))}
-                  {dayApts.length === 0 && (
-                    <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Plus size={12} className="text-blue-300" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center gap-3">
+            <button onClick={handleToday} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100 transition-all border border-blue-100">
+              Hoy
+            </button>
+            <button onClick={handlePrev} className="p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-600">←</button>
+            <h3 className="text-lg font-bold text-slate-900 min-w-[200px] text-center">{headerLabel}</h3>
+            <button onClick={handleNext} className="p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-600">→</button>
+          </div>
         </div>
       </div>
+
+      {/* ══════ MONTHLY VIEW ══════ */}
+      {viewMode === 'month' && (
+        <div className="card-premium p-6 mb-6">
+          <div className="grid grid-cols-7 gap-4">
+            {dayNamesShort.map(d => (
+              <div key={d} className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 py-3">{d}</div>
+            ))}
+            {Array.from({ length: skip }).map((_, i) => <div key={`skip-${i}`} />)}
+            {Array.from({ length: days }).map((_, i) => {
+              const d = i + 1;
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              const dayApts = appointments.filter(a => a.date === dateStr);
+              const isToday = todayStr === dateStr;
+
+              return (
+                <div
+                  key={d}
+                  onClick={() => {
+                    setNewApt(prev => ({ ...prev, date: dateStr }));
+                    setCurrentDate(new Date(dateStr));
+                    setViewMode('day');
+                  }}
+                  className={cn(
+                    "min-h-[100px] p-3 rounded-xl border transition-all cursor-pointer group hover:border-blue-200 hover:shadow-md",
+                    isToday ? "bg-blue-50 border-blue-200" : "bg-white border-slate-100"
+                  )}
+                >
+                  <span className={cn(
+                    "text-xs font-bold mb-1.5 block",
+                    isToday ? "text-blue-600" : "text-slate-400 group-hover:text-blue-500"
+                  )}>{d}</span>
+                  <div className="space-y-1">
+                    {dayApts.map(a => (
+                      <div key={a.id} className="px-2 py-1 bg-blue-600 text-white rounded-md text-[9px] font-medium truncate flex items-center justify-between gap-1">
+                        <span className="truncate">{a.time} - {a.patientName}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }}
+                          className="text-red-300 hover:text-red-100 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      </div>
+                    ))}
+                    {dayApts.length === 0 && (
+                      <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Plus size={12} className="text-blue-300" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ══════ WEEKLY VIEW ══════ */}
+      {viewMode === 'week' && (
+        <div className="card-premium p-4 mb-6 overflow-x-auto">
+          <div className="min-w-[700px]">
+            {/* Day headers */}
+            <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0 border-b border-slate-200 pb-3 mb-0">
+              <div />
+              {getWeekDates().map((date, i) => {
+                const dateStr = fmtDate(date);
+                const isToday = dateStr === todayStr;
+                const dayApts = appointments.filter(a => a.date === dateStr);
+                return (
+                  <div key={i} className="text-center">
+                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider", isToday ? "text-blue-600" : "text-slate-400")}>
+                      {dayNamesShort[(i + 1) % 7]}
+                    </p>
+                    <button
+                      onClick={() => { setCurrentDate(date); setViewMode('day'); }}
+                      className={cn(
+                        "w-9 h-9 rounded-full text-sm font-bold mt-1 transition-all",
+                        isToday ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-blue-50"
+                      )}
+                    >
+                      {date.getDate()}
+                    </button>
+                    {dayApts.length > 0 && (
+                      <div className="flex justify-center mt-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Time grid */}
+            <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0">
+              {HOURS.map(hour => (
+                <React.Fragment key={hour}>
+                  <div className="h-16 flex items-start justify-end pr-3 pt-0.5">
+                    <span className="text-[10px] font-semibold text-slate-400">{fmtHour(hour)}</span>
+                  </div>
+                  {getWeekDates().map((date, di) => {
+                    const dateStr = fmtDate(date);
+                    const hourApts = appointments.filter(a => {
+                      if (a.date !== dateStr) return false;
+                      const aptHour = parseInt(a.time.split(':')[0]);
+                      return aptHour === hour;
+                    });
+                    const isToday = dateStr === todayStr;
+                    return (
+                      <div
+                        key={`${hour}-${di}`}
+                        onClick={() => {
+                          setNewApt(prev => ({ ...prev, date: dateStr, time: fmtHour(hour) }));
+                          setIsAdding(true);
+                        }}
+                        className={cn(
+                          "h-16 border-t border-l border-slate-100 px-1 py-0.5 cursor-pointer hover:bg-blue-50/50 transition-colors relative group",
+                          isToday && "bg-blue-50/30"
+                        )}
+                      >
+                        {hourApts.map(a => (
+                          <div key={a.id} className="px-1.5 py-1 bg-blue-600 text-white rounded-md text-[10px] font-medium mb-0.5 truncate flex items-center justify-between gap-0.5">
+                            <span className="truncate">{a.time} {a.patientName}</span>
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-red-300 hover:text-red-100 flex-shrink-0 opacity-0 group-hover:opacity-100">
+                              <Trash2 size={8} />
+                            </button>
+                          </div>
+                        ))}
+                        {hourApts.length === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Plus size={10} className="text-blue-300" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════ DAILY VIEW ══════ */}
+      {viewMode === 'day' && (
+        <div className="card-premium p-6 mb-6">
+          <div className="space-y-0">
+            {HOURS.map(hour => {
+              const dateStr = fmtDate(currentDate);
+              const hourApts = appointments.filter(a => {
+                if (a.date !== dateStr) return false;
+                const aptHour = parseInt(a.time.split(':')[0]);
+                return aptHour === hour;
+              });
+              const isNow = todayStr === dateStr && new Date().getHours() === hour;
+
+              return (
+                <div
+                  key={hour}
+                  className={cn(
+                    "flex gap-4 border-t border-slate-100 min-h-[72px] group cursor-pointer hover:bg-blue-50/40 transition-colors",
+                    isNow && "bg-blue-50/60"
+                  )}
+                  onClick={() => {
+                    setNewApt(prev => ({ ...prev, date: dateStr, time: fmtHour(hour) }));
+                    setIsAdding(true);
+                  }}
+                >
+                  {/* Hour label */}
+                  <div className="w-16 flex-shrink-0 pt-2 text-right pr-3">
+                    <span className={cn("text-xs font-semibold", isNow ? "text-blue-600" : "text-slate-400")}>{fmtHour(hour)}</span>
+                    {isNow && <div className="w-2 h-2 bg-blue-600 rounded-full ml-auto mt-1" />}
+                  </div>
+
+                  {/* Appointments */}
+                  <div className="flex-1 py-2 space-y-2">
+                    {hourApts.map(a => (
+                      <div key={a.id} className="flex items-center justify-between p-3 bg-blue-600 text-white rounded-xl shadow-sm">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            {a.patientName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-sm truncate">{a.patientName}</h4>
+                            <p className="text-blue-200 text-xs">{a.time} · {a.type} · {a.status}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {a.patientId && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigate(`/patient/${a.patientId}`); }}
+                              className="px-2.5 py-1.5 bg-white/20 rounded-lg text-[10px] font-semibold hover:bg-white/30 transition-all"
+                            >
+                              Ver
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-red-200 hover:text-red-100 hover:bg-red-500/30 transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {hourApts.length === 0 && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-blue-400 text-xs font-medium py-2">
+                        <Plus size={12} /> Agregar cita
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {isAdding && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm page-transition">
@@ -738,11 +971,35 @@ const CalendarView: React.FC = () => {
 
 const SettingsView: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
-  const doctorName = profile?.full_name || 'Doctor';
-  const doctorRole = profile?.role || 'Odontólogo';
-  const doctorInitials = doctorName.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'DR';
+  const { profile, updateProfile, signOut } = useAuth();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    full_name: profile?.full_name || '',
+    role: profile?.role || 'Odontólogo',
+    clinic_name: profile?.clinic_name || '',
+    phone: profile?.phone || '',
+  });
+
+  // Sync form when profile loads
+  React.useEffect(() => {
+    if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '' });
+  }, [profile]);
+
+  const doctorName = profile?.full_name || 'Doctor';
+  const doctorInitials = doctorName.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'DR';
+
+  const handleSaveProfile = async () => {
+    if (!form.full_name.trim()) return;
+    setSaving(true);
+    try {
+      await updateProfile(form);
+      setIsEditing(false);
+      sileo.success('Perfil actualizado');
+    } catch { sileo.error('Error al guardar'); }
+    setSaving(false);
+  };
 
   const handleClearData = async () => {
     await persistenceService.clearAllData();
@@ -754,6 +1011,21 @@ const SettingsView: React.FC = () => {
     bookingService.reset();
     await signOut();
   };
+
+  const SettingsInput = ({ label, value, field }: { label: string; value: string; field: keyof typeof form }) => (
+    <div>
+      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">{label}</label>
+      {isEditing ? (
+        <input
+          value={value}
+          onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all bg-white"
+        />
+      ) : (
+        <p className="text-sm font-medium text-slate-900 py-2.5">{value || <span className="text-slate-300">Sin definir</span>}</p>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
@@ -772,15 +1044,31 @@ const SettingsView: React.FC = () => {
       </header>
 
       <div className="max-w-2xl space-y-5">
+        {/* Profile Card - Editable */}
         <div className="card-premium p-6">
-          <h3 className="text-base font-bold text-slate-900 mb-5">Perfil del Doctor</h3>
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-xl bg-blue-600 flex items-center justify-center ring-2 ring-blue-500/20">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-base font-bold text-slate-900">Perfil del Doctor</h3>
+            {!isEditing ? (
+              <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-blue-100 transition-all border border-blue-100">Editar</button>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
+                <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center gap-1.5">
+                  {saving && <span className="animate-spin">⏳</span>}
+                  Guardar
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex items-start gap-5">
+            <div className="w-16 h-16 rounded-xl bg-blue-600 flex items-center justify-center ring-2 ring-blue-500/20 shrink-0">
               <span className="text-white font-bold text-xl">{doctorInitials}</span>
             </div>
-            <div>
-              <p className="text-lg font-bold text-slate-900">{doctorName}</p>
-              <p className="text-sm font-medium text-slate-400">{doctorRole}</p>
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SettingsInput label="Nombre completo" value={form.full_name} field="full_name" />
+              <SettingsInput label="Especialidad / Rol" value={form.role} field="role" />
+              <SettingsInput label="Nombre de la clínica" value={form.clinic_name} field="clinic_name" />
+              <SettingsInput label="Teléfono" value={form.phone} field="phone" />
             </div>
           </div>
         </div>
