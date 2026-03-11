@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { setCurrencyConfig } from '../lib/utils';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -19,6 +20,8 @@ export interface DoctorProfile {
   role: string;
   clinic_name: string;
   phone: string | null;
+  currency: string;
+  locale: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,7 +47,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
 
     if (!error && data) {
-      setProfile(data as DoctorProfile);
+      const prof: DoctorProfile = {
+        ...data as DoctorProfile,
+        currency: data.currency || 'HNL',
+        locale: data.locale || 'es-HN',
+      };
+      setProfile(prof);
+      setCurrencyConfig(prof.currency, prof.locale);
     }
   };
 
@@ -105,7 +114,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', user.id);
     
     if (!error) {
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      const updated = profile ? { ...profile, ...updates } : null;
+      setProfile(updated);
+      if (updated) {
+        setCurrencyConfig(updated.currency, updated.locale);
+      }
     }
   };
 

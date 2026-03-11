@@ -288,9 +288,45 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
             y = doc.lastAutoTable.finalY + 8;
         }
 
+        // ── 3b. Periodontograma ──
+        const perioTeeth = (patient.periodontogram?.teeth || []).filter(t => {
+            const hasMeasurements = [...t.buccal, ...t.lingual].some(s => s.depth > 0 || s.recession > 0 || s.bleeding);
+            return hasMeasurements || t.mobility > 0 || t.furcation > 0;
+        });
+        if (perioTeeth.length > 0) {
+            sectionTitle('4. Periodontograma – Hallazgos');
+            const perioData = perioTeeth.map(t => {
+                const buccalDepths = t.buccal.map(s => s.depth).join('/');
+                const lingualDepths = t.lingual.map(s => s.depth).join('/');
+                const buccalRec = t.buccal.map(s => s.recession).join('/');
+                const lingualRec = t.lingual.map(s => s.recession).join('/');
+                const bleeding = [...t.buccal, ...t.lingual].filter(s => s.bleeding).length;
+                return [
+                    `#${t.toothId}`,
+                    `${buccalDepths}`,
+                    `${lingualDepths}`,
+                    `${buccalRec}`,
+                    `${lingualRec}`,
+                    bleeding > 0 ? `${bleeding}/6` : '-',
+                    t.mobility > 0 ? String(t.mobility) : '-',
+                    t.furcation > 0 ? String(t.furcation) : '-',
+                ];
+            });
+            doc.autoTable({
+                startY: y,
+                head: [['Pieza', 'Prof. Vest.', 'Prof. Ling.', 'Rec. Vest.', 'Rec. Ling.', 'Sangrado', 'Mov.', 'Furc.']],
+                body: perioData,
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+                styles: { fontSize: 7, cellPadding: 2 },
+                margin: { left: 20, right: 20 }
+            });
+            y = doc.lastAutoTable.finalY + 8;
+        }
+
         // ── 4. Notas de Evolución ──
         if (patient.evolutionNotes.length > 0) {
-            sectionTitle('4. Notas de Evolución');
+            sectionTitle('5. Notas de Evolución');
             const notesData = patient.evolutionNotes.map(n => [n.date, n.procedure, n.content]);
             doc.autoTable({
                 startY: y,
@@ -307,7 +343,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
         // ── 5. Historial Clínico ──
         if (patient.history.length > 0) {
-            sectionTitle('5. Historial de Procedimientos');
+            sectionTitle('6. Historial de Procedimientos');
             const historyData = patient.history.map(e => [
                 e.date,
                 e.type === 'treatment' ? 'Tratamiento' : e.type === 'extraction' ? 'Extracción' : e.type === 'cleaning' ? 'Limpieza' : 'Diagnóstico',
@@ -328,7 +364,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
         // ── 6. Presupuesto ──
         if (budgetItems.length > 0) {
-            sectionTitle('6. Plan de Tratamiento y Presupuesto');
+            sectionTitle('7. Plan de Tratamiento y Presupuesto');
             const budgetData = budgetItems.map(b => [
                 b.treatment,
                 b.toothId ? `#${b.toothId}` : '',
@@ -354,10 +390,37 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
             y += 12;
         }
 
+        // ── 7b. Historial de Pagos ──
+        const paymentsList = patient.payments || [];
+        if (paymentsList.length > 0) {
+            sectionTitle('8. Historial de Pagos');
+            const payData = paymentsList.map(p => [
+                p.date,
+                formatCurrency(p.amount),
+                p.method === 'cash' ? 'Efectivo' : p.method === 'card' ? 'Tarjeta' : p.method === 'transfer' ? 'Transferencia' : 'Otro',
+                p.note || '',
+            ]);
+            doc.autoTable({
+                startY: y,
+                head: [['Fecha', 'Monto', 'Método', 'Nota']],
+                body: payData,
+                theme: 'striped',
+                headStyles: { fillColor: [16, 185, 129], fontSize: 9 },
+                styles: { fontSize: 8 },
+                margin: { left: 20, right: 20 }
+            });
+            y = doc.lastAutoTable.finalY + 4;
+            checkPage(10);
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text(`Total pagado: ${formatCurrency(totalPaid)}`, 20, y + 4);
+            y += 12;
+        }
+
         // ── 7. Recetas ──
         const rxList = patient.prescriptions || [];
         if (rxList.length > 0) {
-            sectionTitle('7. Recetas Emitidas');
+            sectionTitle('9. Recetas Emitidas');
             rxList.forEach((rx, i) => {
                 checkPage(15);
                 doc.setFontSize(10);
@@ -378,7 +441,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         // ── 8. Consentimientos ──
         const consentList = patient.consents || [];
         if (consentList.length > 0) {
-            sectionTitle('8. Consentimientos Firmados');
+            sectionTitle('10. Consentimientos Firmados');
             consentList.forEach(c => {
                 checkPage(10);
                 doc.setFontSize(9);

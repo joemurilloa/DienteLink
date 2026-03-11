@@ -1,14 +1,23 @@
 
-import { PerioSite, PerioToothData, PeriodontogramData } from '../types';
+import { PerioSite, PerioToothData, PeriodontogramData, PatientRecord, Appointment } from '../types';
 
 export function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
+// Default currency config — overridden by doctor profile
+let _currencyCode = 'HNL';
+let _currencyLocale = 'es-HN';
+
+export function setCurrencyConfig(currency: string, locale: string) {
+  _currencyCode = currency;
+  _currencyLocale = locale;
+}
+
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('es-HN', {
+  return new Intl.NumberFormat(_currencyLocale, {
     style: 'currency',
-    currency: 'HNL',
+    currency: _currencyCode,
   }).format(amount);
 }
 
@@ -54,4 +63,69 @@ export function ensurePeriodontogramData(raw: any): PeriodontogramData {
   if (Array.isArray(raw)) return migrateLegacyPeriodontogram(raw);
   if (raw.teeth && Array.isArray(raw.teeth)) return raw as PeriodontogramData;
   return createDefaultPeriodontogramData();
+}
+
+// ===================== CSV Export Helpers =====================
+
+function escapeCSV(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function downloadCSV(filename: string, csvContent: string) {
+  const BOM = '\uFEFF'; // UTF-8 BOM for Excel compatibility
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportPatientsCSV(patients: PatientRecord[]) {
+  const headers = ['Nombre', 'Teléfono', 'Email', 'Género', 'Fecha Nacimiento', 'Dirección', 'Ocupación', 'Alergias', 'Motivo Consulta', 'Notas Evolución', 'Procedimientos', 'Total Presupuesto', 'Total Pagado', 'Saldo'];
+  const rows = patients.map(p => {
+    const budgetTotal = p.budget.reduce((s, b) => s + b.unitCost * b.quantity, 0);
+    const paidTotal = (p.payments || []).reduce((s, pay) => s + pay.amount, 0);
+    return [
+      p.identification.fullName,
+      p.identification.phone,
+      p.identification.email,
+      p.identification.gender,
+      p.identification.birthDate,
+      p.identification.address,
+      p.identification.occupation,
+      p.clinicalHistory.allergies.join('; '),
+      p.clinicalHistory.motiveOfConsult,
+      String(p.evolutionNotes.length),
+      String(p.history.length),
+      String(budgetTotal),
+      String(paidTotal),
+      String(Math.max(0, budgetTotal - paidTotal)),
+    ].map(escapeCSV);
+  });
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const date = new Date().toISOString().split('T')[0];
+  downloadCSV(`pacientes_${date}.csv`, csv);
+}
+
+export function exportAppointmentsCSV(appointments: Appointment[]) {
+  const headers = ['Paciente', 'Fecha', 'Hora', 'Tipo', 'Estado', 'Teléfono', 'Recordatorio'];
+  const rows = appointments.map(a => [
+    a.patientName,
+    a.date,
+    a.time,
+    a.type,
+    a.status,
+    a.phoneNumber,
+    a.reminderStatus,
+  ].map(escapeCSV));
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const date = new Date().toISOString().split('T')[0];
+  downloadCSV(`citas_${date}.csv`, csv);
 }

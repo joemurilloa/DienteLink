@@ -130,23 +130,46 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     if (!req) return;
 
     if (newStatus === 'approved') {
-      // When re-approving, also create the appointment
+      // When re-approving, only create appointment if one doesn't already exist
       await bookingService.updateRequestStatus(id, 'approved');
-      const appointment: Appointment = {
-        id: generateId(),
-        patientId: '',
-        patientName: req.patientName,
-        phoneNumber: req.patientPhone || '',
-        time: req.requestedTime,
-        date: req.requestedDate,
-        type: req.appointmentType,
-        status: 'Programada',
-        reminderStatus: 'not_sent',
-      };
-      await persistenceService.saveAppointment(appointment);
-      window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: appointment }));
+      const existingAppts = persistenceService.getAppointments();
+      const alreadyExists = existingAppts.some(a =>
+        a.patientName === req.patientName &&
+        a.date === req.requestedDate &&
+        a.time === req.requestedTime &&
+        a.status !== 'Eliminada'
+      );
+      if (!alreadyExists) {
+        const appointment: Appointment = {
+          id: generateId(),
+          patientId: '',
+          patientName: req.patientName,
+          phoneNumber: req.patientPhone || '',
+          time: req.requestedTime,
+          date: req.requestedDate,
+          type: req.appointmentType,
+          status: 'Programada',
+          reminderStatus: 'not_sent',
+        };
+        await persistenceService.saveAppointment(appointment);
+        window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: appointment }));
+      }
       sileo.success({ title: `Cita re-aprobada para ${req.patientName}`, description: `${req.requestedDate} a las ${req.requestedTime}` });
     } else {
+      // If revoking an approved request, clean up the linked appointment
+      if (req.status === 'approved') {
+        const appts = persistenceService.getAppointments();
+        const linkedAppt = appts.find(a =>
+          a.patientName === req.patientName &&
+          a.date === req.requestedDate &&
+          a.time === req.requestedTime &&
+          a.status !== 'Eliminada'
+        );
+        if (linkedAppt) {
+          await persistenceService.deleteAppointment(linkedAppt.id);
+          window.dispatchEvent(new CustomEvent('appointmentDeleted'));
+        }
+      }
       await bookingService.updateRequestStatus(id, newStatus);
       sileo.info({ title: newStatus === 'pending' ? 'Solicitud marcada como pendiente' : 'Solicitud rechazada' });
     }

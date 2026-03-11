@@ -245,7 +245,7 @@ const PublicBookingPage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !settings) {
     return (
       <div className="min-h-screen min-h-[100dvh] bg-white flex items-center justify-center p-6">
         <div className="text-center max-w-sm">

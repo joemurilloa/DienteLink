@@ -16,8 +16,19 @@ class PersistenceService {
     private appointments: Appointment[] = [];
     private userId: string | null = null;
     private _ready = false;
+    private _onError: ((message: string) => void) | null = null;
 
     get ready() { return this._ready; }
+
+    /** Register a callback to surface Supabase write errors to the UI */
+    onError(cb: (message: string) => void) { this._onError = cb; }
+
+    private notifyError(context: string, error: any) {
+        console.error(`[Supabase] ${context}:`, error);
+        if (this._onError) {
+            this._onError(`Error al guardar ${context}. Los cambios se mantienen localmente pero no se sincronizaron con la nube.`);
+        }
+    }
 
     // --- Initialization (loads everything from Supabase once) ---
     async init(userId: string): Promise<void> {
@@ -102,7 +113,7 @@ class PersistenceService {
             updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
 
-        if (error) console.error('[Supabase] savePatient error:', error);
+        if (error) this.notifyError('paciente', error);
 
         // Upsert evolution notes individually (safe for concurrent edits)
         if (patient.evolutionNotes.length > 0) {
@@ -117,7 +128,7 @@ class PersistenceService {
                 })),
                 { onConflict: 'id' }
             );
-            if (notesErr) console.error('[Supabase] evolution_notes upsert error:', notesErr);
+            if (notesErr) this.notifyError('notas de evolución', notesErr);
         }
 
         // Upsert clinical events individually
@@ -134,7 +145,7 @@ class PersistenceService {
                 })),
                 { onConflict: 'id' }
             );
-            if (eventsErr) console.error('[Supabase] clinical_events upsert error:', eventsErr);
+            if (eventsErr) this.notifyError('eventos clínicos', eventsErr);
         }
 
         // Upsert budget items
@@ -153,7 +164,7 @@ class PersistenceService {
                 })),
                 { onConflict: 'id' }
             );
-            if (budgetErr) console.error('[Supabase] budget_items upsert error:', budgetErr);
+            if (budgetErr) this.notifyError('presupuesto', budgetErr);
         }
 
         // Upsert payments
@@ -170,7 +181,7 @@ class PersistenceService {
                 })),
                 { onConflict: 'id' }
             );
-            if (payErr) console.error('[Supabase] payments upsert error:', payErr);
+            if (payErr) this.notifyError('pagos', payErr);
         }
 
         // Upsert consent forms
@@ -188,7 +199,7 @@ class PersistenceService {
                 })),
                 { onConflict: 'id' }
             );
-            if (consentErr) console.error('[Supabase] consent_forms upsert error:', consentErr);
+            if (consentErr) this.notifyError('consentimientos', consentErr);
         }
 
         // Upsert prescriptions
@@ -205,7 +216,7 @@ class PersistenceService {
                 })),
                 { onConflict: 'id' }
             );
-            if (rxErr) console.error('[Supabase] prescriptions upsert error:', rxErr);
+            if (rxErr) this.notifyError('recetas', rxErr);
         }
     }
 
@@ -253,9 +264,10 @@ class PersistenceService {
             type: appointment.type,
             status: appointment.status,
             reminder_status: appointment.reminderStatus,
+            deleted_at: appointment.deletedAt || null,
         }, { onConflict: 'id' });
 
-        if (error) console.error('[Supabase] saveAppointment error:', error);
+        if (error) this.notifyError('cita', error);
     }
 
     async deleteAppointment(appointmentId: string): Promise<void> {
@@ -265,7 +277,7 @@ class PersistenceService {
             apt.status = 'Eliminada';
             apt.deletedAt = new Date().toISOString();
         }
-        await supabase.from('appointments').update({ status: 'Eliminada' }).eq('id', appointmentId).eq('doctor_id', this.uid());
+        await supabase.from('appointments').update({ status: 'Eliminada', deleted_at: apt?.deletedAt || new Date().toISOString() }).eq('id', appointmentId).eq('doctor_id', this.uid());
     }
 
     async restoreAppointment(appointmentId: string): Promise<void> {
@@ -274,7 +286,7 @@ class PersistenceService {
             apt.status = 'Programada';
             apt.deletedAt = undefined;
         }
-        await supabase.from('appointments').update({ status: 'Programada' }).eq('id', appointmentId).eq('doctor_id', this.uid());
+        await supabase.from('appointments').update({ status: 'Programada', deleted_at: null }).eq('id', appointmentId).eq('doctor_id', this.uid());
     }
 
     async permanentlyDeleteAppointment(appointmentId: string): Promise<void> {
@@ -399,6 +411,7 @@ function dbToAppointment(a: any): Appointment {
         type: a.type,
         status: a.status,
         reminderStatus: a.reminder_status || 'not_sent',
+        deletedAt: a.deleted_at || undefined,
     };
 }
 

@@ -3,7 +3,11 @@ import React, { useState } from 'react';
 import { Appointment, ReminderStatus } from '../types';
 import { cn } from '../lib/utils';
 import { whatsappService } from '../services/whatsappService';
-import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity } from 'lucide-react';
+import { emailReminderService } from '../services/emailReminderService';
+import { persistenceService } from '../services/persistenceService';
+import { useAuth } from '../services/authService';
+import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail } from 'lucide-react';
+import { sileo } from 'sileo';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -22,10 +26,13 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   Programada: { label: 'Programada', color: 'bg-blue-100 text-blue-700' },
   Completada: { label: 'Completada', color: 'bg-emerald-100 text-emerald-700' },
   Retrasada: { label: 'Retrasada', color: 'bg-amber-100 text-amber-700' },
+  Eliminada: { label: 'Eliminada', color: 'bg-red-100 text-red-700' },
 };
 
 const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient }) => {
   const [showDetail, setShowDetail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const { profile } = useAuth();
   const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-emerald-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
   const statusInfo = statusLabels[appointment.status] || statusLabels.Programada;
@@ -36,6 +43,38 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
     if (onReminderSent) onReminderSent(appointment.id, 'sending');
     const result = await whatsappService.sendAppointmentReminder(appointment);
     if (onReminderSent) onReminderSent(appointment.id, result.success ? 'sent' : 'error');
+  };
+
+  const handleSendEmail = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (emailStatus === 'sending' || emailStatus === 'sent') return;
+
+    // Look up patient email
+    const patient = appointment.patientId ? persistenceService.getPatientById(appointment.patientId) : undefined;
+    const email = patient?.identification?.email;
+    if (!email) {
+      sileo.warning({ title: 'Sin correo electrónico', description: 'Este paciente no tiene email registrado' });
+      return;
+    }
+
+    setEmailStatus('sending');
+    const result = await emailReminderService.sendReminder({
+      patientName: appointment.patientName,
+      patientEmail: email,
+      appointmentDate: appointment.date,
+      appointmentTime: appointment.time,
+      appointmentType: appointment.type,
+      doctorName: profile?.full_name || 'Doctor',
+      clinicName: profile?.clinic_name || '',
+    });
+
+    if (result.success) {
+      setEmailStatus('sent');
+      sileo.success({ title: `Email enviado a ${appointment.patientName}`, description: email });
+    } else {
+      setEmailStatus('error');
+      sileo.error({ title: 'Error al enviar email', description: result.error || 'Intente de nuevo' });
+    }
   };
 
   const fmtTime = (t: string) => {
@@ -175,7 +214,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
             </div>
 
             {/* Footer Actions */}
-            <div className="px-5 pb-5 pt-2 flex gap-2.5">
+            <div className="px-5 pb-5 pt-2 space-y-2">
+              <div className="flex gap-2.5">
               <button
                 onClick={(e) => handleSendReminder(e)}
                 disabled={appointment.reminderStatus === 'sending' || appointment.reminderStatus === 'sent'}
@@ -193,17 +233,40 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                 ) : appointment.reminderStatus === 'sent' ? (
                   <><CheckCircle2 size={14} /> Enviado</>
                 ) : (
-                  <><Send size={14} /> Enviar Recordatorio</>
+                  <><Send size={14} /> WhatsApp</>
                 )}
               </button>
+              <button
+                onClick={(e) => handleSendEmail(e)}
+                disabled={emailStatus === 'sending' || emailStatus === 'sent'}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                  emailStatus === 'sent'
+                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                    : emailStatus === 'sending'
+                    ? "bg-slate-100 text-slate-400"
+                    : "bg-violet-600 text-white hover:bg-violet-700 shadow-sm"
+                )}
+              >
+                {emailStatus === 'sending' ? (
+                  <><Loader2 size={14} className="animate-spin" /> Enviando...</>
+                ) : emailStatus === 'sent' ? (
+                  <><CheckCircle2 size={14} /> Email enviado</>
+                ) : (
+                  <><Mail size={14} /> Email</>
+                )}
+              </button>
+              </div>
+              <div className="flex gap-2.5">
               {onNavigateToPatient && appointment.patientId && (
                 <button
                   onClick={() => { setShowDetail(false); onNavigateToPatient(appointment); }}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all"
                 >
                   <User size={14} /> Expediente
                 </button>
               )}
+              </div>
             </div>
           </div>
         </div>
