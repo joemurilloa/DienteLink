@@ -159,7 +159,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => setActiveTab(tab.key as 'schedule' | 'settings' | 'preview')}
               className={cn(
                 'flex items-center gap-2 px-6 py-4 font-semibold transition-colors',
                 activeTab === tab.key

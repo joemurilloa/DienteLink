@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { PatientRecord as PatientRecordType, EvolutionNote, ClinicalEvent, BudgetItem, Payment } from '../types';
+import { PatientRecord as PatientRecordType, PatientIdentification, EvolutionNote, ClinicalEvent, BudgetItem, Payment } from '../types';
 import { cn, formatCurrency, ensurePeriodontogramData } from '../lib/utils';
 import { persistenceService } from '../services/persistenceService';
 import { useAuth } from '../services/authService';
@@ -48,16 +48,21 @@ interface Props {
     onUpdate: (updatedPatient: PatientRecordType) => void;
 }
 
+type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'budget' | 'consent' | 'prescriptions' | 'citas' | 'history';
+
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
     const doctorName = profile?.full_name || 'Doctor';
     const clinicName = profile?.clinic_name || 'DienteLink';
     const [searchParams] = useSearchParams();
-    const initialTab = (searchParams.get('tab') as any) || 'id';
-    const [activeTab, setActiveTab] = useState<'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'budget' | 'consent' | 'prescriptions' | 'citas' | 'history'>(initialTab);
+    const initialTab = (searchParams.get('tab') || 'id') as TabId;
+    const [activeTab, setActiveTab] = useState<TabId>(initialTab);
     const [newNote, setNewNote] = useState({ content: '', procedure: '' });
     const [newEvent, setNewEvent] = useState({ description: '', type: 'treatment' as ClinicalEvent['type'] });
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    // Initial setups for specific tabs/components
     const [snapshotRefresh, setSnapshotRefresh] = useState(0);
     const handleSnapshotSaved = () => setSnapshotRefresh(n => n + 1);
 
@@ -72,7 +77,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab) setActiveTab(tab as any);
+        if (tab) setActiveTab(tab as TabId);
     }, [searchParams]);
 
     const tabs = [
@@ -193,275 +198,18 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         onUpdate({ ...patient, payments: payments.filter(p => p.id !== id) });
     };
 
-    const handleExportPDF = () => {
-        sileo.info({ title: 'Generando expediente...', description: 'Esto puede tomar unos segundos' });
-        
-        const doc = new jsPDF() as any;
-        const pageW = doc.internal.pageSize.getWidth();
-        const pageH = doc.internal.pageSize.getHeight();
-        let y = 15;
-
-        const checkPage = (needed: number) => {
-            if (y + needed > pageH - 20) { doc.addPage(); y = 20; }
-        };
-
-        const sectionTitle = (title: string) => {
-            checkPage(20);
-            y += 6;
-            doc.setFillColor(241, 245, 249);
-            doc.roundedRect(15, y - 5, pageW - 30, 12, 2, 2, 'F');
-            doc.setFontSize(12);
-            doc.setTextColor(15, 23, 42);
-            doc.text(title, 20, y + 3);
-            y += 14;
-        };
-
-        const addField = (label: string, value: string) => {
-            if (!value) return;
-            checkPage(8);
-            doc.setFontSize(9);
-            doc.setTextColor(100, 116, 139);
-            doc.text(label + ':', 20, y);
-            doc.setTextColor(15, 23, 42);
-            doc.text(value, 65, y);
-            y += 6;
-        };
-
-        // ── Header ──
-        doc.setFillColor(37, 99, 235);
-        doc.rect(0, 0, pageW, 35, 'F');
-        doc.setFontSize(20);
-        doc.setTextColor(255, 255, 255);
-        doc.text('Expediente Clínico', pageW / 2, 16, { align: 'center' });
-        doc.setFontSize(10);
-        doc.text(clinicName || 'DienteLink', pageW / 2, 24, { align: 'center' });
-        doc.setFontSize(8);
-        doc.text(`Generado: ${new Date().toLocaleString('es-HN')} | Dr(a). ${doctorName}`, pageW / 2, 31, { align: 'center' });
-        y = 45;
-
-        // ── 1. Datos del Paciente ──
-        sectionTitle('1. Datos del Paciente');
-        addField('Nombre', patient.identification.fullName);
-        addField('Nacimiento', patient.identification.birthDate);
-        addField('Género', patient.identification.gender);
-        addField('Teléfono', patient.identification.phone);
-        addField('Email', patient.identification.email);
-        addField('Dirección', patient.identification.address);
-        addField('Ocupación', patient.identification.occupation);
-        addField('Expediente #', patient.id.slice(0, 8));
-
-        // ── 2. Antecedentes Clínicos ──
-        sectionTitle('2. Antecedentes Clínicos');
-        addField('Alergias', patient.clinicalHistory.allergies.join(', ') || 'Ninguna');
-        addField('Medicamentos', patient.clinicalHistory.medications || 'Ninguno');
-        addField('Enfermedades', patient.clinicalHistory.previousDiseases || 'Ninguna');
-        addField('Ant. Familiares', patient.clinicalHistory.familyHistory || 'Sin datos');
-        if (patient.clinicalHistory.motiveOfConsult) {
-            checkPage(20);
-            doc.setFontSize(9);
-            doc.setTextColor(100, 116, 139);
-            doc.text('Motivo de consulta:', 20, y);
-            y += 5;
-            doc.setTextColor(15, 23, 42);
-            const motive = doc.splitTextToSize(patient.clinicalHistory.motiveOfConsult, pageW - 45);
-            doc.text(motive, 25, y);
-            y += motive.length * 4 + 2;
+    const handleExportPDF = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        sileo.info({ title: 'Generando PDF', description: 'Estructurando el expediente clínico...' });
+        try {
+            const { generatePatientPDF } = await import('../lib/pdfGenerator');
+            await generatePatientPDF(patient, clinicName, doctorName);
+        } catch (error) {
+            sileo.error({ title: 'Error al generar PDF', description: 'Ocurrió un error inesperado al compilar el expediente.' });
+        } finally {
+            setIsExporting(false);
         }
-
-        // ── 3. Odontograma ──
-        const teethWithConditions = (patient.odontogram || []).filter(t => t.surfaces && t.surfaces.length > 0);
-        if (teethWithConditions.length > 0) {
-            sectionTitle('3. Odontograma – Hallazgos');
-            const odontoData = teethWithConditions.map(t => [
-                `#${t.id}`,
-                t.surfaces.map(s => `${s.surface}: ${s.condition}`).join(', ')
-            ]);
-            doc.autoTable({
-                startY: y,
-                head: [['Pieza', 'Condiciones']],
-                body: odontoData,
-                theme: 'striped',
-                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-                styles: { fontSize: 8 },
-                margin: { left: 20, right: 20 }
-            });
-            y = doc.lastAutoTable.finalY + 8;
-        }
-
-        // ── 3b. Periodontograma ──
-        const perioTeeth = (patient.periodontogram?.teeth || []).filter(t => {
-            const hasMeasurements = [...t.buccal, ...t.lingual].some(s => s.depth > 0 || s.recession > 0 || s.bleeding);
-            return hasMeasurements || t.mobility > 0 || t.furcation > 0;
-        });
-        if (perioTeeth.length > 0) {
-            sectionTitle('4. Periodontograma – Hallazgos');
-            const perioData = perioTeeth.map(t => {
-                const buccalDepths = t.buccal.map(s => s.depth).join('/');
-                const lingualDepths = t.lingual.map(s => s.depth).join('/');
-                const buccalRec = t.buccal.map(s => s.recession).join('/');
-                const lingualRec = t.lingual.map(s => s.recession).join('/');
-                const bleeding = [...t.buccal, ...t.lingual].filter(s => s.bleeding).length;
-                return [
-                    `#${t.toothId}`,
-                    `${buccalDepths}`,
-                    `${lingualDepths}`,
-                    `${buccalRec}`,
-                    `${lingualRec}`,
-                    bleeding > 0 ? `${bleeding}/6` : '-',
-                    t.mobility > 0 ? String(t.mobility) : '-',
-                    t.furcation > 0 ? String(t.furcation) : '-',
-                ];
-            });
-            doc.autoTable({
-                startY: y,
-                head: [['Pieza', 'Prof. Vest.', 'Prof. Ling.', 'Rec. Vest.', 'Rec. Ling.', 'Sangrado', 'Mov.', 'Furc.']],
-                body: perioData,
-                theme: 'striped',
-                headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
-                styles: { fontSize: 7, cellPadding: 2 },
-                margin: { left: 20, right: 20 }
-            });
-            y = doc.lastAutoTable.finalY + 8;
-        }
-
-        // ── 4. Notas de Evolución ──
-        if (patient.evolutionNotes.length > 0) {
-            sectionTitle('5. Notas de Evolución');
-            const notesData = patient.evolutionNotes.map(n => [n.date, n.procedure, n.content]);
-            doc.autoTable({
-                startY: y,
-                head: [['Fecha', 'Procedimiento', 'Descripción']],
-                body: notesData,
-                theme: 'striped',
-                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-                styles: { fontSize: 8, cellPadding: 3 },
-                columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 35 } },
-                margin: { left: 20, right: 20 }
-            });
-            y = doc.lastAutoTable.finalY + 8;
-        }
-
-        // ── 5. Historial Clínico ──
-        if (patient.history.length > 0) {
-            sectionTitle('6. Historial de Procedimientos');
-            const historyData = patient.history.map(e => [
-                e.date,
-                e.type === 'treatment' ? 'Tratamiento' : e.type === 'extraction' ? 'Extracción' : e.type === 'cleaning' ? 'Limpieza' : 'Diagnóstico',
-                e.description,
-                e.toothId ? `#${e.toothId}` : ''
-            ]);
-            doc.autoTable({
-                startY: y,
-                head: [['Fecha', 'Tipo', 'Descripción', 'Pieza']],
-                body: historyData,
-                theme: 'striped',
-                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-                styles: { fontSize: 8 },
-                margin: { left: 20, right: 20 }
-            });
-            y = doc.lastAutoTable.finalY + 8;
-        }
-
-        // ── 6. Presupuesto ──
-        if (budgetItems.length > 0) {
-            sectionTitle('7. Plan de Tratamiento y Presupuesto');
-            const budgetData = budgetItems.map(b => [
-                b.treatment,
-                b.toothId ? `#${b.toothId}` : '',
-                b.quantity.toString(),
-                formatCurrency(b.unitCost),
-                formatCurrency(b.unitCost * b.quantity),
-                b.status === 'completed' ? 'Completado' : b.status === 'in_progress' ? 'En curso' : 'Pendiente'
-            ]);
-            doc.autoTable({
-                startY: y,
-                head: [['Tratamiento', 'Pieza', 'Cant.', 'P. Unitario', 'Total', 'Estado']],
-                body: budgetData,
-                theme: 'striped',
-                headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-                styles: { fontSize: 8 },
-                margin: { left: 20, right: 20 }
-            });
-            y = doc.lastAutoTable.finalY + 4;
-            checkPage(20);
-            doc.setFontSize(10);
-            doc.setTextColor(15, 23, 42);
-            doc.text(`Total: ${formatCurrency(totalBudget)}  |  Pagado: ${formatCurrency(totalPaid)}  |  Saldo: ${formatCurrency(pendingBalance)}`, 20, y + 4);
-            y += 12;
-        }
-
-        // ── 7b. Historial de Pagos ──
-        const paymentsList = patient.payments || [];
-        if (paymentsList.length > 0) {
-            sectionTitle('8. Historial de Pagos');
-            const payData = paymentsList.map(p => [
-                p.date,
-                formatCurrency(p.amount),
-                p.method === 'cash' ? 'Efectivo' : p.method === 'card' ? 'Tarjeta' : p.method === 'transfer' ? 'Transferencia' : 'Otro',
-                p.note || '',
-            ]);
-            doc.autoTable({
-                startY: y,
-                head: [['Fecha', 'Monto', 'Método', 'Nota']],
-                body: payData,
-                theme: 'striped',
-                headStyles: { fillColor: [16, 185, 129], fontSize: 9 },
-                styles: { fontSize: 8 },
-                margin: { left: 20, right: 20 }
-            });
-            y = doc.lastAutoTable.finalY + 4;
-            checkPage(10);
-            doc.setFontSize(10);
-            doc.setTextColor(15, 23, 42);
-            doc.text(`Total pagado: ${formatCurrency(totalPaid)}`, 20, y + 4);
-            y += 12;
-        }
-
-        // ── 7. Recetas ──
-        const rxList = patient.prescriptions || [];
-        if (rxList.length > 0) {
-            sectionTitle('9. Recetas Emitidas');
-            rxList.forEach((rx, i) => {
-                checkPage(15);
-                doc.setFontSize(10);
-                doc.setTextColor(15, 23, 42);
-                doc.text(`${rx.date} — ${rx.diagnosis}`, 20, y);
-                y += 5;
-                rx.medications.forEach(med => {
-                    checkPage(10);
-                    doc.setFontSize(9);
-                    doc.setTextColor(51, 65, 85);
-                    doc.text(`  • ${med.name} — ${med.dosage} — ${med.frequency} — ${med.duration}`, 25, y);
-                    y += 4.5;
-                });
-                y += 3;
-            });
-        }
-
-        // ── 8. Consentimientos ──
-        const consentList = patient.consents || [];
-        if (consentList.length > 0) {
-            sectionTitle('10. Consentimientos Firmados');
-            consentList.forEach(c => {
-                checkPage(10);
-                doc.setFontSize(9);
-                doc.setTextColor(51, 65, 85);
-                doc.text(`• ${c.title} — Firmado: ${new Date(c.signedAt).toLocaleDateString('es-HN')}${c.witnessName ? ` — Testigo: ${c.witnessName}` : ''}`, 20, y);
-                y += 5;
-            });
-        }
-
-        // ── Footer ──
-        const pageCount = doc.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(7);
-            doc.setTextColor(148, 163, 184);
-            doc.text(`DienteLink — Expediente de ${patient.identification.fullName} — Pág. ${i}/${pageCount}`, pageW / 2, pageH - 8, { align: 'center' });
-        }
-
-        doc.save(`Expediente_${patient.identification.fullName.replace(/\\s+/g, '_')}.pdf`);
-        sileo.success({ title: 'Expediente descargado', description: `PDF completo de ${patient.identification.fullName}` });
     };
 
     const isClinicalTab = ['odontogram', 'periodontogram'].includes(activeTab);
@@ -518,7 +266,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                     {tabs.map((tab, index) => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
+                            onClick={() => setActiveTab(tab.id as TabId)}
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap min-w-max animate-in-up duration-200",
                                 activeTab === tab.id
@@ -557,10 +305,15 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 </div>
                                 <button
                                     onClick={handleExportPDF}
-                                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all shadow-sm active:scale-95"
+                                    disabled={isExporting}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all shadow-sm active:scale-95 disabled:opacity-70"
                                 >
-                                    <Download size={16} />
-                                    Exportar PDF
+                                    {isExporting ? (
+                                        <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                                    ) : (
+                                        <Download size={16} />
+                                    )}
+                                    {isExporting ? 'Generando...' : 'Descargar PDF'}
                                 </button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -585,7 +338,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                             <button
                                                 key={g}
                                                 type="button"
-                                                onClick={() => onUpdate({ ...patient, identification: { ...patient.identification, gender: g as any } })}
+                                                onClick={() => onUpdate({ ...patient, identification: { ...patient.identification, gender: g as PatientIdentification['gender'] } })}
                                                 className={cn(
                                                     "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all",
                                                     patient.identification.gender === g
@@ -1338,7 +1091,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                         <select
                                             className="w-full bg-white px-4 py-3 rounded-xl border border-blue-100 outline-none text-sm font-medium text-slate-800 transition-all focus:border-blue-500 appearance-none"
                                             value={newEvent.type}
-                                            onChange={e => setNewEvent(p => ({ ...p, type: e.target.value as any }))}
+                                            onChange={e => setNewEvent(p => ({ ...p, type: e.target.value as ClinicalEvent['type'] }))}
                                         >
                                             <option value="treatment">Tratamiento</option>
                                             <option value="cleaning">Limpieza</option>

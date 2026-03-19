@@ -198,6 +198,8 @@ export interface PatientRecord {
   balance: number;
   consents: ConsentForm[];
   prescriptions: Prescription[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // --- Sistema de Reservas Públicas (Calendly Clone) ---

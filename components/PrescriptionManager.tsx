@@ -109,90 +109,97 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
     };
 
     const handleExportPDF = (rx: Prescription) => {
-        const doc = new jsPDF() as any;
-        const pageW = doc.internal.pageSize.getWidth();
+        try {
+            const doc = new jsPDF() as any;
+            if (!doc || !doc.internal) throw new Error("jsPDF initialization failed");
 
-        // Header banner
-        doc.setFillColor(37, 99, 235);
-        doc.rect(0, 0, pageW, 40, 'F');
-        doc.setFontSize(20);
-        doc.setTextColor(255, 255, 255);
-        doc.text('RECETA MÉDICA', pageW / 2, 18, { align: 'center' });
-        doc.setFontSize(10);
-        doc.text(clinicName || 'DienteLink', pageW / 2, 28, { align: 'center' });
-        doc.setFontSize(8);
-        doc.text(`Dr(a). ${doctorName}`, pageW / 2, 35, { align: 'center' });
+            const pageW = doc.internal.pageSize.getWidth();
 
-        // Patient info
-        let y = 52;
-        doc.setFontSize(10);
-        doc.setTextColor(51, 65, 85);
-        doc.text(`Paciente: ${patient.identification.fullName}`, 20, y);
-        doc.text(`Fecha: ${rx.date}`, pageW - 20, y, { align: 'right' });
-        y += 8;
-        doc.text(`Diagnóstico: ${rx.diagnosis}`, 20, y);
-        y += 4;
-        doc.setDrawColor(226, 232, 240);
-        doc.line(20, y, pageW - 20, y);
-        y += 10;
-
-        // Rx symbol
-        doc.setFontSize(24);
-        doc.setTextColor(37, 99, 235);
-        doc.text('Rx', 20, y);
-        y += 10;
-
-        // Medications
-        doc.setFontSize(11);
-        doc.setTextColor(15, 23, 42);
-        rx.medications.forEach((med, i) => {
-            if (y > 260) {
-                doc.addPage();
-                y = 20;
-            }
-            doc.setFontSize(12);
-            doc.setTextColor(15, 23, 42);
-            doc.text(`${i + 1}. ${med.name}`, 25, y);
-            y += 6;
+            // Header banner
+            doc.setFillColor(37, 99, 235);
+            doc.rect(0, 0, pageW, 40, 'F');
+            doc.setFontSize(20);
+            doc.setTextColor(255, 255, 255);
+            doc.text('RECETA MÉDICA', pageW / 2, 18, { align: 'center' });
             doc.setFontSize(10);
-            doc.setTextColor(100, 116, 139);
-            if (med.dosage) { doc.text(`   Dosis: ${med.dosage}`, 30, y); y += 5; }
-            if (med.frequency) { doc.text(`   Frecuencia: ${med.frequency}`, 30, y); y += 5; }
-            if (med.duration) { doc.text(`   Duración: ${med.duration}`, 30, y); y += 5; }
-            if (med.instructions) { doc.text(`   Indicaciones: ${med.instructions}`, 30, y); y += 5; }
-            y += 4;
-        });
+            doc.text(clinicName || 'DienteLink', pageW / 2, 28, { align: 'center' });
+            doc.setFontSize(8);
+            doc.text(`Dr(a). ${doctorName}`, pageW / 2, 35, { align: 'center' });
 
-        // Notes
-        if (rx.notes) {
+            // Patient info
+            let y = 52;
+            doc.setFontSize(10);
+            doc.setTextColor(51, 65, 85);
+            doc.text(`Paciente: ${patient.identification.fullName}`, 20, y);
+            doc.text(`Fecha: ${rx.date}`, pageW - 20, y, { align: 'right' });
+            y += 8;
+            doc.text(`Diagnóstico: ${rx.diagnosis}`, 20, y);
             y += 4;
             doc.setDrawColor(226, 232, 240);
             doc.line(20, y, pageW - 20, y);
-            y += 8;
+            y += 10;
+
+            // Rx symbol
+            doc.setFontSize(24);
+            doc.setTextColor(37, 99, 235);
+            doc.text('Rx', 20, y);
+            y += 10;
+
+            // Medications
+            doc.setFontSize(11);
+            doc.setTextColor(15, 23, 42);
+            rx.medications.forEach((med, i) => {
+                if (y > 260) {
+                    doc.addPage();
+                    y = 20;
+                }
+                doc.setFontSize(12);
+                doc.setTextColor(15, 23, 42);
+                doc.text(`${i + 1}. ${med.name}`, 25, y);
+                y += 6;
+                doc.setFontSize(10);
+                doc.setTextColor(100, 116, 139);
+                if (med.dosage) { doc.text(`   Dosis: ${med.dosage}`, 30, y); y += 5; }
+                if (med.frequency) { doc.text(`   Frecuencia: ${med.frequency}`, 30, y); y += 5; }
+                if (med.duration) { doc.text(`   Duración: ${med.duration}`, 30, y); y += 5; }
+                if (med.instructions) { doc.text(`   Indicaciones: ${med.instructions}`, 30, y); y += 5; }
+                y += 4;
+            });
+
+            // Notes
+            if (rx.notes) {
+                y += 4;
+                doc.setDrawColor(226, 232, 240);
+                doc.line(20, y, pageW - 20, y);
+                y += 8;
+                doc.setFontSize(10);
+                doc.setTextColor(100, 116, 139);
+                doc.text('Notas adicionales:', 20, y);
+                y += 6;
+                doc.setTextColor(51, 65, 85);
+                const splitNotes = doc.splitTextToSize(rx.notes, pageW - 40);
+                doc.text(splitNotes, 20, y);
+                y += splitNotes.length * 5;
+            }
+
+            // Footer
+            y += 20;
+            if (y > 250) { doc.addPage(); y = 30; }
+            doc.setDrawColor(15, 23, 42);
+            doc.line(pageW / 2 - 40, y, pageW / 2 + 40, y);
+            y += 6;
             doc.setFontSize(10);
             doc.setTextColor(100, 116, 139);
-            doc.text('Notas adicionales:', 20, y);
-            y += 6;
-            doc.setTextColor(51, 65, 85);
-            const splitNotes = doc.splitTextToSize(rx.notes, pageW - 40);
-            doc.text(splitNotes, 20, y);
-            y += splitNotes.length * 5;
+            doc.text(`Dr(a). ${doctorName}`, pageW / 2, y, { align: 'center' });
+            y += 5;
+            doc.text('Firma y Sello', pageW / 2, y, { align: 'center' });
+
+            doc.save(`Receta_${patient.identification.fullName.replace(/\s+/g, '_')}_${rx.date}.pdf`);
+            sileo.success({ title: 'Receta descargada', description: 'PDF generado correctamente' });
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            sileo.error({ title: "Error al generar PDF", description: "Ocurrió un problema, intenta de nuevo." });
         }
-
-        // Footer
-        y += 20;
-        if (y > 250) { doc.addPage(); y = 30; }
-        doc.setDrawColor(15, 23, 42);
-        doc.line(pageW / 2 - 40, y, pageW / 2 + 40, y);
-        y += 6;
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Dr(a). ${doctorName}`, pageW / 2, y, { align: 'center' });
-        y += 5;
-        doc.text('Firma y Sello', pageW / 2, y, { align: 'center' });
-
-        doc.save(`Receta_${patient.identification.fullName.replace(/\s+/g, '_')}_${rx.date}.pdf`);
-        sileo.success({ title: 'Receta descargada', description: 'PDF generado correctamente' });
     };
 
     // View prescription detail

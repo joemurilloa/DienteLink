@@ -407,6 +407,10 @@ body {
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
+.shadow-modern-xl {
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.4), 0 32px 64px -16px rgba(0, 0, 0, 0.2);
+}
+
 .card-premium:hover {
   box-shadow: var(--card-shadow-hover);
   transform: translate3d(0, -2px, 0);

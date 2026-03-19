@@ -2,24 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
-import PatientConsultationView from './components/PatientConsultationView';
-import PublicBookingPage from './components/PublicBookingPage';
-import BookingManagementView from './components/BookingManagementView';
+import { Suspense, lazy } from 'react';
 import { persistenceService } from './services/persistenceService';
 import { bookingService } from './services/bookingService';
 import { AuthProvider, useAuth } from './services/authService';
-import AuthPage from './components/AuthPage';
 import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcuts';
 import GlobalSearch from './components/GlobalSearch';
 import { sileo, Toaster } from 'sileo';
 import 'sileo/styles.css';
 
-// View components extracted to separate files
-import Dashboard from './components/views/DashboardView';
-import PatientsView from './components/views/PatientsView';
-import PatientDetailView from './components/views/PatientDetailView';
-import CalendarView from './components/views/CalendarView';
-import SettingsView from './components/views/SettingsView';
+// View components extracted to separate files and lazy loaded
+const Dashboard = lazy(() => import('./components/views/DashboardView'));
+const PatientsView = lazy(() => import('./components/views/PatientsView'));
+const PatientDetailView = lazy(() => import('./components/views/PatientDetailView'));
+const CalendarView = lazy(() => import('./components/views/CalendarView'));
+const SettingsView = lazy(() => import('./components/views/SettingsView'));
+const PatientConsultationView = lazy(() => import('./components/PatientConsultationView'));
+const PublicBookingPage = lazy(() => import('./components/PublicBookingPage'));
+const BookingManagementView = lazy(() => import('./components/BookingManagementView'));
+const AuthPage = lazy(() => import('./components/AuthPage'));
 
 // Booking Wrapper Components
 const BookingManagementWrapper: React.FC = () => {
@@ -27,39 +28,7 @@ const BookingManagementWrapper: React.FC = () => {
   return <BookingManagementView onBack={() => navigate('/')} />;
 };
 
-// Error boundary component
-class ErrorBoundary extends React.Component {
-  state = { hasError: false };
-
-  static getDerivedStateFromError(_: Error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error('Error caught by boundary:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center p-8">
-            <h2 className="text-xl font-bold text-red-600 mb-4">Error en la aplicación</h2>
-            <p className="text-slate-600 mb-4">Ha ocurrido un error inesperado.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              Recargar página
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (this as any).props.children;
-  }
-}
+import ErrorBoundary from './components/ErrorBoundary';
 
 const Layout: React.FC = () => {
   const location = useLocation();
@@ -165,24 +134,25 @@ const Layout: React.FC = () => {
             role="main"
             aria-label="Contenido principal"
           >
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/patients" element={<PatientsView />} />
-              <Route path="/patient/:id" element={
-                <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
-                  <PatientDetailView />
-                </React.Suspense>
-              } />
-              <Route path="/consultation" element={
-                <React.Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
-                  <PatientConsultationView />
-                </React.Suspense>
-              } />
-              <Route path="/calendar" element={<CalendarView />} />
-              <Route path="/booking/manage" element={<BookingManagementWrapper />} />
-              <Route path="/settings" element={<SettingsView />} />
-              <Route path="*" element={<Dashboard />} />
-            </Routes>
+            <Suspense fallback={
+              <div className="flex items-center justify-center w-full h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-sm text-slate-400 font-medium">Cargando vista...</p>
+                </div>
+              </div>
+            }>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/patients" element={<PatientsView />} />
+                <Route path="/patient/:id" element={<PatientDetailView />} />
+                <Route path="/consultation" element={<PatientConsultationView />} />
+                <Route path="/calendar" element={<CalendarView />} />
+                <Route path="/booking/manage" element={<BookingManagementWrapper />} />
+                <Route path="/settings" element={<SettingsView />} />
+                <Route path="*" element={<Dashboard />} />
+              </Routes>
+            </Suspense>
             <BottomNav activePath={getActivePath()} onSearchOpen={() => setIsSearchOpen(true)} pendingRequestsCount={pendingCount} />
           </main>
           <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
@@ -217,12 +187,14 @@ const App: React.FC = () => (
     <ErrorBoundary>
       <AuthProvider>
         <Toaster position="top-center" theme="light" />
-        <Routes>
-          {/* Public booking page - completely independent, no sidebar/nav */}
-          <Route path="/p/:doctorId" element={<PublicBookingPage />} />
-          {/* Main app with auth guard */}
-          <Route path="/*" element={<AuthGuard />} />
-        </Routes>
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+          <Routes>
+            {/* Public booking page - completely independent, no sidebar/nav */}
+            <Route path="/p/:doctorId" element={<PublicBookingPage />} />
+            {/* Main app with auth guard */}
+            <Route path="/*" element={<AuthGuard />} />
+          </Routes>
+        </Suspense>
       </AuthProvider>
     </ErrorBoundary>
   </Router>

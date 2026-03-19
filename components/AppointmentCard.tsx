@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Appointment, ReminderStatus } from '../types';
-import { cn } from '../lib/utils';
+import { cn, getInitials } from '../lib/utils';
 import { whatsappService } from '../services/whatsappService';
 import { emailReminderService } from '../services/emailReminderService';
 import { persistenceService } from '../services/persistenceService';
@@ -78,8 +78,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   };
 
   const fmtTime = (t: string) => {
+    if (!t) return '';
     const [h, m] = t.split(':');
-    const date = new Date(0, 0, 0, parseInt(h), parseInt(m));
+    const date = new Date(0, 0, 0, parseInt(h || '0', 10), parseInt(m || '0', 10));
     return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
@@ -91,7 +92,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
       >
         <div className="relative flex-shrink-0">
           <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-slate-600 font-bold text-xs">{appointment.patientName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}</span>
+            <span className="text-slate-600 font-bold text-xs">{getInitials(appointment.patientName)}</span>
           </div>
           <div className={cn("absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white", statusDot)} />
         </div>
@@ -154,7 +155,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-sm">
-                    {appointment.patientName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    {getInitials(appointment.patientName)}
                   </span>
                 </div>
                 <div className="min-w-0">
@@ -175,7 +176,15 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Fecha</p>
                   <p className="text-sm font-medium text-slate-800 truncate">
-                    {new Date(appointment.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    {(() => {
+                      try {
+                        if (!appointment.date) return 'Sin fecha';
+                        const d = new Date(appointment.date + 'T12:00:00');
+                        return isNaN(d.getTime()) ? appointment.date : d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                      } catch(e) {
+                        return appointment.date || 'Fecha inválida';
+                      }
+                    })()}
                   </p>
                 </div>
               </div>

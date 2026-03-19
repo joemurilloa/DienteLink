@@ -243,13 +243,25 @@ export class BookingService {
   }
 
   async getPublicAppointmentRequests(doctorId: string): Promise<AppointmentRequest[]> {
+    // Only select fields needed for slot-availability checking — NOT patient PII
     const { data } = await supabase
       .from('appointment_requests')
-      .select('*')
+      .select('id, requested_date, requested_time, status, appointment_type')
       .eq('doctor_id', doctorId)
       .in('status', ['pending', 'approved']);
 
-    return (data || []).map(dbToRequest);
+    return (data || []).map(d => ({
+      id: d.id,
+      patientName: '',       // redacted for public
+      patientEmail: '',      // redacted for public
+      patientPhone: '',      // redacted for public
+      requestedDate: d.requested_date,
+      requestedTime: d.requested_time,
+      appointmentType: d.appointment_type,
+      status: d.status,
+      createdAt: '',
+      doctorId,
+    }));
   }
 
   /** Fetch confirmed appointments from the appointments table (for public slot checking) */

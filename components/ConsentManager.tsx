@@ -288,57 +288,64 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
     };
 
     const handleExportPDF = (consent: ConsentForm) => {
-        const doc = new jsPDF() as any;
-        const pageW = doc.internal.pageSize.getWidth();
+        try {
+            const doc = new jsPDF() as any;
+            if (!doc || !doc.internal) throw new Error("jsPDF initialization failed");
 
-        // Header
-        doc.setFontSize(18);
-        doc.setTextColor(15, 23, 42);
-        doc.text(consent.title, pageW / 2, 25, { align: 'center' });
+            const pageW = doc.internal.pageSize.getWidth();
 
-        doc.setFontSize(9);
-        doc.setTextColor(148, 163, 184);
-        doc.text(`Fecha: ${new Date(consent.signedAt).toLocaleDateString('es-HN')} | Paciente: ${patient.identification.fullName}`, pageW / 2, 33, { align: 'center' });
+            // Header
+            doc.setFontSize(18);
+            doc.setTextColor(15, 23, 42);
+            doc.text(consent.title, pageW / 2, 25, { align: 'center' });
 
-        // Divider
-        doc.setDrawColor(226, 232, 240);
-        doc.line(20, 38, pageW - 20, 38);
+            doc.setFontSize(9);
+            doc.setTextColor(148, 163, 184);
+            doc.text(`Fecha: ${new Date(consent.signedAt).toLocaleDateString('es-HN')} | Paciente: ${patient.identification.fullName}`, pageW / 2, 33, { align: 'center' });
 
-        // Content
-        doc.setFontSize(11);
-        doc.setTextColor(51, 65, 85);
-        const splitText = doc.splitTextToSize(consent.content, pageW - 40);
-        doc.text(splitText, 20, 48);
+            // Divider
+            doc.setDrawColor(226, 232, 240);
+            doc.line(20, 38, pageW - 20, 38);
 
-        const contentEndY = 48 + splitText.length * 5;
+            // Content
+            doc.setFontSize(11);
+            doc.setTextColor(51, 65, 85);
+            const splitText = doc.splitTextToSize(consent.content, pageW - 40);
+            doc.text(splitText, 20, 48);
 
-        // Witness
-        if (consent.witnessName) {
-            doc.setFontSize(10);
-            doc.setTextColor(100, 116, 139);
-            doc.text(`Testigo: ${consent.witnessName}`, 20, contentEndY + 15);
-        }
+            const contentEndY = 48 + splitText.length * 5;
 
-        // Signature
-        if (consent.signatureData) {
-            const sigY = contentEndY + (consent.witnessName ? 25 : 15);
-            // Check if we need a new page
-            if (sigY + 50 > doc.internal.pageSize.getHeight() - 20) {
-                doc.addPage();
-                doc.addImage(consent.signatureData, 'PNG', 20, 20, 80, 40);
-                doc.setFontSize(9);
-                doc.setTextColor(148, 163, 184);
-                doc.text(`Firmado digitalmente el ${new Date(consent.signedAt).toLocaleString('es-HN')}`, 20, 65);
-            } else {
-                doc.addImage(consent.signatureData, 'PNG', 20, sigY, 80, 40);
-                doc.setFontSize(9);
-                doc.setTextColor(148, 163, 184);
-                doc.text(`Firmado digitalmente el ${new Date(consent.signedAt).toLocaleString('es-HN')}`, 20, sigY + 45);
+            // Witness
+            if (consent.witnessName) {
+                doc.setFontSize(10);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`Testigo: ${consent.witnessName}`, 20, contentEndY + 15);
             }
-        }
 
-        doc.save(`Consentimiento_${patient.identification.fullName.replace(/\s+/g, '_')}_${consent.title.slice(0, 30).replace(/\s+/g, '_')}.pdf`);
-        sileo.success({ title: 'PDF descargado', description: 'Consentimiento exportado correctamente' });
+            // Signature
+            if (consent.signatureData) {
+                const sigY = contentEndY + (consent.witnessName ? 25 : 15);
+                // Check if we need a new page
+                if (sigY + 50 > doc.internal.pageSize.getHeight() - 20) {
+                    doc.addPage();
+                    doc.addImage(consent.signatureData, 'PNG', 20, 20, 80, 40);
+                    doc.setFontSize(9);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Firmado digitalmente el ${new Date(consent.signedAt).toLocaleString('es-HN')}`, 20, 65);
+                } else {
+                    doc.addImage(consent.signatureData, 'PNG', 20, sigY, 80, 40);
+                    doc.setFontSize(9);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Firmado digitalmente el ${new Date(consent.signedAt).toLocaleString('es-HN')}`, 20, sigY + 45);
+                }
+            }
+
+            doc.save(`Consentimiento_${patient.identification.fullName.replace(/\s+/g, '_')}_${consent.title.slice(0, 30).replace(/\s+/g, '_')}.pdf`);
+            sileo.success({ title: 'PDF descargado', description: 'Consentimiento exportado correctamente' });
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            sileo.error({ title: "Error al generar PDF", description: "Ocurrió un problema, intenta de nuevo." });
+        }
     };
 
     // View consent modal

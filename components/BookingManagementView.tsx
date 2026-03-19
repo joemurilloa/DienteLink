@@ -8,7 +8,7 @@ import {
 import { DoctorAvailability, PublicBookingSettings, AppointmentRequest, Appointment } from '../types';
 import { bookingService } from '../services/bookingService';
 import { persistenceService } from '../services/persistenceService';
-import { cn, generateId } from '../lib/utils';
+import { cn, generateId, getInitials } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 
@@ -261,8 +261,9 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     new Date(s).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   const fmtTime = (s: string) => {
+    if (!s) return '';
     const [h, m] = s.split(':');
-    return new Date(0, 0, 0, +h, +m).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return new Date(0, 0, 0, parseInt(h || '0', 10), parseInt(m || '0', 10)).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
   const statusBadge = (status: string) => {
@@ -391,7 +392,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-bold text-sm">
-                          {req.patientName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          {getInitials(req.patientName)}
                         </div>
                         <div>
                           <h4 className="font-bold text-slate-900 text-sm">{req.patientName}</h4>

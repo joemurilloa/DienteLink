@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { persistenceService } from '../../services/persistenceService';
 import ConfirmModal from '../ConfirmModal';
 import { Appointment, AppointmentType } from '../../types';
-import { cn, generateId } from '../../lib/utils';
+import { cn, generateId, getInitials } from '../../lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
 import { sileo } from 'sileo';
 
@@ -303,7 +303,8 @@ const CalendarView: React.FC = () => {
                     const dateStr = fmtDate(date);
                     const hourApts = appointments.filter(a => {
                       if (a.date !== dateStr) return false;
-                      const aptHour = parseInt(a.time.split(':')[0]);
+                      if (!a.time) return false;
+                      const aptHour = parseInt(a.time.split(':')[0] || '0', 10);
                       return aptHour === hour;
                     });
                     const isToday = dateStr === todayStr;
@@ -350,7 +351,8 @@ const CalendarView: React.FC = () => {
               const dateStr = fmtDate(currentDate);
               const hourApts = appointments.filter(a => {
                 if (a.date !== dateStr) return false;
-                const aptHour = parseInt(a.time.split(':')[0]);
+                if (!a.time) return false;
+                const aptHour = parseInt(a.time.split(':')[0] || '0', 10);
                 return aptHour === hour;
               });
               const isNow = todayStr === dateStr && new Date().getHours() === hour;
@@ -379,7 +381,7 @@ const CalendarView: React.FC = () => {
                       <div key={a.id} className="flex items-center justify-between p-3 bg-blue-600 text-white rounded-xl shadow-sm">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
-                            {a.patientName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                            {getInitials(a.patientName)}
                           </div>
                           <div className="min-w-0">
                             <h4 className="font-semibold text-sm truncate">{a.patientName}</h4>
@@ -452,7 +454,7 @@ const CalendarView: React.FC = () => {
                             className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2 border-b border-slate-50 last:border-0"
                           >
                             <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-[10px] font-bold flex-shrink-0">
-                              {p.identification.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                              {getInitials(p.identification.fullName)}
                             </div>
                             <span>{p.identification.fullName}</span>
                           </button>

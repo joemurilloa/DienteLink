@@ -11,13 +11,30 @@ const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const { resetPassword } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    if (isLogin) {
+    if (isResetMode) {
+      if (!email.trim()) {
+        setError('Ingresa tu email para recuperar la contraseña');
+        setLoading(false);
+        return;
+      }
+      const { error } = await resetPassword(email);
+      if (error) {
+        setError(translateError(error));
+        sileo.error({ title: 'Error al enviar enlace', description: translateError(error) });
+      } else {
+        setResetSuccess(true);
+        sileo.success({ title: 'Enlace enviado', description: 'Revisa tu bandeja de entrada o spam.' });
+      }
+    } else if (isLogin) {
       const { error } = await signIn(email, password);
       if (error) {
         setError(translateError(error));
@@ -55,6 +72,7 @@ const AuthPage: React.FC = () => {
     if (error.includes('valid email')) return 'Ingresa un email válido';
     if (error.includes('Password')) return 'La contraseña debe tener al menos 6 caracteres';
     if (error.includes('rate limit')) return 'Demasiados intentos. Espera un momento.';
+    if (error.includes('User not found')) return 'No hay ninguna cuenta con este email';
     return error;
   };
 
@@ -152,21 +170,34 @@ const AuthPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                Contraseña
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={isLogin ? '••••••••' : 'Mínimo 6 caracteres'}
-                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
-                required
-                minLength={6}
-                autoComplete={isLogin ? 'current-password' : 'new-password'}
-              />
-            </div>
+            {!isResetMode && (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Contraseña
+                  </label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => { setIsResetMode(true); setError(''); setResetSuccess(false); }}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={isLogin ? '••••••••' : 'Mínimo 6 caracteres'}
+                  className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                  required={!isResetMode}
+                  minLength={6}
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                />
+              </div>
+            )}
 
             {error && (
               <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-xl">
@@ -174,20 +205,36 @@ const AuthPage: React.FC = () => {
               </div>
             )}
 
+            {resetSuccess && (
+              <div className="px-4 py-3 bg-green-50 border border-green-100 rounded-xl">
+                <p className="text-sm text-green-700 font-medium">✨ Enlace de recuperación enviado. Revisa tu bandeja de entrada o spam.</p>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || resetSuccess}
               className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-lg shadow-blue-600/25 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-2"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {isLogin ? 'Entrando...' : 'Creando cuenta...'}
+                  {isResetMode ? 'Enviando...' : isLogin ? 'Entrando...' : 'Creando cuenta...'}
                 </span>
               ) : (
-                isLogin ? 'Entrar a DienteLink' : 'Crear mi Cuenta'
+                isResetMode ? 'Enviar enlace de recuperación' : isLogin ? 'Entrar a DienteLink' : 'Crear mi Cuenta'
               )}
             </button>
+            
+            {isResetMode && (
+              <button
+                type="button"
+                onClick={() => { setIsResetMode(false); setError(''); setResetSuccess(false); }}
+                className="w-full py-3 text-slate-500 hover:text-slate-800 text-sm font-medium transition-colors"
+              >
+                Volver a Iniciar Sesión
+              </button>
+            )}
           </form>
 
           {!isLogin && (

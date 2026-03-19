@@ -83,140 +83,176 @@ class PersistenceService {
 
     // ===================== PATIENTS (async writes) =====================
 
+    // Debounce queue for patient saves
+    private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+    private pendingSaves: Map<string, PatientRecord> = new Map();
+
     async savePatient(patient: PatientRecord): Promise<void> {
         const doctorId = this.uid();
 
         // Update in-memory cache first (instant UI)
         const idx = this.patients.findIndex(p => p.id === patient.id);
-        if (idx !== -1) { this.patients[idx] = patient; } else { this.patients.unshift(patient); }
-
-        // Write to Supabase in background
-        const { error } = await supabase.from('patients').upsert({
-            id: patient.id,
-            doctor_id: doctorId,
-            full_name: patient.identification.fullName,
-            birth_date: patient.identification.birthDate || null,
-            gender: patient.identification.gender || null,
-            address: patient.identification.address || null,
-            phone: patient.identification.phone || null,
-            email: patient.identification.email || null,
-            occupation: patient.identification.occupation || null,
-            allergies: patient.clinicalHistory.allergies,
-            medications: patient.clinicalHistory.medications || null,
-            previous_diseases: patient.clinicalHistory.previousDiseases || null,
-            family_history: patient.clinicalHistory.familyHistory || null,
-            motive_of_consult: patient.clinicalHistory.motiveOfConsult || null,
-            consent_signed: patient.consentSigned,
-            odontogram: patient.odontogram,
-            odontogram_history: patient.odontogramHistory || [],
-            periodontogram: patient.periodontogram,
-            updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
-
-        if (error) this.notifyError('paciente', error);
-
-        // Upsert evolution notes individually (safe for concurrent edits)
-        if (patient.evolutionNotes.length > 0) {
-            const { error: notesErr } = await supabase.from('evolution_notes').upsert(
-                patient.evolutionNotes.map(n => ({
-                    id: n.id,
-                    patient_id: patient.id,
-                    doctor_id: doctorId,
-                    date: n.date,
-                    content: n.content,
-                    procedure: n.procedure,
-                })),
-                { onConflict: 'id' }
-            );
-            if (notesErr) this.notifyError('notas de evolución', notesErr);
+        if (idx !== -1) { 
+            this.patients[idx] = { ...patient, updatedAt: new Date().toISOString() }; 
+        } else { 
+            this.patients.unshift({ ...patient, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }); 
         }
 
-        // Upsert clinical events individually
-        if (patient.history.length > 0) {
-            const { error: eventsErr } = await supabase.from('clinical_events').upsert(
-                patient.history.map(e => ({
-                    id: e.id,
-                    patient_id: patient.id,
-                    doctor_id: doctorId,
-                    date: e.date,
-                    type: e.type,
-                    description: e.description,
-                    tooth_id: e.toothId || null,
-                })),
-                { onConflict: 'id' }
-            );
-            if (eventsErr) this.notifyError('eventos clínicos', eventsErr);
+        // Add to pending saves queue
+        this.pendingSaves.set(patient.id, this.patients.find(p => p.id === patient.id)!);
+
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
         }
 
-        // Upsert budget items
-        if (patient.budget && patient.budget.length > 0) {
-            const { error: budgetErr } = await supabase.from('budget_items').upsert(
-                patient.budget.map(b => ({
-                    id: b.id,
-                    patient_id: patient.id,
-                    doctor_id: doctorId,
-                    treatment: b.treatment,
-                    tooth_id: b.toothId || null,
-                    unit_cost: b.unitCost,
-                    quantity: b.quantity,
-                    status: b.status,
-                    created_at: b.createdAt,
-                })),
-                { onConflict: 'id' }
-            );
-            if (budgetErr) this.notifyError('presupuesto', budgetErr);
-        }
+        this.saveTimeout = setTimeout(() => {
+            this.flushPendingSaves(doctorId);
+        }, 800);
+    }
 
-        // Upsert payments
-        if (patient.payments && patient.payments.length > 0) {
-            const { error: payErr } = await supabase.from('payments').upsert(
-                patient.payments.map(p => ({
-                    id: p.id,
-                    patient_id: patient.id,
-                    doctor_id: doctorId,
-                    amount: p.amount,
-                    method: p.method,
-                    note: p.note,
-                    date: p.date,
-                })),
-                { onConflict: 'id' }
-            );
-            if (payErr) this.notifyError('pagos', payErr);
-        }
+    private async flushPendingSaves(doctorId: string) {
+        if (this.pendingSaves.size === 0) return;
 
-        // Upsert consent forms
-        if (patient.consents && patient.consents.length > 0) {
-            const { error: consentErr } = await supabase.from('consent_forms').upsert(
-                patient.consents.map(c => ({
-                    id: c.id,
-                    patient_id: patient.id,
-                    doctor_id: doctorId,
-                    title: c.title,
-                    content: c.content,
-                    signature_data: c.signatureData,
-                    signed_at: c.signedAt,
-                    witness_name: c.witnessName || null,
-                })),
-                { onConflict: 'id' }
-            );
-            if (consentErr) this.notifyError('consentimientos', consentErr);
-        }
+        // Clone queue and clear it to allow new saves
+        const queue = Array.from(this.pendingSaves.values());
+        this.pendingSaves.clear();
 
-        // Upsert prescriptions
-        if (patient.prescriptions && patient.prescriptions.length > 0) {
-            const { error: rxErr } = await supabase.from('prescriptions').upsert(
-                patient.prescriptions.map(rx => ({
-                    id: rx.id,
-                    patient_id: patient.id,
+        for (const patient of queue) {
+            try {
+                // Main patient record
+                const { error: pErr } = await supabase.from('patients').upsert({
+                    id: patient.id,
                     doctor_id: doctorId,
-                    date: rx.date,
-                    diagnosis: rx.diagnosis,
-                    medications: rx.medications,
-                    notes: rx.notes,
-                })),
-                { onConflict: 'id' }
-            );
-            if (rxErr) this.notifyError('recetas', rxErr);
+                    full_name: patient.identification.fullName,
+                    birth_date: patient.identification.birthDate || null,
+                    gender: patient.identification.gender || null,
+                    address: patient.identification.address || null,
+                    phone: patient.identification.phone || null,
+                    email: patient.identification.email || null,
+                    occupation: patient.identification.occupation || null,
+                    allergies: patient.clinicalHistory.allergies,
+                    medications: patient.clinicalHistory.medications || null,
+                    previous_diseases: patient.clinicalHistory.previousDiseases || null,
+                    family_history: patient.clinicalHistory.familyHistory || null,
+                    motive_of_consult: patient.clinicalHistory.motiveOfConsult || null,
+                    consent_signed: patient.consentSigned,
+                    odontogram: patient.odontogram,
+                    odontogram_history: patient.odontogramHistory || [],
+                    periodontogram: patient.periodontogram,
+                    updated_at: patient.updatedAt || new Date().toISOString(),
+                }, { onConflict: 'id' });
+
+                if (pErr) {
+                    this.notifyError('paciente', pErr);
+                    continue; // Skip the rest if main insert fails
+                }
+
+                // Upsert evolution notes
+                if (patient.evolutionNotes && patient.evolutionNotes.length > 0) {
+                    const { error: notesErr } = await supabase.from('evolution_notes').upsert(
+                        patient.evolutionNotes.map(n => ({
+                            id: n.id,
+                            patient_id: patient.id,
+                            doctor_id: doctorId,
+                            date: n.date,
+                            content: n.content,
+                            procedure: n.procedure,
+                        })),
+                        { onConflict: 'id' }
+                    );
+                    if (notesErr) this.notifyError('notas de evolución', notesErr);
+                }
+
+                // Upsert clinical events
+                if (patient.history && patient.history.length > 0) {
+                    const { error: eventsErr } = await supabase.from('clinical_events').upsert(
+                        patient.history.map(e => ({
+                            id: e.id,
+                            patient_id: patient.id,
+                            doctor_id: doctorId,
+                            date: e.date,
+                            type: e.type,
+                            description: e.description,
+                            tooth_id: e.toothId || null,
+                        })),
+                        { onConflict: 'id' }
+                    );
+                    if (eventsErr) this.notifyError('eventos clínicos', eventsErr);
+                }
+
+                // Upsert budget items
+                if (patient.budget && patient.budget.length > 0) {
+                    const { error: budgetErr } = await supabase.from('budget_items').upsert(
+                        patient.budget.map(b => ({
+                            id: b.id,
+                            patient_id: patient.id,
+                            doctor_id: doctorId,
+                            treatment: b.treatment,
+                            tooth_id: b.toothId || null,
+                            unit_cost: b.unitCost,
+                            quantity: b.quantity,
+                            status: b.status,
+                            created_at: b.createdAt,
+                        })),
+                        { onConflict: 'id' }
+                    );
+                    if (budgetErr) this.notifyError('presupuesto', budgetErr);
+                }
+
+                // Upsert payments
+                if (patient.payments && patient.payments.length > 0) {
+                    const { error: payErr } = await supabase.from('payments').upsert(
+                        patient.payments.map(p => ({
+                            id: p.id,
+                            patient_id: patient.id,
+                            doctor_id: doctorId,
+                            amount: p.amount,
+                            method: p.method,
+                            note: p.note,
+                            date: p.date,
+                        })),
+                        { onConflict: 'id' }
+                    );
+                    if (payErr) this.notifyError('pagos', payErr);
+                }
+
+                // Upsert consent forms
+                if (patient.consents && patient.consents.length > 0) {
+                    const { error: consentErr } = await supabase.from('consent_forms').upsert(
+                        patient.consents.map(c => ({
+                            id: c.id,
+                            patient_id: patient.id,
+                            doctor_id: doctorId,
+                            title: c.title,
+                            content: c.content,
+                            signature_data: c.signatureData,
+                            signed_at: c.signedAt,
+                            witness_name: c.witnessName || null,
+                        })),
+                        { onConflict: 'id' }
+                    );
+                    if (consentErr) this.notifyError('consentimientos', consentErr);
+                }
+
+                // Upsert prescriptions
+                if (patient.prescriptions && patient.prescriptions.length > 0) {
+                    const { error: rxErr } = await supabase.from('prescriptions').upsert(
+                        patient.prescriptions.map(rx => ({
+                            id: rx.id,
+                            patient_id: patient.id,
+                            doctor_id: doctorId,
+                            date: rx.date,
+                            diagnosis: rx.diagnosis,
+                            medications: rx.medications,
+                            notes: rx.notes,
+                        })),
+                        { onConflict: 'id' }
+                    );
+                    if (rxErr) this.notifyError('recetas', rxErr);
+                }
+            } catch (err) {
+                console.error(`[SyncQueue] Error for patient ${patient.id}:`, err);
+            }
         }
     }
 

@@ -137,7 +137,7 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                                     <button
                                         key={g}
                                         type="button"
-                                        onClick={() => setFormData(p => ({ ...p, gender: g as any }))}
+                                        onClick={() => setFormData(p => ({ ...p, gender: g as PatientIdentification['gender'] }))}
                                         className={cn(
                                             "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all",
                                             formData.gender === g

@@ -5,6 +5,12 @@ export function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
+/** Safely extract initials from a name string. Handles empty strings, undefined, etc. */
+export function getInitials(name: string | undefined | null, fallback = '??'): string {
+  if (!name || !name.trim()) return fallback;
+  return name.trim().split(' ').filter(w => w.length > 0).map(w => w[0]).join('').substring(0, 2).toUpperCase() || fallback;
+}
+
 // Default currency config — overridden by doctor profile
 let _currencyCode = 'HNL';
 let _currencyLocale = 'es-HN';

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '../lib/utils';
+import { cn, getInitials } from '../lib/utils';
 import { LayoutDashboard, Users, Calendar as CalendarIcon, Settings, ChevronRight, Bell } from 'lucide-react';
 import { useAuth } from '../services/authService';
 
@@ -15,9 +15,9 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   const { profile } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
   const doctorRole = profile?.role || 'Odontólogo';
-  const doctorInitials = doctorName.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'DR';
+  const doctorInitials = getInitials(doctorName, 'DR');
 
-  const items = [
+  const items: { id: string; label: string; icon: React.FC<any>; path: string; badge?: number }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { id: 'patients', label: 'Pacientes', icon: Users, path: '/patients' },
     { id: 'calendar', label: 'Calendario', icon: CalendarIcon, path: '/calendar' },
@@ -63,13 +63,13 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
                 )}
                 <item.icon size={18} strokeWidth={isActive ? 2.5 : 1.8} className={cn("transition-colors flex-shrink-0", isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300")} />
                 <span className="hidden lg:inline">{item.label}</span>
-                {'badge' in item && (item as any).badge > 0 && (
+                {item.badge != null && item.badge > 0 && (
                   <span className="lg:ml-auto min-w-[20px] h-5 px-1.5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {(item as any).badge > 9 ? '9+' : (item as any).badge}
+                    {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}
               </div>
-              {!isActive && !('badge' in item && (item as any).badge > 0) && <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hidden lg:block" />}
+              {!isActive && !(item.badge != null && item.badge > 0) && <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hidden lg:block" />}
             </button>
           );
         })}

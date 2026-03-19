@@ -117,8 +117,9 @@ const PublicBookingPage: React.FC = () => {
   };
 
   const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
     const [hours, minutes] = timeStr.split(':');
-    return new Date(0, 0, 0, parseInt(hours), parseInt(minutes))
+    return new Date(0, 0, 0, parseInt(hours || '0', 10), parseInt(minutes || '0', 10))
       .toLocaleTimeString('es-ES', { 
         hour: '2-digit', 
         minute: '2-digit',
