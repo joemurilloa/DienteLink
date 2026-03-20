@@ -231,9 +231,18 @@ CREATE POLICY "Doctors can delete own availability"
   USING (auth.uid() = doctor_id);
 
 -- Public: anyone can read a doctor's availability (for booking page)
+-- NOTE: This uses USING(true) which allows any SELECT. This is intentional
+-- because the public booking page needs to read availability for any doctor.
+-- The data exposed (weekly schedule, slot duration) is not sensitive.
+-- For multi-tenant isolation, a Supabase Edge Function with RPC is preferred.
 CREATE POLICY "Public can view doctor availability"
   ON doctor_availability FOR SELECT
   USING (true);
+
+-- ⚠️ SECURITY NOTE: The above policy means authenticated doctors CAN see
+-- other doctors' schedules. If this is undesirable in the future, replace with:
+--   CREATE FUNCTION public.get_doctor_availability(p_doctor_id UUID)
+--   and restrict the direct SELECT policy to owner-only.
 
 -- =============================================================
 -- booking_settings

@@ -24,7 +24,7 @@ class PersistenceService {
     onError(cb: (message: string) => void) { this._onError = cb; }
 
     private notifyError(context: string, error: any) {
-        console.error(`[Supabase] ${context}:`, error);
+        console.error(`[Supabase] ${context}:`, JSON.stringify(error, null, 2));
         if (this._onError) {
             this._onError(`Error al guardar ${context}. Los cambios se mantienen localmente pero no se sincronizaron con la nube.`);
         }
@@ -60,6 +60,11 @@ class PersistenceService {
     }
 
     reset() {
+        // Clear all pending saves immediately to stop bleeding data to wrong accounts
+        this.saveTimeouts.forEach(clearTimeout);
+        this.saveTimeouts.clear();
+        this.pendingSaves.clear();
+        
         this.patients = [];
         this.appointments = [];
         this.userId = null;
@@ -84,7 +89,7 @@ class PersistenceService {
     // ===================== PATIENTS (async writes) =====================
 
     // Debounce queue for patient saves
-    private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+    private saveTimeouts: Map<string, ReturnType<typeof setTimeout>> = new Map();
     private pendingSaves: Map<string, PatientRecord> = new Map();
 
     async savePatient(patient: PatientRecord): Promise<void> {
@@ -101,158 +106,87 @@ class PersistenceService {
         // Add to pending saves queue
         this.pendingSaves.set(patient.id, this.patients.find(p => p.id === patient.id)!);
 
-        if (this.saveTimeout) {
-            clearTimeout(this.saveTimeout);
+        if (this.saveTimeouts.has(patient.id)) {
+            clearTimeout(this.saveTimeouts.get(patient.id)!);
         }
 
-        this.saveTimeout = setTimeout(() => {
-            this.flushPendingSaves(doctorId);
+        const timeout = setTimeout(() => {
+            this.flushPatientSave(patient.id, doctorId);
         }, 800);
+        this.saveTimeouts.set(patient.id, timeout);
     }
 
-    private async flushPendingSaves(doctorId: string) {
-        if (this.pendingSaves.size === 0) return;
+    private async flushPatientSave(patientId: string, doctorId: string) {
+        const patient = this.pendingSaves.get(patientId);
+        if (!patient) return;
+        this.pendingSaves.delete(patientId);
+        this.saveTimeouts.delete(patientId);
 
-        // Clone queue and clear it to allow new saves
-        const queue = Array.from(this.pendingSaves.values());
-        this.pendingSaves.clear();
+        try {
+            // Main patient record
+            const { error: pErr } = await supabase.from('patients').upsert({
+                id: patient.id,
+                doctor_id: doctorId,
+                full_name: patient.identification.fullName,
+                birth_date: patient.identification.birthDate || null,
+                gender: patient.identification.gender || null,
+                address: patient.identification.address || null,
+                phone: patient.identification.phone || null,
+                email: patient.identification.email || null,
+                occupation: patient.identification.occupation || null,
+                allergies: patient.clinicalHistory.allergies,
+                medications: patient.clinicalHistory.medications || null,
+                previous_diseases: patient.clinicalHistory.previousDiseases || null,
+                family_history: patient.clinicalHistory.familyHistory || null,
+                motive_of_consult: patient.clinicalHistory.motiveOfConsult || null,
+                consent_signed: patient.consentSigned,
+                odontogram: patient.odontogram,
+                odontogram_history: patient.odontogramHistory || [],
+                periodontogram: patient.periodontogram,
+                updated_at: patient.updatedAt || new Date().toISOString(),
+            }, { onConflict: 'id' });
 
-        for (const patient of queue) {
-            try {
-                // Main patient record
-                const { error: pErr } = await supabase.from('patients').upsert({
-                    id: patient.id,
-                    doctor_id: doctorId,
-                    full_name: patient.identification.fullName,
-                    birth_date: patient.identification.birthDate || null,
-                    gender: patient.identification.gender || null,
-                    address: patient.identification.address || null,
-                    phone: patient.identification.phone || null,
-                    email: patient.identification.email || null,
-                    occupation: patient.identification.occupation || null,
-                    allergies: patient.clinicalHistory.allergies,
-                    medications: patient.clinicalHistory.medications || null,
-                    previous_diseases: patient.clinicalHistory.previousDiseases || null,
-                    family_history: patient.clinicalHistory.familyHistory || null,
-                    motive_of_consult: patient.clinicalHistory.motiveOfConsult || null,
-                    consent_signed: patient.consentSigned,
-                    odontogram: patient.odontogram,
-                    odontogram_history: patient.odontogramHistory || [],
-                    periodontogram: patient.periodontogram,
-                    updated_at: patient.updatedAt || new Date().toISOString(),
-                }, { onConflict: 'id' });
+            if (pErr) throw new Error(`Error en paciente: ${pErr.message}`);
 
-                if (pErr) {
-                    this.notifyError('paciente', pErr);
-                    continue; // Skip the rest if main insert fails
+            // Helper to sync sub-tables (upsert existing, delete removed)
+            const syncSubTable = async (tableName: string, items: any[], mapFn: (i: any) => any, label: string) => {
+                if (items && items.length > 0) {
+                    const { error } = await supabase.from(tableName).upsert(items.map(mapFn), { onConflict: 'id' });
+                    if (error) this.notifyError(label, error);
+                    const currentIds = items.map(i => i.id);
+                    await supabase.from(tableName).delete().eq('patient_id', patient.id).not('id', 'in', `(${currentIds.join(',')})`);
+                } else {
+                    await supabase.from(tableName).delete().eq('patient_id', patient.id);
                 }
+            };
 
-                // Upsert evolution notes
-                if (patient.evolutionNotes && patient.evolutionNotes.length > 0) {
-                    const { error: notesErr } = await supabase.from('evolution_notes').upsert(
-                        patient.evolutionNotes.map(n => ({
-                            id: n.id,
-                            patient_id: patient.id,
-                            doctor_id: doctorId,
-                            date: n.date,
-                            content: n.content,
-                            procedure: n.procedure,
-                        })),
-                        { onConflict: 'id' }
-                    );
-                    if (notesErr) this.notifyError('notas de evolución', notesErr);
-                }
+            await syncSubTable('evolution_notes', patient.evolutionNotes || [], n => ({
+                id: n.id, patient_id: patient.id, doctor_id: doctorId, date: n.date, content: n.content, procedure: n.procedure
+            }), 'notas de evolución');
 
-                // Upsert clinical events
-                if (patient.history && patient.history.length > 0) {
-                    const { error: eventsErr } = await supabase.from('clinical_events').upsert(
-                        patient.history.map(e => ({
-                            id: e.id,
-                            patient_id: patient.id,
-                            doctor_id: doctorId,
-                            date: e.date,
-                            type: e.type,
-                            description: e.description,
-                            tooth_id: e.toothId || null,
-                        })),
-                        { onConflict: 'id' }
-                    );
-                    if (eventsErr) this.notifyError('eventos clínicos', eventsErr);
-                }
+            await syncSubTable('clinical_events', patient.history || [], e => ({
+                id: e.id, patient_id: patient.id, doctor_id: doctorId, date: e.date, type: e.type, description: e.description, tooth_id: e.toothId || null
+            }), 'eventos clínicos');
 
-                // Upsert budget items
-                if (patient.budget && patient.budget.length > 0) {
-                    const { error: budgetErr } = await supabase.from('budget_items').upsert(
-                        patient.budget.map(b => ({
-                            id: b.id,
-                            patient_id: patient.id,
-                            doctor_id: doctorId,
-                            treatment: b.treatment,
-                            tooth_id: b.toothId || null,
-                            unit_cost: b.unitCost,
-                            quantity: b.quantity,
-                            status: b.status,
-                            created_at: b.createdAt,
-                        })),
-                        { onConflict: 'id' }
-                    );
-                    if (budgetErr) this.notifyError('presupuesto', budgetErr);
-                }
+            await syncSubTable('budget_items', patient.budget || [], b => ({
+                id: b.id, patient_id: patient.id, doctor_id: doctorId, treatment: b.treatment, tooth_id: b.toothId || null, unit_cost: b.unitCost, quantity: b.quantity, status: b.status, created_at: b.createdAt
+            }), 'presupuesto');
 
-                // Upsert payments
-                if (patient.payments && patient.payments.length > 0) {
-                    const { error: payErr } = await supabase.from('payments').upsert(
-                        patient.payments.map(p => ({
-                            id: p.id,
-                            patient_id: patient.id,
-                            doctor_id: doctorId,
-                            amount: p.amount,
-                            method: p.method,
-                            note: p.note,
-                            date: p.date,
-                        })),
-                        { onConflict: 'id' }
-                    );
-                    if (payErr) this.notifyError('pagos', payErr);
-                }
+            await syncSubTable('payments', patient.payments || [], p => ({
+                id: p.id, patient_id: patient.id, doctor_id: doctorId, amount: p.amount, method: p.method, note: p.note, date: p.date
+            }), 'pagos');
 
-                // Upsert consent forms
-                if (patient.consents && patient.consents.length > 0) {
-                    const { error: consentErr } = await supabase.from('consent_forms').upsert(
-                        patient.consents.map(c => ({
-                            id: c.id,
-                            patient_id: patient.id,
-                            doctor_id: doctorId,
-                            title: c.title,
-                            content: c.content,
-                            signature_data: c.signatureData,
-                            signed_at: c.signedAt,
-                            witness_name: c.witnessName || null,
-                        })),
-                        { onConflict: 'id' }
-                    );
-                    if (consentErr) this.notifyError('consentimientos', consentErr);
-                }
+            await syncSubTable('consent_forms', patient.consents || [], c => ({
+                id: c.id, patient_id: patient.id, doctor_id: doctorId, title: c.title, content: c.content, signature_data: c.signatureData, signed_at: c.signedAt, witness_name: c.witnessName || null
+            }), 'consentimientos');
 
-                // Upsert prescriptions
-                if (patient.prescriptions && patient.prescriptions.length > 0) {
-                    const { error: rxErr } = await supabase.from('prescriptions').upsert(
-                        patient.prescriptions.map(rx => ({
-                            id: rx.id,
-                            patient_id: patient.id,
-                            doctor_id: doctorId,
-                            date: rx.date,
-                            diagnosis: rx.diagnosis,
-                            medications: rx.medications,
-                            notes: rx.notes,
-                        })),
-                        { onConflict: 'id' }
-                    );
-                    if (rxErr) this.notifyError('recetas', rxErr);
-                }
-            } catch (err) {
-                console.error(`[SyncQueue] Error for patient ${patient.id}:`, err);
-            }
+            await syncSubTable('prescriptions', patient.prescriptions || [], rx => ({
+                id: rx.id, patient_id: patient.id, doctor_id: doctorId, date: rx.date, diagnosis: rx.diagnosis, medications: rx.medications, notes: rx.notes
+            }), 'recetas');
+
+        } catch (err: any) {
+            console.error(`[SyncQueue] Error for patient ${patientId}:`, err);
+            this.notifyError('sincronización del paciente', err);
         }
     }
 
@@ -303,7 +237,12 @@ class PersistenceService {
             deleted_at: appointment.deletedAt || null,
         }, { onConflict: 'id' });
 
-        if (error) this.notifyError('cita', error);
+        if (error) {
+            this.notifyError('cita', error);
+        } else {
+            // Let the rest of the application know (so Dashboard live-updates when approving requests)
+            window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: appointment }));
+        }
     }
 
     async deleteAppointment(appointmentId: string): Promise<void> {
@@ -337,19 +276,28 @@ class PersistenceService {
         this.patients = [];
         this.appointments = [];
 
-        await Promise.all([
-            supabase.from('payments').delete().eq('doctor_id', doctorId),
-            supabase.from('budget_items').delete().eq('doctor_id', doctorId),
-            supabase.from('consent_forms').delete().eq('doctor_id', doctorId),
-            supabase.from('prescriptions').delete().eq('doctor_id', doctorId),
-            supabase.from('appointments').delete().eq('doctor_id', doctorId),
-            supabase.from('evolution_notes').delete().eq('doctor_id', doctorId),
-            supabase.from('clinical_events').delete().eq('doctor_id', doctorId),
-            supabase.from('patients').delete().eq('doctor_id', doctorId),
-            supabase.from('appointment_requests').delete().eq('doctor_id', doctorId),
-            supabase.from('doctor_availability').delete().eq('doctor_id', doctorId),
-            supabase.from('booking_settings').delete().eq('doctor_id', doctorId),
-        ]);
+        // Delete in order: children first, then parents to respect FK constraints
+        const tables = [
+            'payments',
+            'budget_items',
+            'consent_forms',
+            'prescriptions',
+            'evolution_notes',
+            'clinical_events',
+            'appointments',
+            'appointment_requests',
+            'patients',
+            'doctor_availability',
+            'booking_settings',
+        ];
+
+        for (const table of tables) {
+            const { error } = await supabase.from(table).delete().eq('doctor_id', doctorId);
+            if (error) {
+                console.error(`[clearAllData] Error deleting ${table}:`, error);
+                this.notifyError(`borrado de ${table}`, error);
+            }
+        }
     }
 }
 

@@ -15,7 +15,7 @@ import {
   ArrowRight,
   X
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, getLocalISODate } from '../lib/utils';
 
 // NOTE: This page renders at /p/:doctorId - completely standalone, no app chrome
 const PublicBookingPage: React.FC = () => {
@@ -42,6 +42,17 @@ const PublicBookingPage: React.FC = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Anti-spam: rate limiting (cooldown after each submission)
+  const [cooldown, setCooldown] = useState(0);
+  const COOLDOWN_SECONDS = 60;
+
+  // Cooldown timer effect
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   useEffect(() => {
     if (!doctorId) {
@@ -141,13 +152,19 @@ const PublicBookingPage: React.FC = () => {
   const handleSubmit = async () => {
     setError('');
     
+    // Anti-spam: rate limiting
+    if (cooldown > 0) {
+      setError(`Espera ${cooldown} segundos antes de enviar otra solicitud`);
+      return;
+    }
+
     // Validation
     if (!formData.name.trim()) {
       setError('Por favor ingresa tu nombre');
       return;
     }
 
-    if (formData.email.trim() && !formData.email.includes('@')) {
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       setError('Por favor ingresa un email válido');
       return;
     }
@@ -200,6 +217,8 @@ const PublicBookingPage: React.FC = () => {
       );
 
       setStep('confirmation');
+      // Start cooldown to prevent rapid re-submissions
+      setCooldown(COOLDOWN_SECONDS);
     } catch (err) {
       setError('Error al enviar la solicitud. Por favor intenta de nuevo.');
     } finally {
@@ -325,7 +344,7 @@ const PublicBookingPage: React.FC = () => {
                     const dateStr = `${calendarDays.year}-${String(calendarDays.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     const isAvailable = availableDateSet.has(dateStr);
                     const isSelected = selectedDate === dateStr;
-                    const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                    const isToday = getLocalISODate(new Date()) === dateStr;
 
                     return (
                       <button
@@ -472,10 +491,12 @@ const PublicBookingPage: React.FC = () => {
                     <div className="p-2.5 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">{error}</div>
                   )}
 
-                  <button type="submit" disabled={isSubmitting}
+                  <button type="submit" disabled={isSubmitting || cooldown > 0}
                     className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 sticky bottom-0">
                     {isSubmitting ? (
                       <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Enviando...</>
+                    ) : cooldown > 0 ? (
+                      <>Espera {cooldown}s</>
                     ) : (
                       <>Solicitar Cita <ArrowRight size={16} /></>
                     )}

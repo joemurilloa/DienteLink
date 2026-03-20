@@ -1,0 +1,138 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { cn } from '../lib/utils';
+import { Calendar } from 'lucide-react';
+
+interface DateInputProps {
+    value: string; // YYYY-MM-DD
+    onChange: (val: string) => void;
+    error?: string;
+    required?: boolean;
+    label?: string;
+}
+
+const DateInput: React.FC<DateInputProps> = ({ value, onChange, error, required, label = "Fecha de Nacimiento" }) => {
+    // Parse initial value (YYYY-MM-DD)
+    const [year, month, day] = value ? value.split('-') : ['', '', ''];
+    
+    const [d, setD] = useState(day);
+    const [m, setM] = useState(month);
+    const [y, setY] = useState(year);
+
+    const dRef = useRef<HTMLInputElement>(null);
+    const mRef = useRef<HTMLInputElement>(null);
+    const yRef = useRef<HTMLInputElement>(null);
+
+    // Sync to parent when internal state changes cleanly
+    useEffect(() => {
+        if (d && m && y && d.length === 2 && m.length === 2 && y.length === 4) {
+            const dateStr = `${y}-${m}-${d}`;
+            if (dateStr !== value) {
+                onChange(dateStr);
+            }
+        } else if (!d && !m && !y && value !== '') {
+            onChange('');
+        }
+    }, [d, m, y, onChange, value]);
+
+    // Handle initial value updates from props
+    useEffect(() => {
+        if (value) {
+            const [ny, nm, nd] = value.split('-');
+            if (nd !== d) setD(nd);
+            if (nm !== m) setM(nm);
+            if (ny !== y) setY(ny);
+        }
+    }, [value]);
+
+    const handleDTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value.replace(/\D/g, '').substring(0, 2);
+        setD(val);
+        if (val.length === 2) {
+            // Auto advance
+            if (parseInt(val) > 31) setD('31');
+            if (parseInt(val) === 0) setD('01');
+            mRef.current?.focus();
+            mRef.current?.select();
+        }
+    };
+
+    const handleMTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value.replace(/\D/g, '').substring(0, 2);
+        setM(val);
+        if (val.length === 2) {
+            // Auto advance
+            if (parseInt(val) > 12) setM('12');
+            if (parseInt(val) === 0) setM('01');
+            yRef.current?.focus();
+            yRef.current?.select();
+        }
+    };
+
+    const handleYTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value.replace(/\D/g, '').substring(0, 4);
+        setY(val);
+    };
+
+    // Handle backspace navigation
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: 'd' | 'm' | 'y') => {
+        if (e.key === 'Backspace') {
+            if (field === 'y' && y === '') mRef.current?.focus();
+            if (field === 'm' && m === '') dRef.current?.focus();
+        }
+    };
+
+    return (
+        <div className="space-y-2 group">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">
+                {label} {required && <span className="text-red-400">*</span>}
+            </label>
+            
+            <div className={cn(
+                "flex items-center gap-2 p-1.5 bg-slate-50 border rounded-xl transition-all",
+                error ? "border-red-300 bg-red-50/50" : "border-slate-200 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10"
+            )}>
+                <div className="pl-3 pr-1 text-slate-300 group-focus-within:text-blue-500 transition-colors">
+                    <Calendar size={16} strokeWidth={2} />
+                </div>
+                
+                <div className="flex items-center flex-1 gap-1">
+                    <input
+                        ref={dRef}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="DD"
+                        value={d}
+                        onChange={handleDTyping}
+                        onKeyDown={e => handleKeyDown(e, 'd')}
+                        className="w-10 text-center bg-transparent outline-none text-sm font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-medium"
+                    />
+                    <span className="text-slate-300 font-light">/</span>
+                    <input
+                        ref={mRef}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="MM"
+                        value={m}
+                        onChange={handleMTyping}
+                        onKeyDown={e => handleKeyDown(e, 'm')}
+                        className="w-10 text-center bg-transparent outline-none text-sm font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-medium"
+                    />
+                    <span className="text-slate-300 font-light">/</span>
+                    <input
+                        ref={yRef}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="AAAA"
+                        value={y}
+                        onChange={handleYTyping}
+                        onKeyDown={e => handleKeyDown(e, 'y')}
+                        className="w-16 text-center bg-transparent outline-none text-sm font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-medium"
+                    />
+                </div>
+            </div>
+            {error && <p className="text-xs text-red-500 font-medium ml-1">{error}</p>}
+        </div>
+    );
+};
+
+export default DateInput;

@@ -8,6 +8,7 @@ import { bookingService } from './services/bookingService';
 import { AuthProvider, useAuth } from './services/authService';
 import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcuts';
 import GlobalSearch from './components/GlobalSearch';
+import OnboardingWizard from './components/OnboardingWizard';
 import { sileo, Toaster } from 'sileo';
 import 'sileo/styles.css';
 
@@ -109,6 +110,7 @@ const Layout: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <OnboardingWizard />
       {/* Skip link for accessibility */}
       <a 
         href="#main-content" 

@@ -113,6 +113,7 @@ const SettingsView: React.FC = () => {
         description="Esto eliminará pacientes, citas, presupuestos y toda la información almacenada. Esta acción no se puede deshacer."
         confirmLabel="Sí, Borrar Todo"
         variant="danger"
+        requireText="BORRAR"
       />
       <header className="flex items-center gap-4 mb-8">
         <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95">←</button>

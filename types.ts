@@ -162,6 +162,28 @@ export interface Payment {
   date: string;
 }
 
+// --- Imágenes y Radiografías ---
+
+export interface XRayImage {
+  id: string;
+  url: string;
+  date: string;
+  title: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface DoctorProfile {
+  id: string;
+  full_name: string;
+  role: string;
+  clinic_name: string;
+  phone: string | null;
+  currency: string;
+  locale: string;
+  has_completed_onboarding?: boolean;
+}
+
 // --- Periodontograma Clínico ---
 
 export interface PerioSite {
@@ -192,7 +214,7 @@ export interface PatientRecord {
   odontogram: ToothData[];
   odontogramHistory?: OdontogramSnapshot[];
   periodontogram: PeriodontogramData;
-  xrays: string[];
+  xrays: XRayImage[];
   budget: BudgetItem[];
   payments?: Payment[];
   balance: number;

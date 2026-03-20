@@ -5,6 +5,7 @@ import { PatientRecord, PatientIdentification } from '../types';
 import { cn, createDefaultPeriodontogramData } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
+import DateInput from './DateInput';
 
 interface Props {
     isOpen: boolean;
@@ -119,11 +120,8 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                             />
                         </div>
 
-                        <InputField
-                            icon={Calendar}
+                        <DateInput
                             label="Fecha de Nacimiento"
-                            type="date"
-                            name="birthDate"
                             value={formData.birthDate}
                             onChange={val => setFormData(p => ({ ...p, birthDate: val }))}
                             error={errors.birthDate}

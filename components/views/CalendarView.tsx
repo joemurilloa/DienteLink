@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { persistenceService } from '../../services/persistenceService';
 import ConfirmModal from '../ConfirmModal';
 import { Appointment, AppointmentType } from '../../types';
-import { cn, generateId, getInitials } from '../../lib/utils';
-import { Plus, Trash2 } from 'lucide-react';
+import { cn, generateId, getInitials, getLocalISODate } from '../../lib/utils';
+import { Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { sileo } from 'sileo';
 
 const APPOINTMENT_TYPES: AppointmentType[] = ['Consulta', 'Seguimiento', 'Cirugía', 'Revisión'];
@@ -19,7 +19,7 @@ const CalendarView: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
 
-  // Refresh when a booking request is approved and creates an appointment
+  // Refresh when a booking request is approved
   useEffect(() => {
     const handleCreated = () => setAppointments(persistenceService.getAppointments());
     window.addEventListener('appointmentCreated', handleCreated);
@@ -33,14 +33,13 @@ const CalendarView: React.FC = () => {
     patientName: patientNameFromParams,
     patientId: patientIdFromParams,
     time: '09:00',
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalISODate(new Date()),
     type: 'Consulta' as AppointmentType
   });
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
-  // Navigation helpers per view
   const handlePrev = () => {
     const d = new Date(currentDate);
     if (viewMode === 'month') d.setMonth(d.getMonth() - 1);
@@ -59,28 +58,19 @@ const CalendarView: React.FC = () => {
 
   const handleAddAppointment = async () => {
     setFormError('');
-    if (!newApt.patientName.trim()) {
-      setFormError('Ingresa el nombre del paciente');
-      return;
-    }
-    if (newApt.patientName.trim().length < 3) {
-      setFormError('El nombre debe tener al menos 3 caracteres');
-      return;
-    }
+    if (!newApt.patientName.trim()) { setFormError('El nombre del paciente es requerido'); return; }
+    if (newApt.patientName.trim().length < 3) { setFormError('El nombre es demasiado corto'); return; }
 
-    // Check for schedule conflicts
     const conflict = appointments.find(a => a.date === newApt.date && a.time === newApt.time);
     if (conflict) {
-      setFormError(`Ya existe una cita a las ${newApt.time} con ${conflict.patientName}. Elige otra hora.`);
+      setFormError(`El bloque ${newApt.time} ya está ocupado por ${conflict.patientName}.`);
       return;
     }
 
-    // Try to find patient by name if no patientId is provided
     let patientId = newApt.patientId;
     let phoneNumber = '';
-    const found = persistenceService.getPatients().find(
-      p => patientId ? p.id === patientId : p.identification.fullName.toLowerCase() === newApt.patientName.toLowerCase()
-    );
+    const found = persistenceService.getPatients().find(p => patientId ? p.id === patientId : p.identification.fullName.toLowerCase() === newApt.patientName.toLowerCase());
+    
     if (found) {
       patientId = found.id;
       phoneNumber = found.identification.phone || '';
@@ -89,7 +79,7 @@ const CalendarView: React.FC = () => {
     const appointment: Appointment = {
       id: generateId(),
       patientId,
-      patientName: newApt.patientName,
+      patientName: newApt.patientName.trim(),
       phoneNumber,
       time: newApt.time,
       date: newApt.date,
@@ -97,35 +87,34 @@ const CalendarView: React.FC = () => {
       status: 'Programada',
       reminderStatus: 'not_sent'
     };
+
     await persistenceService.saveAppointment(appointment);
     setAppointments(persistenceService.getAppointments());
     setIsAdding(false);
     setNewApt({ patientName: '', patientId: '', time: '09:00', date: newApt.date, type: 'Consulta' });
-    sileo.success({ title: `Cita creada para ${appointment.patientName}`, description: `${appointment.date} a las ${appointment.time}` });
+    sileo.success({ title: 'Cita Agendada', description: `${appointment.patientName} a las ${appointment.time}` });
   };
 
   const handleDeleteAppointment = async (aptId: string) => {
     await persistenceService.deleteAppointment(aptId);
     setAppointments(persistenceService.getAppointments());
     setDeleteTarget(null);
-    sileo.info({ title: 'Cita movida a la papelera', description: 'Puedes recuperarla desde Ajustes → Papelera' });
+    sileo.info({ title: 'Cita eliminada', description: 'Se movió a la papelera del sistema.' });
   };
 
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const dayNamesShort = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-  const dayNamesFull = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const days = daysInMonth(year, month);
   const skip = firstDayOfMonth(year, month);
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalISODate(new Date());
   const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 - 20:00
 
-  // Week helpers
   const getWeekDates = () => {
     const d = new Date(currentDate);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Start on Monday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(d.setDate(diff));
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(monday);
@@ -134,389 +123,331 @@ const CalendarView: React.FC = () => {
     });
   };
 
-  const fmtDate = (d: Date) => d.toISOString().split('T')[0];
+  const fmtDate = (d: Date) => getLocalISODate(d);
   const fmtHour = (h: number) => `${String(h).padStart(2, '0')}:00`;
 
-  // Header label
   const headerLabel = viewMode === 'month'
     ? `${monthNames[month]} ${year}`
     : viewMode === 'week'
       ? (() => {
         const dates = getWeekDates();
-        const s = dates[0]; const e = dates[6];
+        const s = dates[0], e = dates[6];
         return s.getMonth() === e.getMonth()
-          ? `${s.getDate()} – ${e.getDate()} ${monthNames[s.getMonth()]} ${s.getFullYear()}`
-          : `${s.getDate()} ${monthNames[s.getMonth()].slice(0, 3)} – ${e.getDate()} ${monthNames[e.getMonth()].slice(0, 3)} ${e.getFullYear()}`;
+          ? `${s.getDate()} - ${e.getDate()} de ${monthNames[s.getMonth()]} ${year}`
+          : `${s.getDate()} de ${monthNames[s.getMonth()].slice(0, 3)} - ${e.getDate()} de ${monthNames[e.getMonth()].slice(0, 3)} ${year}`;
       })()
-      : `${dayNamesFull[currentDate.getDay()]} ${currentDate.getDate()} de ${monthNames[currentDate.getMonth()]} ${year}`;
+      : (() => {
+          const d = currentDate.getDate();
+          return `${d} de ${monthNames[currentDate.getMonth()]} ${year}`;
+      })();
 
   return (
-    <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95">←</button>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Agenda</h2>
-        </div>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-[0.97]"
-        >
-          <Plus size={16} /> Nueva Cita
-        </button>
-      </header>
-
-      {/* View Mode Toggle + Navigation */}
-      <div className="card-premium p-4 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* View selector */}
-          <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
-            {([['month', 'Mes'], ['week', 'Semana'], ['day', 'Día']] as const).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
-                  viewMode === mode
-                    ? "bg-white text-blue-600 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800"
-                )}
-              >
-                {label}
+    <div className="flex-1 h-full overflow-y-auto page-transition bg-white">
+      <div className="max-w-[1400px] mx-auto p-6 lg:p-12 space-y-10 pb-32 md:pb-12">
+        
+        {/* Superior Minimalist Header */}
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <button onClick={() => navigate('/')} className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+                <ChevronLeft size={16} />
               </button>
-            ))}
+              <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Calendario</h1>
+            </div>
+            <p className="text-slate-500 font-medium pl-11">Organiza tu clínica fácilmente.</p>
           </div>
-
-          {/* Navigation */}
+          
           <div className="flex items-center gap-3">
-            <button onClick={handleToday} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100 transition-all border border-blue-100">
-              Hoy
-            </button>
-            <button onClick={handlePrev} className="p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-600">←</button>
-            <h3 className="text-lg font-bold text-slate-900 min-w-[200px] text-center">{headerLabel}</h3>
-            <button onClick={handleNext} className="p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-600">→</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Hint for new users */}
-      <p className="text-xs text-slate-400 text-center mb-4 md:hidden">Toca en una fecha o hora para agregar una cita</p>
-
-      {/* ══════ MONTHLY VIEW ══════ */}
-      {viewMode === 'month' && (
-        <div className="card-premium p-6 mb-6">
-          <div className="grid grid-cols-7 gap-4">
-            {dayNamesShort.map(d => (
-              <div key={d} className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 py-3">{d}</div>
-            ))}
-            {Array.from({ length: skip }).map((_, i) => <div key={`skip-${i}`} />)}
-            {Array.from({ length: days }).map((_, i) => {
-              const d = i + 1;
-              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-              const dayApts = appointments.filter(a => a.date === dateStr);
-              const isToday = todayStr === dateStr;
-
-              return (
-                <div
-                  key={d}
-                  onClick={() => {
-                    setNewApt(prev => ({ ...prev, date: dateStr }));
-                    setCurrentDate(new Date(dateStr));
-                    setViewMode('day');
-                  }}
+            <div className="flex bg-slate-100/80 p-1 rounded-xl">
+              {([['day', 'Día'], ['week', 'Semana'], ['month', 'Mes']] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
                   className={cn(
-                    "min-h-[100px] p-3 rounded-xl border transition-all cursor-pointer group hover:border-blue-200 hover:shadow-md",
-                    isToday ? "bg-blue-50 border-blue-200" : "bg-white border-slate-100"
+                    "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                    viewMode === mode ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : "text-slate-400 hover:text-slate-700"
                   )}
                 >
-                  <span className={cn(
-                    "text-xs font-bold mb-1.5 block",
-                    isToday ? "text-blue-600" : "text-slate-400 group-hover:text-blue-500"
-                  )}>{d}</span>
-                  <div className="space-y-1">
-                    {dayApts.map(a => (
-                      <div key={a.id} className="px-2 py-1 bg-blue-600 text-white rounded-md text-[9px] font-medium truncate flex items-center justify-between gap-1">
-                        <span className="truncate">{a.time} - {a.patientName}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }}
-                          className="text-red-300 hover:text-red-100 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 size={10} />
-                        </button>
-                      </div>
-                    ))}
-                    {dayApts.length === 0 && (
-                      <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Plus size={12} className="text-blue-300" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+               onClick={() => setIsAdding(true)}
+               className="h-10 px-5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-[0_4px_12px_rgba(37,99,235,0.2)] hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95"
+            >
+              <Plus size={16} /> <span className="hidden sm:inline">Nueva Cita</span>
+            </button>
           </div>
-        </div>
-      )}
+        </header>
 
-      {/* ══════ WEEKLY VIEW ══════ */}
-      {viewMode === 'week' && (
-        <div className="card-premium p-4 mb-6 overflow-x-auto">
-          <div className="min-w-[700px]">
-            {/* Day headers */}
-            <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0 border-b border-slate-200 pb-3 mb-0">
-              <div />
-              {getWeekDates().map((date, i) => {
-                const dateStr = fmtDate(date);
-                const isToday = dateStr === todayStr;
+        {/* Date Navigation Strip */}
+        <div className="flex items-center justify-between border-y border-slate-100 py-4 px-2">
+          <button onClick={handleToday} className="px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+            Hoy
+          </button>
+          
+          <div className="flex items-center gap-8">
+            <button onClick={handlePrev} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight min-w-[200px] text-center">
+              {headerLabel}
+            </h2>
+            <button onClick={handleNext} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <div className="w-16" /> {/* Spacer */}
+        </div>
+
+        <div className="min-h-[600px] animate-in fade-in duration-500">
+          
+          {/* ══════ MONTH VIEW ══════ */}
+          {viewMode === 'month' && (
+            <div className="grid grid-cols-7 border-t border-l border-slate-100 bg-slate-50/50 rounded-3xl overflow-hidden">
+              {dayNamesShort.map(d => (
+                <div key={d} className="h-12 flex items-center justify-end pr-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 border-r border-b border-slate-100 bg-white">
+                  {d}
+                </div>
+              ))}
+              {Array.from({ length: skip }).map((_, i) => <div key={`s-${i}`} className="bg-slate-50/50 border-r border-b border-slate-100 min-h-[140px]" />)}
+              
+              {Array.from({ length: days }).map((_, i) => {
+                const d = i + 1;
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = todayStr === dateStr;
                 const dayApts = appointments.filter(a => a.date === dateStr);
+
                 return (
-                  <div key={i} className="text-center">
-                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider", isToday ? "text-blue-600" : "text-slate-400")}>
-                      {dayNamesShort[(i + 1) % 7]}
-                    </p>
-                    <button
-                      onClick={() => { setCurrentDate(date); setViewMode('day'); }}
-                      className={cn(
-                        "w-9 h-9 rounded-full text-sm font-bold mt-1 transition-all",
-                        isToday ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-blue-50"
+                  <div
+                    key={d}
+                    onClick={() => { setCurrentDate(new Date(dateStr)); setViewMode('day'); }}
+                    className="min-h-[140px] bg-white border-r border-b border-slate-100 p-2 cursor-pointer group hover:bg-slate-100/60 hover:z-10 transition-all relative"
+                  >
+                    <div className="flex justify-end mb-2">
+                      <span className={cn(
+                        "w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold",
+                        isToday ? "bg-blue-600 text-white" : "text-slate-700"
+                      )}>{d}</span>
+                    </div>
+
+                    <div className="space-y-1.5 px-0.5">
+                      {dayApts.slice(0, 4).map(a => (
+                        <div key={a.id} className="px-2 py-1.5 bg-blue-50/70 border border-blue-100/50 rounded-lg flex items-center justify-between group/apt">
+                          <span className="text-[10px] font-bold text-blue-700 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-blue-300 hover:text-red-500 opacity-0 group-hover/apt:opacity-100">
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      ))}
+                      {dayApts.length > 4 && (
+                        <div className="text-[10px] font-bold text-slate-400 text-center pt-1">+ {dayApts.length - 4} más</div>
                       )}
-                    >
-                      {date.getDate()}
-                    </button>
-                    {dayApts.length > 0 && (
-                      <div className="flex justify-center mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}
             </div>
+          )}
 
-            {/* Time grid */}
-            <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0">
-              {HOURS.map(hour => (
-                <React.Fragment key={hour}>
-                  <div className="h-16 flex items-start justify-end pr-3 pt-0.5">
-                    <span className="text-[10px] font-semibold text-slate-400">{fmtHour(hour)}</span>
-                  </div>
-                  {getWeekDates().map((date, di) => {
+          {/* ══════ WEEK VIEW ══════ */}
+          {viewMode === 'week' && (
+            <div className="overflow-x-auto hide-scrollbar border border-slate-100 rounded-3xl pb-8">
+              <div className="min-w-[800px]">
+                {/* Headers */}
+                <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50/30 border-b border-slate-100 sticky top-0 z-10">
+                  <div className="bg-white border-r border-slate-100" />
+                  {getWeekDates().map((date, i) => {
                     const dateStr = fmtDate(date);
-                    const hourApts = appointments.filter(a => {
-                      if (a.date !== dateStr) return false;
-                      if (!a.time) return false;
-                      const aptHour = parseInt(a.time.split(':')[0] || '0', 10);
-                      return aptHour === hour;
-                    });
                     const isToday = dateStr === todayStr;
                     return (
-                      <div
-                        key={`${hour}-${di}`}
-                        onClick={() => {
-                          setNewApt(prev => ({ ...prev, date: dateStr, time: fmtHour(hour) }));
-                          setIsAdding(true);
-                        }}
-                        className={cn(
-                          "h-16 border-t border-l border-slate-100 px-1 py-0.5 cursor-pointer hover:bg-blue-50/50 transition-colors relative group",
-                          isToday && "bg-blue-50/30"
-                        )}
-                      >
-                        {hourApts.map(a => (
-                          <div key={a.id} className="px-1.5 py-1 bg-blue-600 text-white rounded-md text-[10px] font-medium mb-0.5 truncate flex items-center justify-between gap-0.5">
-                            <span className="truncate">{a.time} {a.patientName}</span>
-                            <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-red-300 hover:text-red-100 flex-shrink-0 opacity-0 group-hover:opacity-100">
-                              <Trash2 size={8} />
-                            </button>
-                          </div>
-                        ))}
-                        {hourApts.length === 0 && (
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Plus size={10} className="text-blue-300" />
-                          </div>
-                        )}
+                      <div key={i} className={cn("text-center py-4 border-r border-slate-100 bg-white", isToday && "bg-blue-50/20")}>
+                        <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1", isToday ? "text-blue-600" : "text-slate-400")}>{dayNamesShort[(i + 1) % 7]}</p>
+                        <p className={cn("text-2xl font-semibold", isToday ? "text-blue-600" : "text-slate-900")}>{date.getDate()}</p>
                       </div>
                     );
                   })}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════ DAILY VIEW ══════ */}
-      {viewMode === 'day' && (
-        <div className="card-premium p-6 mb-6">
-          <div className="space-y-0">
-            {HOURS.map(hour => {
-              const dateStr = fmtDate(currentDate);
-              const hourApts = appointments.filter(a => {
-                if (a.date !== dateStr) return false;
-                if (!a.time) return false;
-                const aptHour = parseInt(a.time.split(':')[0] || '0', 10);
-                return aptHour === hour;
-              });
-              const isNow = todayStr === dateStr && new Date().getHours() === hour;
-
-              return (
-                <div
-                  key={hour}
-                  className={cn(
-                    "flex gap-4 border-t border-slate-100 min-h-[72px] group cursor-pointer hover:bg-blue-50/40 transition-colors",
-                    isNow && "bg-blue-50/60"
-                  )}
-                  onClick={() => {
-                    setNewApt(prev => ({ ...prev, date: dateStr, time: fmtHour(hour) }));
-                    setIsAdding(true);
-                  }}
-                >
-                  {/* Hour label */}
-                  <div className="w-16 flex-shrink-0 pt-2 text-right pr-3">
-                    <span className={cn("text-xs font-semibold", isNow ? "text-blue-600" : "text-slate-400")}>{fmtHour(hour)}</span>
-                    {isNow && <div className="w-2 h-2 bg-blue-600 rounded-full ml-auto mt-1" />}
-                  </div>
-
-                  {/* Appointments */}
-                  <div className="flex-1 py-2 space-y-2">
-                    {hourApts.map(a => (
-                      <div key={a.id} className="flex items-center justify-between p-3 bg-blue-600 text-white rounded-xl shadow-sm">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
-                            {getInitials(a.patientName)}
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="font-semibold text-sm truncate">{a.patientName}</h4>
-                            <p className="text-blue-200 text-xs">{a.time} · {a.type} · {a.status}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {a.patientId && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/patient/${a.patientId}`); }}
-                              className="px-2.5 py-1.5 bg-white/20 rounded-lg text-[10px] font-semibold hover:bg-white/30 transition-all"
-                            >
-                              Ver
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-red-200 hover:text-red-100 hover:bg-red-500/30 transition-all"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {hourApts.length === 0 && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-blue-400 text-xs font-medium py-2">
-                        <Plus size={12} /> Agregar cita
-                      </div>
-                    )}
-                  </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Timeline Grid */}
+                <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-white">
+                  {HOURS.map(hour => (
+                    <React.Fragment key={hour}>
+                      <div className="h-24 pr-4 pt-2 text-right border-r border-b border-slate-50 bg-white sticky left-0 z-10">
+                        <span className="text-[11px] font-semibold text-slate-400">{fmtHour(hour)}</span>
+                      </div>
+                      {getWeekDates().map((date, di) => {
+                        const dateStr = fmtDate(date);
+                        const isToday = dateStr === todayStr;
+                        const hourApts = appointments.filter(a => a.date === dateStr && parseInt(a.time.split(':')[0] || '0', 10) === hour);
+                        
+                        return (
+                          <div 
+                            key={`${hour}-${di}`} 
+                            onClick={() => { setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); setIsAdding(true); }}
+                            className={cn(
+                              "h-24 border-r border-b border-slate-50 p-1 cursor-pointer group hover:bg-blue-50/40 transition-colors",
+                              isToday && "bg-blue-50/10"
+                            )}
+                          >
+                            {hourApts.map(a => (
+                              <div key={a.id} className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)] hover:shadow-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-blue-600">{a.time}</span>
+                                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                                <span className="text-xs font-semibold text-slate-800 line-clamp-2 mt-0.5 leading-tight">{a.patientName}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════ DAY VIEW ══════ */}
+          {viewMode === 'day' && (
+            <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+              {HOURS.map(hour => {
+                const dateStr = fmtDate(currentDate);
+                const isNow = todayStr === dateStr && new Date().getHours() === hour;
+                const hourApts = appointments.filter(a => a.date === dateStr && parseInt(a.time.split(':')[0] || '0', 10) === hour);
+
+                return (
+                  <div key={hour} className="flex min-h-[80px] group relative">
+                    <div className="w-24 flex-shrink-0 text-right pr-6 pt-5 relative">
+                      <span className={cn("text-[13px] font-semibold", isNow ? "text-blue-600" : "text-slate-400")}>{fmtHour(hour)}</span>
+                      {isNow && <div className="absolute right-0 top-6 w-2 h-2 bg-blue-600 rounded-full translate-x-1" />}
+                    </div>
+                    
+                    <div className={cn(
+                      "flex-1 border-t border-slate-100 py-3 pl-6 pr-2 space-y-3",
+                      isNow ? "border-t-blue-200 bg-blue-50/5" : ""
+                    )}>
+                      {hourApts.map(a => (
+                        <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-100/60 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all group/apt">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-blue-50 rounded-[14px] flex items-center justify-center text-blue-600 font-bold text-sm">
+                              {getInitials(a.patientName)}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-slate-900 text-[15px]">{a.patientName}</h4>
+                              <p className="text-xs text-slate-500 font-medium mt-0.5">{a.time} · {a.type} · {a.status}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:opacity-0 group-hover/apt:opacity-100 transition-opacity justify-end">
+                            {a.patientId && (
+                              <button onClick={(e) => { e.stopPropagation(); navigate(`/patient/${a.patientId}`); }} className="px-4 py-2 bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-xs font-bold transition-all">
+                                Ficha Clínica
+                              </button>
+                            )}
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="px-4 py-2 bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl text-xs font-bold transition-all">
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {hourApts.length === 0 && (
+                        <div 
+                          onClick={() => { setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); setIsAdding(true); }}
+                          className="h-full border-2 border-dashed border-transparent hover:border-slate-200 rounded-2xl flex items-center px-4 opacity-0 group-hover:opacity-100 cursor-pointer transition-all"
+                        >
+                          <span className="text-xs font-bold text-slate-400 flex items-center gap-2"><Plus size={14}/> Agendar aquí</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {isAdding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm page-transition">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md page-transition">
-            <h3 className="text-xl font-bold text-slate-900 mb-5 tracking-tight">Agendar Cita</h3>
-            <div className="space-y-4">
-              {formError && (
-                <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium">
-                  {formError}
-                </div>
-              )}
-              <div className="space-y-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Paciente <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <input
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
-                    value={newApt.patientName}
-                    onChange={e => { setNewApt(p => ({ ...p, patientName: e.target.value, patientId: '' })); setFormError(''); }}
-                    placeholder="Escribe el nombre del paciente..."
-                  />
-                  {/* Patient suggestions */}
-                  {newApt.patientName.length >= 2 && !newApt.patientId && (() => {
-                    const matches = persistenceService.getPatients()
-                      .filter(p => p.identification.fullName.toLowerCase().includes(newApt.patientName.toLowerCase()))
-                      .slice(0, 4);
-                    if (matches.length === 0) return null;
-                    return (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-slate-200 shadow-lg z-10 overflow-hidden">
-                        {matches.map(p => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => { setNewApt(prev => ({ ...prev, patientName: p.identification.fullName, patientId: p.id })); setFormError(''); }}
-                            className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2 border-b border-slate-50 last:border-0"
-                          >
-                            <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-[10px] font-bold flex-shrink-0">
-                              {getInitials(p.identification.fullName)}
-                            </div>
-                            <span>{p.identification.fullName}</span>
-                          </button>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-                <p className="text-[10px] text-slate-300 ml-1">Puedes seleccionar un paciente existente o escribir un nombre nuevo</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/10 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white p-8 rounded-[32px] shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-300">
+            <h3 className="text-2xl font-bold text-slate-900 mb-6 tracking-tight">Agendar Cita</h3>
+            
+            {formError && (
+              <div className="px-4 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-semibold mb-6">
+                {formError}
               </div>
+            )}
+
+            <div className="space-y-6">
+              <div className="space-y-2 relative">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Paciente *</label>
+                <input
+                  autoFocus
+                  className="w-full px-5 py-3.5 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all border border-slate-100"
+                  value={newApt.patientName}
+                  onChange={e => { setNewApt(p => ({...p, patientName: e.target.value, patientId: ''})); setFormError(''); }}
+                  placeholder="Escribe el nombre del paciente..."
+                />
+                
+                {/* Auto-suggest dropdown */}
+                {newApt.patientName.length >= 2 && !newApt.patientId && (() => {
+                  const matches = persistenceService.getPatients().filter(p => p.identification.fullName.toLowerCase().includes(newApt.patientName.toLowerCase())).slice(0, 4);
+                  if (matches.length === 0) return null;
+                  return (
+                    <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl z-20 overflow-hidden">
+                      {matches.map(p => (
+                        <div 
+                          key={p.id} 
+                          onClick={() => { setNewApt(prev => ({...prev, patientName: p.identification.fullName, patientId: p.id})); setFormError(''); }}
+                          className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-center flex-shrink-0">{getInitials(p.identification.fullName)}</div>
+                          <p className="text-sm font-semibold text-slate-700">{p.identification.fullName}</p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Fecha</label>
-                  <input
-                    type="date"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 transition-all"
-                    value={newApt.date}
-                    onChange={e => { setNewApt(p => ({ ...p, date: e.target.value })); setFormError(''); }}
-                  />
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Fecha</label>
+                  <input type="date" className="w-full px-4 py-3.5 bg-slate-50 rounded-xl outline-none text-sm font-bold text-slate-900 focus:bg-white border border-slate-100" value={newApt.date} onChange={e => setNewApt(p => ({...p, date: e.target.value}))}/>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hora</label>
-                  <input
-                    type="time"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 transition-all"
-                    value={newApt.time}
-                    onChange={e => { setNewApt(p => ({ ...p, time: e.target.value })); setFormError(''); }}
-                  />
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Hora</label>
+                  <input type="time" className="w-full px-4 py-3.5 bg-slate-50 rounded-xl outline-none text-sm font-bold text-slate-900 focus:bg-white border border-slate-100" value={newApt.time} onChange={e => setNewApt(p => ({...p, time: e.target.value}))}/>
                 </div>
               </div>
+
               <div className="space-y-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tipo de Cita</label>
-                <div className="flex gap-2 flex-wrap">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Tipo de Consulta</label>
+                <div className="flex flex-wrap gap-2">
                   {APPOINTMENT_TYPES.map(t => (
                     <button
                       key={t}
                       type="button"
-                      onClick={() => setNewApt(p => ({ ...p, type: t }))}
+                      onClick={() => setNewApt(p => ({...p, type: t}))}
                       className={cn(
-                        "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
-                        newApt.type === t
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-blue-50 hover:text-blue-600"
+                        "px-4 py-2 rounded-[10px] text-[13px] font-bold transition-all border",
+                        newApt.type === t ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/10" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300"
                       )}
-                    >
-                      {t}
-                    </button>
+                    >{t}</button>
                   ))}
                 </div>
               </div>
-              <button
-                onClick={handleAddAppointment}
-                className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98] transition-all mt-3"
-              >
-                Confirmar y Agendar
-              </button>
-              <button
-                onClick={() => { setIsAdding(false); setFormError(''); }}
-                className="w-full py-3 text-slate-400 text-xs font-semibold hover:text-red-500 transition-colors"
-              >
-                Cancelar
-              </button>
+
+              <div className="pt-6 flex gap-3">
+                <button onClick={() => { setIsAdding(false); setFormError(''); }} className="px-6 py-4 rounded-xl font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
+                <button onClick={handleAddAppointment} className="flex-1 bg-blue-600 text-white font-bold text-sm px-4 py-4 rounded-xl shadow-[0_8px_16px_rgba(37,99,235,0.2)] hover:-translate-y-0.5 transition-all">Confirmar Cita</button>
+              </div>
             </div>
           </div>
         </div>
@@ -526,10 +457,10 @@ const CalendarView: React.FC = () => {
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteTarget && handleDeleteAppointment(deleteTarget)}
-        title="Mover a papelera"
-        description="La cita se moverá a la papelera. Podrás recuperarla desde Ajustes → Papelera si fue un error."
-        confirmLabel="Sí, mover a papelera"
-        variant="warning"
+        title="Cancelar Cita"
+        description="Esta cita se enviará a la lista de citas borradas. ¿Estás seguro?"
+        confirmLabel="Eliminar Cita"
+        variant="danger"
       />
     </div>
   );

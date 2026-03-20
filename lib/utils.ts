@@ -31,6 +31,27 @@ export function generateId(): string {
   return crypto.randomUUID();
 }
 
+/** Formats ISO dates ("YYYY-MM-DD") into human readable strings like "jueves 19 de marzo" for fast reading */
+export function formatAppDate(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  } catch(e) {
+    return dateStr;
+  }
+}
+
+/** Safely return YYYY-MM-DD in the user's local timezone instead of UTC */
+export function getLocalISODate(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // --- Periodontogram helpers ---
 
 const DEFAULT_SITE: PerioSite = { depth: 0, recession: 0, bleeding: false };

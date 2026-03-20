@@ -1,94 +1,84 @@
 
-import { Appointment, AppointmentStatus } from '../types';
-
-type WhatsAppEventListener = (data: { appointmentId: string; status: AppointmentStatus }) => void;
+import { Appointment } from '../types';
 
 /**
- * WhatsAppService maneja la comunicación con Meta Graph API.
- * Ahora incluye un sistema de eventos para simular Webhooks en tiempo real.
+ * WhatsAppService — Envío REAL de recordatorios vía wa.me deep links.
+ *
+ * En lugar de simular un envío (el servicio anterior era teatro puro),
+ * ahora abrimos directamente WhatsApp con un mensaje pre-llenado.
+ * Esto funciona en web y móvil sin necesidad de API de Meta Business.
+ *
+ * Para una integración real con Meta Graph API en el futuro,
+ * se necesitará un backend (Edge Function) que maneje los tokens.
  */
 class WhatsAppService {
-  private readonly baseUrl = 'https://graph.facebook.com/v18.0';
-  private readonly phoneNumberId = 'YOUR_PHONE_NUMBER_ID';
-  private readonly accessToken = 'YOUR_ACCESS_TOKEN';
-  private listeners: WhatsAppEventListener[] = [];
 
   /**
-   * Suscribirse a actualizaciones de estado (Simulación de Webhook)
+   * Abre WhatsApp con un mensaje pre-llenado de recordatorio.
+   * Retorna `true` si se pudo abrir (siempre, en la práctica).
    */
-  subscribe(callback: WhatsAppEventListener) {
-    this.listeners.push(callback);
-    return () => {
-      this.listeners = this.listeners.filter(l => l !== callback);
-    };
-  }
+  sendAppointmentReminder(appointment: Appointment): { success: boolean; messageId?: string } {
+    const phone = this.sanitizePhone(appointment.phoneNumber);
 
-  /**
-   * Emite un evento interno (Simula la llegada de un Webhook de Meta)
-   */
-  private emit(appointmentId: string, status: AppointmentStatus) {
-    this.listeners.forEach(listener => listener({ appointmentId, status }));
-  }
-
-  /**
-   * Método de simulación para pruebas de desarrollo
-   */
-  simulateIncomingConfirmation(appointmentId: string) {
-    console.log(`[Webhook Simulator] Recibida confirmación para cita: ${appointmentId}`);
-    // Simulamos un pequeño retraso de red del Webhook
-    setTimeout(() => {
-      this.emit(appointmentId, 'Completada');
-    }, 1500);
-  }
-
-  /**
-   * Envía un recordatorio de cita usando una plantilla oficial.
-   */
-  async sendAppointmentReminder(appointment: Appointment): Promise<{ success: boolean; messageId?: string }> {
-    const endpoint = `${this.baseUrl}/${this.phoneNumberId}/messages`;
-
-    const payload = {
-      messaging_product: 'whatsapp',
-      to: appointment.phoneNumber,
-      type: 'template',
-      template: {
-        name: 'appointment_reminder_v1',
-        language: { code: 'es' },
-        components: [
-          {
-            type: 'body',
-            parameters: [
-              { type: 'text', text: appointment.patientName },
-              { type: 'text', text: appointment.time },
-              { type: 'text', text: appointment.date }
-            ]
-          },
-          {
-            type: 'button',
-            sub_type: 'quick_reply',
-            index: '0',
-            payload: `CONFIRM_${appointment.id}`
-          }
-        ]
-      }
-    };
-
-    try {
-      console.log('Enviando WhatsApp a:', appointment.phoneNumber, payload);
-
-      // Simulación de envío exitoso
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      // Auto-simular una respuesta después de 5 segundos para demostrar el flujo
-      // setTimeout(() => this.simulateIncomingConfirmation(appointment.id), 5000);
-
-      return { success: true, messageId: `wa_msg_${crypto.randomUUID().slice(0, 9)}` };
-    } catch (error) {
-      console.error('Error enviando WhatsApp:', error);
+    if (!phone) {
       return { success: false };
     }
+
+    const message = this.buildReminderMessage(appointment);
+    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+
+    return { success: true, messageId: `wa_link_${Date.now()}` };
   }
 
+  /**
+   * Limpia el número de teléfono dejando solo dígitos.
+   * Acepta formatos como +504 1234-5678, (504) 1234 5678, etc.
+   */
+  private sanitizePhone(raw: string | undefined): string {
+    if (!raw) return '';
+    return raw.replace(/[^0-9]/g, '');
+  }
+
+  /**
+   * Construye el texto del recordatorio que se pre-llena en WhatsApp.
+   */
+  private buildReminderMessage(appointment: Appointment): string {
+    const dateFormatted = (() => {
+      try {
+        if (!appointment.date) return 'próximamente';
+        const d = new Date(appointment.date + 'T12:00:00');
+        if (isNaN(d.getTime())) return appointment.date;
+        return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+      } catch {
+        return appointment.date || 'próximamente';
+      }
+    })();
+
+    const timeFormatted = (() => {
+      if (!appointment.time) return '';
+      const [h, m] = appointment.time.split(':');
+      const date = new Date(0, 0, 0, parseInt(h || '0', 10), parseInt(m || '0', 10));
+      return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+    })();
+
+    return [
+      `¡Hola ${appointment.patientName}! 👋`,
+      ``,
+      `Te recordamos tu cita dental:`,
+      `📅 Fecha: ${dateFormatted}`,
+      timeFormatted ? `🕐 Hora: ${timeFormatted}` : '',
+      appointment.type ? `📋 Tipo: ${appointment.type}` : '',
+      ``,
+      `¡Te esperamos!`,
+      `— DienteLink`,
+    ].filter(Boolean).join('\n');
+  }
+
+  /**
+   * Verifica si tiene sentido enviar un recordatorio (dentro de 24h y no enviado aún).
+   */
   shouldSendReminder(appointment: Appointment): boolean {
     const appointmentDate = new Date(`${appointment.date} ${appointment.time}`);
     const now = new Date();

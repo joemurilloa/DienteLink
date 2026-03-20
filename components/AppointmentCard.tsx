@@ -13,6 +13,7 @@ interface AppointmentCardProps {
   appointment: Appointment;
   onReminderSent?: (id: string, status: ReminderStatus) => void;
   onNavigateToPatient?: (appointment: Appointment) => void;
+  showDate?: boolean;
 }
 
 const typeColors: Record<string, { bg: string; text: string; accent: string }> = {
@@ -29,7 +30,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   Eliminada: { label: 'Eliminada', color: 'bg-red-100 text-red-700' },
 };
 
-const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient, showDate }) => {
   const [showDetail, setShowDetail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const { profile } = useAuth();
@@ -37,12 +38,20 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
   const statusInfo = statusLabels[appointment.status] || statusLabels.Programada;
 
-  const handleSendReminder = async (e: React.MouseEvent) => {
+  const handleSendReminder = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (appointment.reminderStatus === 'sending' || appointment.reminderStatus === 'sent') return;
-    if (onReminderSent) onReminderSent(appointment.id, 'sending');
-    const result = await whatsappService.sendAppointmentReminder(appointment);
-    if (onReminderSent) onReminderSent(appointment.id, result.success ? 'sent' : 'error');
+    if (appointment.reminderStatus === 'sent') return;
+    if (!appointment.phoneNumber) {
+      sileo.warning({ title: 'Sin teléfono', description: 'Este paciente no tiene número registrado' });
+      return;
+    }
+    const result = whatsappService.sendAppointmentReminder(appointment);
+    if (result.success) {
+      if (onReminderSent) onReminderSent(appointment.id, 'sent');
+      sileo.success({ title: 'Abriendo WhatsApp', description: `Mensaje preparado para ${appointment.patientName}` });
+    } else {
+      sileo.error({ title: 'No se pudo abrir WhatsApp', description: 'Verifica el número de teléfono del paciente' });
+    }
   };
 
   const handleSendEmail = async (e: React.MouseEvent) => {
@@ -99,7 +108,18 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-slate-900 text-sm leading-tight truncate">{appointment.patientName}</h4>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {showDate && (
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md">
+                <Calendar size={10} className="text-slate-400" />
+                {(() => {
+                  try {
+                    const d = new Date(appointment.date + 'T12:00:00');
+                    return isNaN(d.getTime()) ? appointment.date : d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+                  } catch(e) { return appointment.date; }
+                })()}
+              </span>
+            )}
             <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
               <Clock size={10} className="text-slate-400" />
               {appointment.time}
@@ -112,7 +132,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
         <button
           onClick={handleSendReminder}
-          title={appointment.reminderStatus === 'sent' ? 'Recordatorio ya enviado' : 'Enviar recordatorio por WhatsApp'}
+          title={appointment.reminderStatus === 'sent' ? 'Recordatorio ya enviado' : 'Abrir WhatsApp con recordatorio'}
           className={cn(
             "w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0",
             appointment.reminderStatus === 'sent'

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Trash2, X, Info } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -12,6 +12,8 @@ interface ConfirmModalProps {
     confirmLabel?: string;
     cancelLabel?: string;
     variant?: 'danger' | 'warning' | 'info';
+    /** If set, user must type this exact text to enable the confirm button */
+    requireText?: string;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -22,9 +24,19 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     description,
     confirmLabel = 'Confirmar',
     cancelLabel = 'Cancelar',
-    variant = 'danger'
+    variant = 'danger',
+    requireText,
 }) => {
+    const [typedText, setTypedText] = useState('');
+
+    // Reset typed text when modal opens/closes
+    useEffect(() => {
+        if (!isOpen) setTypedText('');
+    }, [isOpen]);
+
     if (!isOpen) return null;
+
+    const isConfirmEnabled = !requireText || typedText === requireText;
 
     const iconMap = {
         danger: <Trash2 size={24} />,
@@ -65,8 +77,26 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                         {iconMap[variant]}
                     </div>
                     <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed mb-6">{description}</p>
+                    <p className="text-sm text-slate-500 leading-relaxed mb-4">{description}</p>
                 </div>
+
+                {requireText && (
+                    <div className="mb-5">
+                        <p className="text-xs text-slate-400 text-center mb-2">
+                            Escribe <strong className="text-red-600 font-bold">{requireText}</strong> para confirmar
+                        </p>
+                        <input
+                            type="text"
+                            value={typedText}
+                            onChange={e => setTypedText(e.target.value)}
+                            placeholder={requireText}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-center outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 transition-all"
+                            autoFocus
+                            autoComplete="off"
+                            spellCheck={false}
+                        />
+                    </div>
+                )}
 
                 <div className="flex gap-3">
                     <button
@@ -76,8 +106,12 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                         {cancelLabel}
                     </button>
                     <button
-                        onClick={() => { onConfirm(); onClose(); }}
-                        className={cn("flex-1 py-3 text-white rounded-xl font-semibold text-sm transition-all shadow-lg", colors.button)}
+                        onClick={() => { if (isConfirmEnabled) { onConfirm(); onClose(); } }}
+                        disabled={!isConfirmEnabled}
+                        className={cn(
+                            "flex-1 py-3 text-white rounded-xl font-semibold text-sm transition-all shadow-lg",
+                            isConfirmEnabled ? colors.button : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                        )}
                     >
                         {confirmLabel}
                     </button>

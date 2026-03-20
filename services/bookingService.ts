@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { DoctorAvailability, AppointmentRequest, PublicBookingSettings, AppointmentType } from '../types';
+import { formatAppDate } from '../lib/utils';
+import { sileo } from 'sileo';
+import 'sileo/styles.css';
 
 // ==========================================================
 // BookingService — In-Memory Cache + Supabase
@@ -14,6 +17,7 @@ export class BookingService {
   private settings: PublicBookingSettings | null = null;
   private requests: AppointmentRequest[] = [];
   private _ready = false;
+  private realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   // --- Initialization ---
   async init(userId: string): Promise<void> {
@@ -29,9 +33,41 @@ export class BookingService {
     this.settings = settingsRes.data ? dbToSettings(settingsRes.data) : null;
     this.requests = (reqRes.data || []).map(dbToRequest);
     this._ready = true;
+
+    // Subscribe to realtime updates for this doctor
+    this.setupRealtime(userId);
+  }
+
+  private setupRealtime(userId: string) {
+    if (this.realtimeChannel) {
+        supabase.removeChannel(this.realtimeChannel);
+    }
+
+    this.realtimeChannel = supabase.channel(`public:appointment_requests:doctor_id=eq.${userId}`)
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'appointment_requests', filter: `doctor_id=eq.${userId}` },
+            (payload) => {
+                const newReq = dbToRequest(payload.new);
+                // Avoid duplicates if we created it locally from the same browser
+                if (!this.requests.find(r => r.id === newReq.id)) {
+                    this.requests.unshift(newReq);
+                    window.dispatchEvent(new CustomEvent('newAppointmentRequest', { detail: newReq }));
+                    sileo.info({
+                        title: '¡Nueva solicitud de cita en línea!',
+                        description: `${newReq.patientName} ha pedido una cita el ${formatAppDate(newReq.requestedDate)} a las ${newReq.requestedTime}.`
+                    });
+                }
+            }
+        )
+        .subscribe();
   }
 
   reset() {
+    if (this.realtimeChannel) {
+      supabase.removeChannel(this.realtimeChannel);
+      this.realtimeChannel = null;
+    }
     this.userId = null;
     this.availability = null;
     this.settings = null;

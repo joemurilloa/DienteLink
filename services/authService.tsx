@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
+import { persistenceService } from './persistenceService';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -13,6 +14,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<DoctorProfile>) => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 export interface DoctorProfile {
@@ -23,6 +25,7 @@ export interface DoctorProfile {
   phone: string | null;
   currency: string;
   locale: string;
+  has_completed_onboarding?: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...data as DoctorProfile,
         currency: data.currency || 'HNL',
         locale: data.locale || 'es-HN',
+        has_completed_onboarding: data.has_completed_onboarding || false,
       };
       setProfile(prof);
       setCurrencyConfig(prof.currency, prof.locale);
@@ -76,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
+        persistenceService.reset();
         setProfile(null);
       }
     });
@@ -103,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    persistenceService.reset();
     await supabase.auth.signOut();
     setProfile(null);
   };
@@ -114,12 +120,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', user.id);
     
-    if (!error) {
-      const updated = profile ? { ...profile, ...updates } : null;
-      setProfile(updated);
-      if (updated) {
-        setCurrencyConfig(updated.currency, updated.locale);
-      }
+    if (error) {
+      console.error('Update Profile Error:', error);
+      throw error;
+    }
+
+    const updated = profile ? { ...profile, ...updates } : null;
+    setProfile(updated);
+    if (updated) {
+      setCurrencyConfig(updated.currency, updated.locale);
     }
   };
 
@@ -131,8 +140,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: null };
   };
 
+  const signInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      }
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, updateProfile, resetPassword }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );
