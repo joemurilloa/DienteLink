@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
 import { Appointment, ReminderStatus } from '../types';
-import { cn, getInitials } from '../lib/utils';
+import { cn, getInitials, formatAppDate } from '../lib/utils';
 import { whatsappService } from '../services/whatsappService';
 import { emailReminderService } from '../services/emailReminderService';
-import { persistenceService } from '../services/persistenceService';
 import { useAuth } from '../services/authService';
-import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail } from 'lucide-react';
+import { usePatient } from '../hooks/usePatients';
+import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle } from 'lucide-react';
 import { sileo } from 'sileo';
 
 interface AppointmentCardProps {
@@ -33,7 +33,10 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient, showDate }) => {
   const [showDetail, setShowDetail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [isDeleting, setIsDeleting] = useState(false);
   const { profile } = useAuth();
+  const { patient } = usePatient(appointment.patientId);
+  const isToday = appointment.date === new Date().toISOString().split('T')[0];
   const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-emerald-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
   const statusInfo = statusLabels[appointment.status] || statusLabels.Programada;
@@ -59,7 +62,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
     if (emailStatus === 'sending' || emailStatus === 'sent') return;
 
     // Look up patient email
-    const patient = appointment.patientId ? persistenceService.getPatientById(appointment.patientId) : undefined;
     const email = patient?.identification?.email;
     if (!email) {
       sileo.warning({ title: 'Sin correo electrónico', description: 'Este paciente no tiene email registrado' });

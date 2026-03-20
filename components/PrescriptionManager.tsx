@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Prescription, PrescriptionMedication, PatientRecord as PatientRecordType } from '../types';
-import { cn } from '../lib/utils';
+import { cn, getLocalISODate } from '../lib/utils';
 import { sileo } from 'sileo';
 import jsPDF from 'jspdf';
 import {
@@ -90,7 +90,7 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
 
         const rx: Prescription = {
             id: crypto.randomUUID(),
-            date: new Date().toISOString().split('T')[0],
+            date: getLocalISODate(new Date()),
             diagnosis: diagnosis.trim(),
             medications: validMeds,
             notes: notes.trim(),

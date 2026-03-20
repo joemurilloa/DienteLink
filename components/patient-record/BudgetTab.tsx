@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PatientRecord as PatientRecordType, BudgetItem, Payment } from '../../types';
-import { cn, formatCurrency } from '../../lib/utils';
+import { cn, formatCurrency, getLocalISODate } from '../../lib/utils';
 import {
     Plus,
     DollarSign,
@@ -44,7 +44,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             unitCost: cost,
             quantity: qty,
             status: 'pending',
-            createdAt: new Date().toISOString().split('T')[0],
+            createdAt: getLocalISODate(new Date()),
         };
         onUpdate({ ...patient, budget: [...budgetItems, item] });
         setNewTreatment({ treatment: '', unitCost: '', quantity: '1', toothId: '' });
@@ -74,7 +74,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             amount,
             method: newPayment.method,
             note: newPayment.note.trim(),
-            date: new Date().toISOString().split('T')[0],
+            date: getLocalISODate(new Date()),
         };
         onUpdate({ ...patient, payments: [...payments, payment] });
         setNewPayment({ amount: '', method: 'cash', note: '' });

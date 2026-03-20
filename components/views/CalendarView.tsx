@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { persistenceService } from '../../services/persistenceService';
+import { useAppointments, useAppointmentMutations } from '../../hooks/useAppointments';
+import { usePatients } from '../../hooks/usePatients';
 import ConfirmModal from '../ConfirmModal';
 import { Appointment, AppointmentType } from '../../types';
 import { cn, generateId, getInitials, getLocalISODate } from '../../lib/utils';
@@ -12,19 +13,15 @@ const APPOINTMENT_TYPES: AppointmentType[] = ['Consulta', 'Seguimiento', 'Cirug�
 const CalendarView: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [appointments, setAppointments] = useState(persistenceService.getAppointments());
+  const [viewDate, setViewDate] = useState(new Date());
+  const { data: appointments = [], isLoading } = useAppointments();
+  const { data: patientsList = [] } = usePatients();
+  const { createAppointment, deleteAppointment } = useAppointmentMutations();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAdding, setIsAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
-
-  // Refresh when a booking request is approved
-  useEffect(() => {
-    const handleCreated = () => setAppointments(persistenceService.getAppointments());
-    window.addEventListener('appointmentCreated', handleCreated);
-    return () => window.removeEventListener('appointmentCreated', handleCreated);
-  }, []);
 
   const patientNameFromParams = searchParams.get('patient') || '';
   const patientIdFromParams = searchParams.get('id') || '';
@@ -69,7 +66,7 @@ const CalendarView: React.FC = () => {
 
     let patientId = newApt.patientId;
     let phoneNumber = '';
-    const found = persistenceService.getPatients().find(p => patientId ? p.id === patientId : p.identification.fullName.toLowerCase() === newApt.patientName.toLowerCase());
+    const found = patientsList.find(p => patientId ? p.id === patientId : p.identification.fullName.toLowerCase() === newApt.patientName.toLowerCase());
     
     if (found) {
       patientId = found.id;
@@ -88,18 +85,23 @@ const CalendarView: React.FC = () => {
       reminderStatus: 'not_sent'
     };
 
-    await persistenceService.saveAppointment(appointment);
-    setAppointments(persistenceService.getAppointments());
     setIsAdding(false);
     setNewApt({ patientName: '', patientId: '', time: '09:00', date: newApt.date, type: 'Consulta' });
-    sileo.success({ title: 'Cita Agendada', description: `${appointment.patientName} a las ${appointment.time}` });
+    
+    createAppointment.mutate(appointment, {
+      onSuccess: () => {
+        sileo.success({ title: 'Cita Agendada', description: `${appointment.patientName} a las ${appointment.time}` });
+      }
+    });
   };
 
   const handleDeleteAppointment = async (aptId: string) => {
-    await persistenceService.deleteAppointment(aptId);
-    setAppointments(persistenceService.getAppointments());
     setDeleteTarget(null);
-    sileo.info({ title: 'Cita eliminada', description: 'Se movió a la papelera del sistema.' });
+    deleteAppointment.mutate(aptId, {
+      onSuccess: () => {
+        sileo.info({ title: 'Cita eliminada', description: 'Se movió a la papelera del sistema.' });
+      }
+    });
   };
 
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -142,11 +144,11 @@ const CalendarView: React.FC = () => {
       })();
 
   return (
-    <div className="flex-1 h-full overflow-y-auto page-transition bg-white">
-      <div className="max-w-[1400px] mx-auto p-6 lg:p-12 space-y-10 pb-32 md:pb-12">
+    <div className="flex-1 flex flex-col h-full bg-white page-transition overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 lg:p-6 lg:pb-6 gap-4 overflow-hidden">
         
         {/* Superior Minimalist Header */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 flex-shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <button onClick={() => navigate('/')} className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
@@ -182,7 +184,7 @@ const CalendarView: React.FC = () => {
         </header>
 
         {/* Date Navigation Strip */}
-        <div className="flex items-center justify-between border-y border-slate-100 py-4 px-2">
+        <div className="flex items-center justify-between border-y border-slate-100 py-3 px-2 flex-shrink-0">
           <button onClick={handleToday} className="px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
             Hoy
           </button>
@@ -201,19 +203,22 @@ const CalendarView: React.FC = () => {
           <div className="w-16" /> {/* Spacer */}
         </div>
 
-        <div className="min-h-[600px] animate-in fade-in duration-500">
+        <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-500">
           
           {/* ══════ MONTH VIEW ══════ */}
           {viewMode === 'month' && (
-            <div className="grid grid-cols-7 border-t border-l border-slate-100 bg-slate-50/50 rounded-3xl overflow-hidden">
-              {dayNamesShort.map(d => (
-                <div key={d} className="h-12 flex items-center justify-end pr-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 border-r border-b border-slate-100 bg-white">
-                  {d}
-                </div>
-              ))}
-              {Array.from({ length: skip }).map((_, i) => <div key={`s-${i}`} className="bg-slate-50/50 border-r border-b border-slate-100 min-h-[140px]" />)}
-              
-              {Array.from({ length: days }).map((_, i) => {
+            <div className="flex-1 flex flex-col border-t border-l border-slate-100 bg-slate-50/50 rounded-3xl overflow-hidden min-h-0">
+              <div className="grid grid-cols-7 flex-shrink-0 bg-white">
+                {dayNamesShort.map(d => (
+                  <div key={d} className="h-10 flex items-center justify-end pr-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 border-r border-b border-slate-100">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div className="flex-1 grid grid-cols-7 auto-rows-[1fr] min-h-0 bg-white">
+                {Array.from({ length: skip }).map((_, i) => <div key={`s-${i}`} className="bg-slate-50/50 border-r border-b border-slate-100" />)}
+                
+                {Array.from({ length: days }).map((_, i) => {
                 const d = i + 1;
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isToday = todayStr === dateStr;
@@ -223,38 +228,39 @@ const CalendarView: React.FC = () => {
                   <div
                     key={d}
                     onClick={() => { setCurrentDate(new Date(dateStr)); setViewMode('day'); }}
-                    className="min-h-[140px] bg-white border-r border-b border-slate-100 p-2 cursor-pointer group hover:bg-slate-100/60 hover:z-10 transition-all relative"
+                    className="flex flex-col bg-white border-r border-b border-slate-100 p-1.5 cursor-pointer group hover:bg-slate-100/60 hover:z-10 transition-all relative min-h-0 overflow-hidden"
                   >
-                    <div className="flex justify-end mb-2">
+                    <div className="flex justify-end flex-shrink-0 mb-1">
                       <span className={cn(
                         "w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold",
                         isToday ? "bg-blue-600 text-white" : "text-slate-700"
                       )}>{d}</span>
                     </div>
 
-                    <div className="space-y-1.5 px-0.5">
-                      {dayApts.slice(0, 4).map(a => (
-                        <div key={a.id} className="px-2 py-1.5 bg-blue-50/70 border border-blue-100/50 rounded-lg flex items-center justify-between group/apt">
-                          <span className="text-[10px] font-bold text-blue-700 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
+                    <div className="flex-1 space-y-1 px-0.5 overflow-hidden">
+                      {dayApts.slice(0, 3).map(a => (
+                        <div key={a.id} className="px-1.5 py-1 bg-blue-50/70 border border-blue-100/50 rounded-md flex items-center justify-between group/apt">
+                          <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
                           <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-blue-300 hover:text-red-500 opacity-0 group-hover/apt:opacity-100">
                             <Trash2 size={10} />
                           </button>
                         </div>
                       ))}
-                      {dayApts.length > 4 && (
-                        <div className="text-[10px] font-bold text-slate-400 text-center pt-1">+ {dayApts.length - 4} más</div>
+                      {dayApts.length > 3 && (
+                        <div className="text-[9px] font-bold text-slate-400 text-center pt-0.5">+ {dayApts.length - 3} más</div>
                       )}
                     </div>
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
 
           {/* ══════ WEEK VIEW ══════ */}
           {viewMode === 'week' && (
-            <div className="overflow-x-auto hide-scrollbar border border-slate-100 rounded-3xl pb-8">
-              <div className="min-w-[800px]">
+            <div className="flex-1 overflow-y-auto hide-scrollbar border border-slate-100 rounded-3xl min-h-0 bg-white">
+              <div className="min-w-[800px] flex flex-col h-max">
                 {/* Headers */}
                 <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50/30 border-b border-slate-100 sticky top-0 z-10">
                   <div className="bg-white border-r border-slate-100" />
@@ -314,7 +320,7 @@ const CalendarView: React.FC = () => {
 
           {/* ══════ DAY VIEW ══════ */}
           {viewMode === 'day' && (
-            <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+            <div className="flex-1 overflow-y-auto hide-scrollbar bg-white rounded-3xl border border-slate-100 p-4 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] min-h-0">
               {HOURS.map(hour => {
                 const dateStr = fmtDate(currentDate);
                 const isNow = todayStr === dateStr && new Date().getHours() === hour;
@@ -397,7 +403,7 @@ const CalendarView: React.FC = () => {
                 
                 {/* Auto-suggest dropdown */}
                 {newApt.patientName.length >= 2 && !newApt.patientId && (() => {
-                  const matches = persistenceService.getPatients().filter(p => p.identification.fullName.toLowerCase().includes(newApt.patientName.toLowerCase())).slice(0, 4);
+                  const matches = patientsList.filter(p => p.identification.fullName.toLowerCase().includes(newApt.patientName.toLowerCase())).slice(0, 4);
                   if (matches.length === 0) return null;
                   return (
                     <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl z-20 overflow-hidden">

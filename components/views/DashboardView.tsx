@@ -5,6 +5,8 @@ import GlobalSearch from '../GlobalSearch';
 
 import { persistenceService } from '../../services/persistenceService';
 import { bookingService } from '../../services/bookingService';
+import { useAppointments, useAppointmentMutations } from '../../hooks/useAppointments';
+import { usePatients } from '../../hooks/usePatients';
 import { useAuth } from '../../services/authService';
 import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
 import { cn, formatCurrency, getInitials, getLocalISODate } from '../../lib/utils';
@@ -23,15 +25,14 @@ const Dashboard: React.FC = () => {
   const doctorName = profile?.full_name || 'Doctor';
   const doctorInitials = getInitials(doctorName, 'DR');
 
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [allPatients, setAllPatients] = useState(() => persistenceService.getPatients());
+  const { data: allAppointments = [], isLoading: isLoadingAppointments } = useAppointments();
+  const { updateAppointment } = useAppointmentMutations();
+  const { data: allPatients = [] } = usePatients();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
-  const [isShowingUpcoming, setIsShowingUpcoming] = useState(false);
   const navigate = useNavigate();
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
-  const [allAppointments, setAllAppointments] = useState<Appointment[]>(() => persistenceService.getAppointments());
 
   // ===== Dashboard Metrics =====
   const metrics = useMemo(() => {
@@ -64,98 +65,47 @@ const Dashboard: React.FC = () => {
     return { monthlyRevenue, revenueChange, totalPatientsCount: allPatients.length, newPatientsCount, totalPending, completedThisMonth };
   }, [allPatients, allAppointments]);
 
-  const updateAgenda = useCallback(() => {
-    setAllAppointments(persistenceService.getAppointments());
-    setAllPatients(persistenceService.getPatients());
-    
-    let todayApts = persistenceService.getAppointmentsForDate(today);
+  const { appointments, isShowingUpcoming } = useMemo(() => {
+    let todayApts = allAppointments.filter(a => a.date === today && a.status !== 'Eliminada');
     todayApts.sort((a, b) => a.time.localeCompare(b.time));
 
     if (todayApts.length === 0) {
-      const allUpcoming = persistenceService.getAppointments()
+      const allUpcoming = allAppointments
         .filter(a => a.date > today && a.status !== 'Eliminada')
         .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
       
       if (allUpcoming.length > 0) {
-        setAppointments(allUpcoming.slice(0, 5));
-        setIsShowingUpcoming(true);
+        return { appointments: allUpcoming.slice(0, 5), isShowingUpcoming: true };
       } else {
-        setAppointments([]);
-        setIsShowingUpcoming(false);
+        return { appointments: [], isShowingUpcoming: false };
       }
     } else {
-      setAppointments(todayApts);
-      setIsShowingUpcoming(false);
+      return { appointments: todayApts, isShowingUpcoming: false };
     }
-  }, [today]);
-
+  }, [allAppointments, today]);
   const loadPendingRequests = useCallback(async () => {
     try { 
       await bookingService.refreshRequests(); 
-      // Auto-heal ghost appointments
-      let changed = false;
-      const allApts = persistenceService.getAppointments();
-      const requests = bookingService.getAppointmentRequests();
-      
-      for (const req of requests) {
-        if (req.status === 'approved') {
-          const exists = allApts.some(a => 
-            a.patientName === req.patientName && 
-            a.date === req.requestedDate && 
-            a.time === req.requestedTime &&
-            a.status !== 'Eliminada'
-          );
-          if (!exists) {
-            console.log('Restaurando cita aprobada faltante:', req.patientName);
-            const healedAppointment: Appointment = {
-              id: crypto.randomUUID(),
-              patientId: '',
-              patientName: req.patientName,
-              phoneNumber: req.patientPhone || '',
-              time: req.requestedTime,
-              date: req.requestedDate,
-              type: req.appointmentType,
-              status: 'Programada',
-              reminderStatus: 'not_sent',
-            };
-            await persistenceService.saveAppointment(healedAppointment);
-            changed = true;
-          }
-        }
-      }
-      if (changed) updateAgenda();
     } catch (e) {}
     setPendingRequests(bookingService.getPendingRequests());
-  }, [updateAgenda]);
+  }, []);
 
   useEffect(() => {
-    updateAgenda();
     loadPendingRequests();
 
     const handleNewRequest = (event: CustomEvent) => setPendingRequests(prev => [event.detail, ...prev]);
-    const handleAppointmentCreated = () => {
-      updateAgenda();
-      loadPendingRequests();
-    };
 
     window.addEventListener('newAppointmentRequest', handleNewRequest as EventListener);
-    window.addEventListener('appointmentCreated', handleAppointmentCreated);
-    window.addEventListener('appointmentDeleted', handleAppointmentCreated);
     return () => {
       window.removeEventListener('newAppointmentRequest', handleNewRequest as EventListener);
-      window.removeEventListener('appointmentCreated', handleAppointmentCreated);
-      window.removeEventListener('appointmentDeleted', handleAppointmentCreated);
     };
-  }, [loadPendingRequests, updateAgenda]);
+  }, [loadPendingRequests]);
 
   const handleReminderStatusUpdate = useCallback((id: string, status: ReminderStatus) => {
-    setAppointments(prev => {
-      const updated = prev.map(apt => apt.id === id ? { ...apt, reminderStatus: status } : apt);
-      const apt = updated.find(a => a.id === id);
-      if (apt) persistenceService.saveAppointment(apt).catch(console.error);
-      return updated;
-    });
-  }, []);
+    const apt = allAppointments.find(a => a.id === id);
+    if (!apt) return;
+    updateAppointment.mutate({ ...apt, reminderStatus: status });
+  }, [allAppointments, updateAppointment]);
 
   const todayDateStr = new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' });
 

@@ -39,20 +39,12 @@ const Layout: React.FC = () => {
   const [servicesReady, setServicesReady] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Initialize persistence & booking services when user is available
+  // Initialize booking services when user is available
   useEffect(() => {
     if (!user) { setServicesReady(false); return; }
 
-    // Wire up error notifications from persistence layer
-    persistenceService.onError((msg) => {
-      sileo.error({ title: 'Error de sincronización', description: msg });
-    });
-
     const initServices = async () => {
-      await Promise.all([
-        persistenceService.init(user.id),
-        bookingService.init(user.id),
-      ]);
+      await bookingService.init(user.id);
       setPendingCount(bookingService.getPendingRequests().length);
       setServicesReady(true);
     };

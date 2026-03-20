@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PatientList from '../PatientList';
 import NewPatientModal from '../NewPatientModal';
-import { persistenceService } from '../../services/persistenceService';
+import { usePatients, usePatientMutations } from '../../hooks/usePatients';
 import { PatientRecord as PatientRecordType } from '../../types';
 
 const PatientsView: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [patients, setPatients] = useState<PatientRecordType[]>(persistenceService.getPatients());
+  const { data: patients = [] } = usePatients();
+  const { savePatient } = usePatientMutations();
   const [isModalOpen, setIsModalOpen] = useState(searchParams.get('new') === 'true');
 
   useEffect(() => {
@@ -18,8 +19,7 @@ const PatientsView: React.FC = () => {
   }, [searchParams]);
 
   const handleSave = async (newPatient: PatientRecordType) => {
-    await persistenceService.savePatient(newPatient);
-    setPatients(persistenceService.getPatients());
+    await savePatient.mutateAsync(newPatient);
     navigate(`/patient/${newPatient.id}`);
   };
 

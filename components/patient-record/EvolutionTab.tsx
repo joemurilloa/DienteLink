@@ -6,6 +6,7 @@ import {
     Calendar,
 } from 'lucide-react';
 import { sileo } from 'sileo';
+import { getLocalISODate } from '../../lib/utils';
 
 interface Props {
     patient: PatientRecordType;
@@ -26,7 +27,7 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
         }
         const note: EvolutionNote = {
             id: crypto.randomUUID(),
-            date: new Date().toISOString().split('T')[0],
+            date: getLocalISODate(new Date()),
             content: newNote.content,
             procedure: newNote.procedure
         };

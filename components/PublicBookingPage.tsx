@@ -23,7 +23,7 @@ const PublicBookingPage: React.FC = () => {
   const [settings, setSettings] = useState<PublicBookingSettings | null>(null);
   const [availability, setAvailability] = useState<DoctorAvailability | null>(null);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'select-date' | 'select-time' | 'fill-info' | 'confirmation'>('select-date');
+  const [step, setStep] = useState<'welcome' | 'select-date' | 'select-time' | 'fill-info' | 'confirmation'>('welcome');
   
   // Form state
   const [selectedDate, setSelectedDate] = useState('');
@@ -293,29 +293,59 @@ const PublicBookingPage: React.FC = () => {
           {settings.doctorName && <p className="text-[11px] text-slate-400 truncate">{settings.doctorName}</p>}
         </div>
         {/* Step indicator with label */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-[10px] font-semibold text-slate-400 hidden min-[380px]:block">
-            {step === 'select-date' && 'Fecha'}
-            {step === 'select-time' && 'Hora'}
-            {step === 'fill-info' && 'Datos'}
-            {step === 'confirmation' && 'Listo'}
-          </span>
-          <div className="flex items-center gap-1">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className={cn(
-                'h-1.5 rounded-full transition-all',
-                i <= ['select-date', 'select-time', 'fill-info', 'confirmation'].indexOf(step)
-                  ? 'w-5 bg-blue-600' : 'w-1.5 bg-slate-200'
-              )} />
-            ))}
+        {step !== 'welcome' && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-[10px] font-semibold text-slate-400 hidden min-[380px]:block">
+              {step === 'select-date' && 'Fecha'}
+              {step === 'select-time' && 'Hora'}
+              {step === 'fill-info' && 'Datos'}
+              {step === 'confirmation' && 'Listo'}
+            </span>
+            <div className="flex items-center gap-1">
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} className={cn(
+                  'h-1.5 rounded-full transition-all',
+                  i <= ['select-date', 'select-time', 'fill-info', 'confirmation'].indexOf(step)
+                    ? 'w-5 bg-blue-600' : 'w-1.5 bg-slate-200'
+                )} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-lg mx-auto px-4 py-4">
           <AnimatePresence mode="wait">
+            {/* ===== STEP 0: WELCOME ===== */}
+            {step === 'welcome' && (
+              <motion.div key="welcome" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="text-center py-6 sm:py-12">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[28px] mx-auto mb-8 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <CalendarIcon size={40} className="text-white" strokeWidth={1.5} />
+                </div>
+                
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">Bienvenido a <br className="sm:hidden"/>{settings.clinicName || 'la Clínica'}</h1>
+                <p className="text-sm text-slate-500 mb-8 max-w-sm mx-auto leading-relaxed">{settings.description || 'Estamos felices de atenderte. Agenda tu cita en unos pocos pasos.'}</p>
+                
+                {settings.doctorName && (
+                  <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl mb-10 border border-blue-100">
+                    <User size={16} className="text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-800">Atendido por: {settings.doctorName}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-center">
+                  <button 
+                    onClick={() => setStep('select-date')}
+                    className="w-full max-w-xs py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:scale-[1.02] hover:shadow-xl hover:shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    Agendar una cita <ArrowRight size={18} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* ===== STEP 1: SELECT DATE (Calendar) ===== */}
             {step === 'select-date' && (
               <motion.div key="date" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
@@ -540,7 +570,7 @@ const PublicBookingPage: React.FC = () => {
       </div>
 
       {/* Footer — hidden during form step to maximize space */}
-      {step !== 'fill-info' && (
+      {step !== 'fill-info' && step !== 'welcome' && (
         <footer className="border-t border-slate-100 px-5 py-2 text-center flex-shrink-0">
           <p className="text-[10px] text-slate-300 font-medium">Agenda proporcionada por DienteLink</p>
         </footer>

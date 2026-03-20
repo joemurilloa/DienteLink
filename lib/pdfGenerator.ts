@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { PatientRecord } from '../types';
 import { sileo } from 'sileo';
-import { formatCurrency } from './utils';
+import { formatCurrency, getLocalISODate } from './utils';
 
 export const generatePatientPDF = async (patient: PatientRecord, clinicName: string, doctorName: string) => {
     try {
@@ -242,7 +242,7 @@ export const generatePatientPDF = async (patient: PatientRecord, clinicName: str
         // ── Export ──
         const safeName = patient.identification.fullName.trim() || 'Paciente';
         const sName = safeName.replace(/\s+/g, '-').toLowerCase();
-        const sDate = new Date().toISOString().split('T')[0];
+        const sDate = getLocalISODate(new Date());
         const filename = `Expediente-${sName}-${sDate}.pdf`;
         
         doc.save(filename);

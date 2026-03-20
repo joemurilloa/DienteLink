@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { PatientRecord as PatientRecordType, XRayImage } from '../../types';
-import { cn } from '../../lib/utils';
+import { cn, getLocalISODate } from '../../lib/utils';
 import {
     Image as ImageIcon,
     Upload,
@@ -102,7 +102,7 @@ const XraysTab: React.FC<Props> = ({ patient, onUpdate }) => {
                 const newXray: XRayImage = {
                     id: crypto.randomUUID(),
                     url: base64Url, // Temporal
-                    date: new Date().toISOString().split('T')[0],
+                    date: getLocalISODate(new Date()),
                     title: uploadMeta.title,
                     notes: uploadMeta.notes,
                     createdAt: new Date().toISOString()

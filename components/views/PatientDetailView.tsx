@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { persistenceService } from '../../services/persistenceService';
+import { usePatient, usePatientMutations } from '../../hooks/usePatients';
 import { PatientRecord as PatientRecordType } from '../../types';
 import { History } from 'lucide-react';
 
@@ -9,7 +9,14 @@ const PatientRecord = React.lazy(() => import('../PatientRecord'));
 const PatientDetailView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [patient, setPatient] = useState<PatientRecordType | undefined>(persistenceService.getPatientById(id || ''));
+  const { patient, isLoading } = usePatient(id);
+  const { savePatient } = usePatientMutations();
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  );
 
   if (!patient) return (
     <div className="flex items-center justify-center h-screen">
@@ -26,8 +33,7 @@ const PatientDetailView: React.FC = () => {
   );
 
   const handleUpdate = async (updated: PatientRecordType) => {
-    await persistenceService.savePatient(updated);
-    setPatient(updated);
+    await savePatient.mutateAsync(updated);
   };
 
   return (

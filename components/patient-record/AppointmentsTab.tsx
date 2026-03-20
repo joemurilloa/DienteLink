@@ -1,7 +1,7 @@
 import React from 'react';
 import { PatientRecord as PatientRecordType, Appointment } from '../../types';
 import { cn } from '../../lib/utils';
-import { persistenceService } from '../../services/persistenceService';
+import { useAppointments } from '../../hooks/useAppointments';
 import { Calendar } from 'lucide-react';
 
 interface Props {
@@ -9,7 +9,8 @@ interface Props {
 }
 
 const AppointmentsTab: React.FC<Props> = ({ patient }) => {
-    const patientAppointments = persistenceService.getAppointments().filter(
+    const { data: allAppointments = [] } = useAppointments();
+    const patientAppointments = allAppointments.filter(
         apt => apt.patientId === patient.id || apt.patientName.toLowerCase().trim() === patient.identification.fullName.toLowerCase().trim()
     );
 

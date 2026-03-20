@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getLocalISODate } from '../lib/utils';
 import { DoctorAvailability, AppointmentRequest, PublicBookingSettings, AppointmentType } from '../types';
 import { formatAppDate } from '../lib/utils';
 import { sileo } from 'sileo';
@@ -24,8 +25,8 @@ export class BookingService {
     this.userId = userId;
 
     const [availRes, settingsRes, reqRes] = await Promise.all([
-      supabase.from('doctor_availability').select('*').eq('doctor_id', userId).single(),
-      supabase.from('booking_settings').select('*').eq('doctor_id', userId).single(),
+      supabase.from('doctor_availability').select('*').eq('doctor_id', userId).maybeSingle(),
+      supabase.from('booking_settings').select('*').eq('doctor_id', userId).maybeSingle(),
       supabase.from('appointment_requests').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
     ]);
 
@@ -256,30 +257,75 @@ export class BookingService {
 
   // ===================== PUBLIC METHODS (no auth required) =====================
 
-  async getPublicBookingSettings(doctorId: string): Promise<PublicBookingSettings | null> {
+  async getPublicBookingSettings(doctorId: string): Promise<PublicBookingSettings> {
+    // Try RPC function first (bypasses RLS via SECURITY DEFINER)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_public_booking_settings', { p_doctor_id: doctorId });
+
+    if (!rpcError && rpcData && rpcData.length > 0) {
+      return dbToSettings(rpcData[0]);
+    }
+
+    // Fallback to direct query (works if RLS policies allow anon access)
     const { data, error } = await supabase
       .from('booking_settings')
       .select('*')
       .eq('doctor_id', doctorId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) return null;
-    return dbToSettings(data);
+    if (!error && data) {
+      return dbToSettings(data);
+    }
+
+    // Ultimate fallback: if row doesn't exist in DB, return default active settings
+    return this.getDefaultBookingSettings();
   }
 
-  async getPublicDoctorAvailability(doctorId: string): Promise<DoctorAvailability | null> {
+  async getPublicDoctorAvailability(doctorId: string): Promise<DoctorAvailability> {
+    // Try RPC function first (bypasses RLS via SECURITY DEFINER)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_public_doctor_availability', { p_doctor_id: doctorId });
+
+    if (!rpcError && rpcData && rpcData.length > 0) {
+      return dbToAvailability(rpcData[0]);
+    }
+
+    // Fallback to direct query (works if RLS policies allow anon access)
     const { data, error } = await supabase
       .from('doctor_availability')
       .select('*')
       .eq('doctor_id', doctorId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) return null;
-    return dbToAvailability(data);
+    if (!error && data) {
+      return dbToAvailability(data);
+    }
+
+    // Ultimate fallback: if row doesn't exist in DB, return default mon-fri schedule
+    return this.getDefaultAvailability(doctorId);
   }
 
   async getPublicAppointmentRequests(doctorId: string): Promise<AppointmentRequest[]> {
-    // Only select fields needed for slot-availability checking — NOT patient PII
+    // Try RPC function first (bypasses RLS)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_public_appointment_requests', { p_doctor_id: doctorId });
+
+    if (!rpcError && rpcData) {
+      return rpcData.map((d: any) => ({
+        id: d.id,
+        patientName: '',
+        patientEmail: '',
+        patientPhone: '',
+        requestedDate: d.requested_date,
+        requestedTime: d.requested_time,
+        appointmentType: d.appointment_type,
+        status: d.status,
+        createdAt: '',
+        doctorId,
+      }));
+    }
+
+    // Fallback to direct query
     const { data } = await supabase
       .from('appointment_requests')
       .select('id, requested_date, requested_time, status, appointment_type')
@@ -288,9 +334,9 @@ export class BookingService {
 
     return (data || []).map(d => ({
       id: d.id,
-      patientName: '',       // redacted for public
-      patientEmail: '',      // redacted for public
-      patientPhone: '',      // redacted for public
+      patientName: '',
+      patientEmail: '',
+      patientPhone: '',
       requestedDate: d.requested_date,
       requestedTime: d.requested_time,
       appointmentType: d.appointment_type,
@@ -302,6 +348,15 @@ export class BookingService {
 
   /** Fetch confirmed appointments from the appointments table (for public slot checking) */
   async getPublicAppointments(doctorId: string): Promise<{ date: string; time: string }[]> {
+    // Try RPC function first (bypasses RLS)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_public_appointments', { p_doctor_id: doctorId });
+
+    if (!rpcError && rpcData) {
+      return rpcData.map((a: any) => ({ date: a.date, time: a.time }));
+    }
+
+    // Fallback to direct query
     const { data } = await supabase
       .from('appointments')
       .select('date, time')
@@ -407,7 +462,7 @@ export class BookingService {
         const { persistenceService } = await import('./persistenceService');
         const allAppointments = persistenceService.getAppointments();
         confirmedAppointments = allAppointments
-          .filter(a => a.status !== 'Completada' || a.date >= new Date().toISOString().split('T')[0])
+          .filter(a => a.status !== 'Completada' || a.date >= getLocalISODate(new Date()))
           .map(a => ({ date: a.date, time: a.time }));
       } catch { /* ignore if not initialized */ }
     } else {
@@ -446,7 +501,7 @@ export class BookingService {
       date.setDate(today.getDate() + i);
       const dayConfig = availability.weeklySchedule.find(d => d.dayOfWeek === date.getDay());
       if (dayConfig?.enabled && dayConfig.timeSlots.length > 0) {
-        dates.push(date.toISOString().split('T')[0]);
+        dates.push(getLocalISODate(date));
       }
     }
     return dates;

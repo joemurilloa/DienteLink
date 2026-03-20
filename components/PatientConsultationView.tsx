@@ -16,7 +16,7 @@ import {
   Eye,
   Stethoscope
 } from 'lucide-react';
-import { persistenceService } from '../services/persistenceService';
+import { usePatients } from '../hooks/usePatients';
 import { PatientRecord } from '../types';
 import { cn } from '../lib/utils';
 
@@ -26,11 +26,19 @@ const PatientConsultationView: React.FC = () => {
   const initialPatientId = searchParams.get('patientId');
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(
-    initialPatientId ? persistenceService.getPatientById(initialPatientId) : null
-  );
-  const [allPatients] = useState(persistenceService.getPatients());
-  const [consultationStarted, setConsultationStarted] = useState(!!initialPatientId);
+  const { data: allPatients = [] } = usePatients();
+  const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
+  const [consultationStarted, setConsultationStarted] = useState(false);
+
+  useEffect(() => {
+    if (initialPatientId && !selectedPatient && allPatients.length > 0) {
+      const p = allPatients.find(p => p.id === initialPatientId);
+      if (p) {
+        setSelectedPatient(p);
+        setConsultationStarted(true);
+      }
+    }
+  }, [initialPatientId, allPatients, selectedPatient]);
 
   // Filtrar pacientes basado en búsqueda
   const filteredPatients = allPatients.filter(patient => 

@@ -137,7 +137,7 @@ export function exportPatientsCSV(patients: PatientRecord[]) {
     ].map(escapeCSV);
   });
   const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const date = new Date().toISOString().split('T')[0];
+  const date = getLocalISODate(new Date());
   downloadCSV(`pacientes_${date}.csv`, csv);
 }
 
@@ -153,6 +153,6 @@ export function exportAppointmentsCSV(appointments: Appointment[]) {
     a.reminderStatus,
   ].map(escapeCSV));
   const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const date = new Date().toISOString().split('T')[0];
+  const date = getLocalISODate(new Date());
   downloadCSV(`citas_${date}.csv`, csv);
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, User } from 'lucide-react';
-import { persistenceService } from '../services/persistenceService';
+import { usePatients } from '../hooks/usePatients';
 import { PatientRecord } from '../types';
 import { cn } from '../lib/utils';
 import { sileo } from 'sileo';
@@ -13,6 +13,7 @@ interface GlobalSearchProps {
 }
 
 const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
+    const { data: allPatients = [] } = usePatients();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<PatientRecord[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -32,8 +33,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
             setSelectedIndex(-1);
             return;
         }
-        const patients = persistenceService.getPatients();
-        const filtered = patients.filter(p =>
+        const filtered = allPatients.filter(p =>
             p.identification.fullName.toLowerCase().includes(query.toLowerCase()) ||
             p.identification.phone.includes(query) ||
             p.id.includes(query)

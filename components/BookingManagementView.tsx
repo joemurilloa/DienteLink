@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { DoctorAvailability, PublicBookingSettings, AppointmentRequest, Appointment } from '../types';
 import { bookingService } from '../services/bookingService';
-import { persistenceService } from '../services/persistenceService';
+import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
 import { cn, generateId, getInitials, formatAppDate } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
@@ -27,6 +27,8 @@ const daysOfWeek = [
 ];
 
 export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
+  const { data: appointments = [] } = useAppointments();
+  const { createAppointment, deleteAppointment } = useAppointmentMutations();
   const [activeTab, setActiveTab] = useState<'requests' | 'config' | 'share'>('requests');
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -90,13 +92,16 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
       status: 'Programada',
       reminderStatus: 'not_sent',
     };
-    await persistenceService.saveAppointment(appointment);
-    window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: appointment }));
-
-    sileo.success({
-      title: '¡Cita Aprobada!',
-      description: `Agendada el ${formatAppDate(req.requestedDate)} a las ${req.requestedTime}`,
+    
+    createAppointment.mutate(appointment, {
+      onSuccess: () => {
+        sileo.success({
+          title: '¡Cita Aprobada!',
+          description: `Agendada el ${formatAppDate(req.requestedDate)} a las ${req.requestedTime}`,
+        });
+      }
     });
+    
     setRequests(bookingService.getAppointmentRequests());
   };
 
@@ -118,8 +123,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
     if (newStatus === 'approved') {
       await bookingService.updateRequestStatus(id, 'approved');
-      const existingAppts = persistenceService.getAppointments();
-      const alreadyExists = existingAppts.some(a =>
+      const alreadyExists = appointments.some(a =>
         a.patientName === req.patientName && a.date === req.requestedDate && a.time === req.requestedTime && a.status !== 'Eliminada'
       );
       if (!alreadyExists) {
@@ -134,19 +138,19 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
           status: 'Programada',
           reminderStatus: 'not_sent',
         };
-        await persistenceService.saveAppointment(appointment);
-        window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: appointment }));
+        createAppointment.mutate(appointment, {
+          onSuccess: () => sileo.success({ title: `Aprobada para el ${formatAppDate(req.requestedDate)}` })
+        });
+      } else {
+        sileo.success({ title: `Restaurada para el ${formatAppDate(req.requestedDate)}` });
       }
-      sileo.success({ title: `Restaurada para el ${formatAppDate(req.requestedDate)}` });
     } else {
       if (req.status === 'approved') {
-        const appts = persistenceService.getAppointments();
-        const linkedAppt = appts.find(a =>
+        const linkedAppt = appointments.find(a =>
           a.patientName === req.patientName && a.date === req.requestedDate && a.time === req.requestedTime && a.status !== 'Eliminada'
         );
         if (linkedAppt) {
-          await persistenceService.deleteAppointment(linkedAppt.id);
-          window.dispatchEvent(new CustomEvent('appointmentDeleted'));
+          deleteAppointment.mutate(linkedAppt.id);
         }
       }
       await bookingService.updateRequestStatus(id, newStatus);

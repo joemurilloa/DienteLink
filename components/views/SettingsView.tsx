@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authService';
 import { persistenceService } from '../../services/persistenceService';
+import { useAppointments } from '../../hooks/useAppointments';
+import { usePatients } from '../../hooks/usePatients';
 import { bookingService } from '../../services/bookingService';
 import ConfirmModal from '../ConfirmModal';
 import { formatCurrency, exportPatientsCSV, exportAppointmentsCSV } from '../../lib/utils';
@@ -32,6 +34,8 @@ const CURRENCY_OPTIONS = [
 const SettingsView: React.FC = () => {
   const navigate = useNavigate();
   const { profile, updateProfile, signOut } = useAuth();
+  const { data: allAppointments = [] } = useAppointments();
+  const { data: allPatients = [] } = usePatients();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -210,11 +214,11 @@ const SettingsView: React.FC = () => {
             </div>
             <div className="flex justify-between items-center py-2 border-b border-slate-50">
               <span className="text-sm font-medium text-slate-400">Pacientes Registrados</span>
-              <span className="text-sm font-bold text-slate-900">{persistenceService.getPatients().length}</span>
+              <span className="text-sm font-bold text-slate-900">{allPatients.length}</span>
             </div>
             <div className="flex justify-between items-center py-2">
               <span className="text-sm font-medium text-slate-400">Citas Totales</span>
-              <span className="text-sm font-bold text-slate-900">{persistenceService.getAppointments().length}</span>
+              <span className="text-sm font-bold text-slate-900">{allAppointments.length}</span>
             </div>
           </div>
         </div>
@@ -233,7 +237,7 @@ const SettingsView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => {
-                const patients = persistenceService.getPatients();
+                const patients = allPatients;
                 if (patients.length === 0) { sileo.info({ title: 'No hay pacientes para exportar' }); return; }
                 exportPatientsCSV(patients);
                 sileo.success({ title: 'Pacientes exportados', description: `${patients.length} registros descargados` });
@@ -248,7 +252,7 @@ const SettingsView: React.FC = () => {
             </button>
             <button
               onClick={() => {
-                const apts = persistenceService.getAppointments();
+                const apts = allAppointments;
                 if (apts.length === 0) { sileo.info({ title: 'No hay citas para exportar' }); return; }
                 exportAppointmentsCSV(apts);
                 sileo.success({ title: 'Citas exportadas', description: `${apts.length} citas descargadas` });

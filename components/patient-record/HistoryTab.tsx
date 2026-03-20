@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PatientRecord as PatientRecordType, ClinicalEvent } from '../../types';
-import { cn } from '../../lib/utils';
+import { cn, getLocalISODate } from '../../lib/utils';
 import { InputGroup } from './FormInputs';
 import {
     Activity,
@@ -25,7 +25,7 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
         }
         const event: ClinicalEvent = {
             id: crypto.randomUUID(),
-            date: new Date().toISOString().split('T')[0],
+            date: getLocalISODate(new Date()),
             ...newEvent
         };
         onUpdate({ ...patient, history: [event, ...patient.history] });
