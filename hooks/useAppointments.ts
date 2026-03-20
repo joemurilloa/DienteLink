@@ -66,7 +66,10 @@ export function useAppointmentMutations() {
         deleted_at: appointment.deletedAt || null,
       }, { onConflict: 'id' }).select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Supabase Upsert Error - CREATE]:', error);
+        throw error;
+      }
       return dbToAppointment(data);
     },
     onMutate: async (newAppointment) => {
@@ -144,7 +147,10 @@ export function useAppointmentMutations() {
         reminder_status: appointment.reminderStatus,
         deleted_at: appointment.deletedAt || null,
       }, { onConflict: 'id' }).select().single();
-      if (error) throw error;
+      if (error) {
+        console.error('[Supabase Upsert Error - UPDATE]:', error);
+        throw error;
+      }
       return dbToAppointment(data);
     },
     onMutate: async (newAppt) => {

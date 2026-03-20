@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authService';
-import { persistenceService } from '../../services/persistenceService';
+import { queryClient } from '../../lib/queryClient';
 import { useAppointments } from '../../hooks/useAppointments';
 import { usePatients } from '../../hooks/usePatients';
 import { bookingService } from '../../services/bookingService';
@@ -39,8 +39,7 @@ const SettingsView: React.FC = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [deletedAppointments, setDeletedAppointments] = useState(persistenceService.getDeletedAppointments());
-  const [showTrash, setShowTrash] = useState(false);
+
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
     role: profile?.role || 'Odontólogo',
@@ -70,27 +69,17 @@ const SettingsView: React.FC = () => {
   };
 
   const handleClearData = async () => {
-    await persistenceService.clearAllData();
+    queryClient.clear();
     window.location.reload();
   };
 
   const handleSignOut = async () => {
-    persistenceService.reset();
+    queryClient.clear();
     bookingService.reset();
     await signOut();
   };
 
-  const handleRestoreAppointment = async (aptId: string) => {
-    await persistenceService.restoreAppointment(aptId);
-    setDeletedAppointments(persistenceService.getDeletedAppointments());
-    sileo.success({ title: 'Cita restaurada correctamente' });
-  };
 
-  const handlePermanentDelete = async (aptId: string) => {
-    await persistenceService.permanentlyDeleteAppointment(aptId);
-    setDeletedAppointments(persistenceService.getDeletedAppointments());
-    sileo.info({ title: 'Cita eliminada permanentemente' });
-  };
 
   const SettingsInput = ({ label, value, field }: { label: string; value: string; field: keyof typeof form }) => (
     <div>
@@ -268,62 +257,7 @@ const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Papelera (Trash / Recycle Bin) */}
-        <div className="card-premium p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
-                <Archive size={18} className="text-amber-600" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Papelera</h3>
-                <p className="text-xs text-slate-400">{deletedAppointments.length} cita{deletedAppointments.length !== 1 ? 's' : ''} eliminada{deletedAppointments.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-            {deletedAppointments.length > 0 && (
-              <button
-                onClick={() => setShowTrash(!showTrash)}
-                className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-xs font-semibold hover:bg-amber-100 transition-all border border-amber-100"
-              >
-                {showTrash ? 'Ocultar' : 'Ver papelera'}
-              </button>
-            )}
-          </div>
-          {deletedAppointments.length === 0 && (
-            <p className="text-sm text-slate-300 text-center py-4">La papelera está vacía</p>
-          )}
-          {showTrash && deletedAppointments.length > 0 && (
-            <div className="space-y-3 mt-3 border-t border-slate-100 pt-4">
-              {deletedAppointments.map(apt => (
-                <div key={apt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-700 truncate">{apt.patientName}</p>
-                    <p className="text-xs text-slate-400">{apt.date} · {apt.time} · {apt.type}</p>
-                    {apt.deletedAt && (
-                      <p className="text-[10px] text-slate-300 mt-0.5">Eliminada el {new Date(apt.deletedAt).toLocaleDateString('es-MX')}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                    <button
-                      onClick={() => handleRestoreAppointment(apt.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-100 transition-all border border-green-100"
-                      title="Restaurar cita"
-                    >
-                      <RotateCcw size={12} /> Restaurar
-                    </button>
-                    <button
-                      onClick={() => handlePermanentDelete(apt.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-semibold transition-all"
-                      title="Eliminar permanentemente"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+
 
         <div className="card-premium p-6 border-red-100">
           <h3 className="text-base font-bold text-red-600 mb-3">Zona de Peligro</h3>

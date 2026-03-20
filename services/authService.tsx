@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
-import { persistenceService } from './persistenceService';
+import { queryClient } from '../lib/queryClient';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
-        persistenceService.reset();
+        queryClient.clear();
         setProfile(null);
       }
     });
@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    persistenceService.reset();
+    queryClient.clear();
     await supabase.auth.signOut();
     setProfile(null);
   };

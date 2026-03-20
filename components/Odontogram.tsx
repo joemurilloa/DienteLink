@@ -2,7 +2,6 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ToothData, SurfaceData, ToothSurface, ClinicalCondition, OdontogramSnapshot } from '../types';
-import { dentalService } from '../services/dentalService';
 import { cn } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
@@ -1100,11 +1099,6 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
     });
 
     onUpdate(updatedTeeth);
-    const tooth = updatedTeeth.find(t => t.id === toothId);
-    if (tooth) {
-      const surfaceData = tooth.surfaces.find(s => s.surface === surface);
-      dentalService.updateSurface(patientId, toothId, surface, surfaceData?.condition || null);
-    }
   }, [teeth, selectedCondition, onUpdate, patientId]);
 
   /* --- Clear surface (right-click / long-press) --- */
@@ -1121,26 +1115,16 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
     });
 
     onUpdate(updatedTeeth);
-
-    // Persist
-    if (wholeCond) {
-      toothBefore.surfaces.forEach(s => {
-        dentalService.updateSurface(patientId, toothId, s.surface, null);
-      });
-    } else {
-      dentalService.updateSurface(patientId, toothId, surface, null);
-    }
   }, [teeth, onUpdate, patientId]);
 
   /* --- Save snapshot --- */
   const handleSaveSnapshot = useCallback(async () => {
     sileo.info({ title: 'Guardando instantánea del odontograma...', description: 'Creando respaldo del estado actual' });
     
-    await dentalService.saveSnapshot(patientId);
     onSaveSnapshot?.();
     
     sileo.success({ title: '¡Instantánea guardada exitosamente! 📸', description: 'Puedes comparar con versiones anteriores' });
-  }, [patientId, onSaveSnapshot]);
+  }, [onSaveSnapshot]);
 
   const handleToggleCompare = useCallback(() => {
     setCompareMode(prev => {

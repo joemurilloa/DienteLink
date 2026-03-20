@@ -22,17 +22,15 @@ const DateInput: React.FC<DateInputProps> = ({ value, onChange, error, required,
     const mRef = useRef<HTMLInputElement>(null);
     const yRef = useRef<HTMLInputElement>(null);
 
-    // Sync to parent when internal state changes cleanly
-    useEffect(() => {
-        if (d && m && y && d.length === 2 && m.length === 2 && y.length === 4) {
-            const dateStr = `${y}-${m}-${d}`;
-            if (dateStr !== value) {
-                onChange(dateStr);
-            }
-        } else if (!d && !m && !y && value !== '') {
+    // Helper: emit to parent immediately if all fields are complete
+    const emitIfComplete = (newD: string, newM: string, newY: string) => {
+        if (newD.length === 2 && newM.length === 2 && newY.length === 4) {
+            const dateStr = `${newY}-${newM}-${newD}`;
+            if (dateStr !== value) onChange(dateStr);
+        } else if (!newD && !newM && !newY && value !== '') {
             onChange('');
         }
-    }, [d, m, y, onChange, value]);
+    };
 
     // Handle initial value updates from props
     useEffect(() => {
@@ -46,11 +44,13 @@ const DateInput: React.FC<DateInputProps> = ({ value, onChange, error, required,
 
     const handleDTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
         let val = e.target.value.replace(/\D/g, '').substring(0, 2);
-        setD(val);
         if (val.length === 2) {
-            // Auto advance
-            if (parseInt(val) > 31) setD('31');
-            if (parseInt(val) === 0) setD('01');
+            if (parseInt(val) > 31) val = '31';
+            if (parseInt(val) === 0) val = '01';
+        }
+        setD(val);
+        emitIfComplete(val, m, y);
+        if (val.length === 2) {
             mRef.current?.focus();
             mRef.current?.select();
         }
@@ -58,11 +58,13 @@ const DateInput: React.FC<DateInputProps> = ({ value, onChange, error, required,
 
     const handleMTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
         let val = e.target.value.replace(/\D/g, '').substring(0, 2);
-        setM(val);
         if (val.length === 2) {
-            // Auto advance
-            if (parseInt(val) > 12) setM('12');
-            if (parseInt(val) === 0) setM('01');
+            if (parseInt(val) > 12) val = '12';
+            if (parseInt(val) === 0) val = '01';
+        }
+        setM(val);
+        emitIfComplete(d, val, y);
+        if (val.length === 2) {
             yRef.current?.focus();
             yRef.current?.select();
         }
@@ -71,6 +73,7 @@ const DateInput: React.FC<DateInputProps> = ({ value, onChange, error, required,
     const handleYTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
         let val = e.target.value.replace(/\D/g, '').substring(0, 4);
         setY(val);
+        emitIfComplete(d, m, val);
     };
 
     // Handle backspace navigation

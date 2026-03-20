@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppointmentCard from '../AppointmentCard';
 import GlobalSearch from '../GlobalSearch';
 
-import { persistenceService } from '../../services/persistenceService';
+
 import { bookingService } from '../../services/bookingService';
 import { useAppointments, useAppointmentMutations } from '../../hooks/useAppointments';
 import { usePatients } from '../../hooks/usePatients';

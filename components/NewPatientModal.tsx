@@ -38,8 +38,9 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
         if (!formData.birthDate) {
             newErrors.birthDate = 'La fecha de nacimiento es obligatoria';
         } else {
-            const birth = new Date(formData.birthDate);
-            if (birth > new Date()) newErrors.birthDate = 'La fecha no puede ser futura';
+            // String comparison is timezone-safe (YYYY-MM-DD sorts lexicographically)
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (formData.birthDate > todayStr) newErrors.birthDate = 'La fecha no puede ser futura';
         }
         const phone = formData.phone.trim();
         if (!phone) {

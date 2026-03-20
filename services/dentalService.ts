@@ -1,10 +1,8 @@
-import { ToothData, SurfaceData, ToothSurface, ClinicalCondition, OdontogramSnapshot, ToothStatus } from '../types';
-import { persistenceService } from './persistenceService';
+import { ToothData, SurfaceData, ToothSurface, ClinicalCondition, OdontogramSnapshot, ToothStatus, PatientRecord } from '../types';
 
 // Migration: convert legacy ToothData (with status) to new format (with surfaces)
 function migrateToothData(tooth: any): ToothData {
   if (tooth.surfaces !== undefined) return tooth as ToothData;
-  // Legacy format: { id, status }
   const surfaces: SurfaceData[] = [];
   const oldStatus: ToothStatus | undefined = tooth.status;
   if (oldStatus && oldStatus !== 'healthy') {
@@ -24,45 +22,57 @@ function migrateToothData(tooth: any): ToothData {
   return { id: tooth.id, surfaces };
 }
 
+/**
+ * Pure utility functions for odontogram manipulation.
+ * All functions receive patient data as input and return modified copies.
+ * No side effects, no service dependencies.
+ */
 class DentalService {
-  async getPatientOdontogram(patientId: string): Promise<ToothData[]> {
-    const patient = persistenceService.getPatientById(patientId);
-    if (!patient) return [];
 
-    // Initialize or migrate odontogram
+  /**
+   * Returns the odontogram for a patient, initializing or migrating if needed.
+   * Returns { teeth, needsSave } — caller is responsible for persisting if needsSave is true.
+   */
+  getPatientOdontogram(patient: PatientRecord): { teeth: ToothData[]; patient: PatientRecord; needsSave: boolean } {
+    let needsSave = false;
+
     if (!patient.odontogram || patient.odontogram.length === 0) {
-      patient.odontogram = Array.from({ length: 32 }, (_, i) => ({
-        id: i + 1,
-        surfaces: [] as SurfaceData[]
-      }));
-      await persistenceService.savePatient(patient);
+      patient = {
+        ...patient,
+        odontogram: Array.from({ length: 32 }, (_, i) => ({
+          id: i + 1,
+          surfaces: [] as SurfaceData[]
+        }))
+      };
+      needsSave = true;
     } else {
-      // Migrate legacy data if needed
       const needsMigration = patient.odontogram.some((t: any) => t.surfaces === undefined);
       if (needsMigration) {
-        patient.odontogram = patient.odontogram.map(migrateToothData);
-        await persistenceService.savePatient(patient);
+        patient = {
+          ...patient,
+          odontogram: patient.odontogram.map(migrateToothData)
+        };
+        needsSave = true;
       }
     }
 
-    return [...patient.odontogram];
+    return { teeth: [...patient.odontogram], patient, needsSave };
   }
 
-  async updateSurface(
-    patientId: string,
+  /**
+   * Updates a single surface on a tooth. Returns the updated patient record.
+   * Caller is responsible for persisting.
+   */
+  updateSurface(
+    patient: PatientRecord,
     toothId: number,
     surface: ToothSurface,
     condition: ClinicalCondition | null
-  ): Promise<boolean> {
-    const patient = persistenceService.getPatientById(patientId);
-    if (!patient) return false;
-
-    patient.odontogram = patient.odontogram.map(t => {
+  ): PatientRecord {
+    const updatedOdontogram = patient.odontogram.map(t => {
       if (t.id !== toothId) return t;
       const tooth = migrateToothData(t);
-      if (condition === null) {
-        tooth.surfaces = tooth.surfaces.filter(s => s.surface !== surface);
-      } else if (condition === 'healthy') {
+      if (condition === null || condition === 'healthy') {
         tooth.surfaces = tooth.surfaces.filter(s => s.surface !== surface);
       } else {
         const existing = tooth.surfaces.findIndex(s => s.surface === surface);
@@ -75,41 +85,39 @@ class DentalService {
       return tooth;
     });
 
-    await persistenceService.savePatient(patient);
-    console.log(`[Odontogram] Patient ${patientId}, Tooth ${toothId}, ${surface} -> ${condition}`);
-    return true;
+    return { ...patient, odontogram: updatedOdontogram };
   }
 
-  async saveSnapshot(patientId: string): Promise<boolean> {
-    const patient = persistenceService.getPatientById(patientId);
-    if (!patient) return false;
-
+  /**
+   * Creates a snapshot of the current odontogram. Returns updated patient record.
+   * Caller is responsible for persisting.
+   */
+  createSnapshot(patient: PatientRecord): PatientRecord {
     const snapshot: OdontogramSnapshot = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       teeth: JSON.parse(JSON.stringify(patient.odontogram)),
     };
 
-    if (!patient.odontogramHistory) patient.odontogramHistory = [];
-    patient.odontogramHistory.unshift(snapshot);
-    await persistenceService.savePatient(patient);
-    return true;
+    return {
+      ...patient,
+      odontogramHistory: [snapshot, ...(patient.odontogramHistory || [])],
+    };
   }
 
-  getSnapshots(patientId: string): OdontogramSnapshot[] {
-    const patient = persistenceService.getPatientById(patientId);
-    return patient?.odontogramHistory || [];
+  getSnapshots(patient: PatientRecord): OdontogramSnapshot[] {
+    return patient.odontogramHistory || [];
   }
 
   // Legacy support — kept for BudgetPlanner compatibility
-  async updateToothStatus(patientId: string, toothId: number, status: ToothStatus): Promise<boolean> {
+  updateToothStatus(patient: PatientRecord, toothId: number, status: ToothStatus): PatientRecord {
     const conditionMap: Record<string, ClinicalCondition> = {
       caries: 'caries',
       missing: 'ausente',
       treated: 'obturado',
       healthy: 'healthy',
     };
-    return this.updateSurface(patientId, toothId, 'oclusal', conditionMap[status] || null);
+    return this.updateSurface(patient, toothId, 'oclusal', conditionMap[status] || null);
   }
 }
 

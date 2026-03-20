@@ -3,7 +3,6 @@ import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'r
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { Suspense, lazy } from 'react';
-import { persistenceService } from './services/persistenceService';
 import { bookingService } from './services/bookingService';
 import { AuthProvider, useAuth } from './services/authService';
 import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcuts';

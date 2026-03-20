@@ -132,7 +132,10 @@ export class BookingService {
       updated_at: availability.lastUpdated,
     }, { onConflict: 'doctor_id' });
 
-    if (error) console.error('[Supabase] saveDoctorAvailability error:', error);
+    if (error) {
+      console.error('[Supabase] saveDoctorAvailability error:', error);
+      sileo.error({ title: 'Error al guardar disponibilidad', description: 'Los cambios no se pudieron sincronizar.' });
+    }
     window.dispatchEvent(new CustomEvent('availabilityUpdated', { detail: availability }));
   }
 
@@ -171,7 +174,10 @@ export class BookingService {
       is_active: settings.isActive,
     }, { onConflict: 'doctor_id' });
 
-    if (error) console.error('[Supabase] saveBookingSettings error:', error);
+    if (error) {
+      console.error('[Supabase] saveBookingSettings error:', error);
+      sileo.error({ title: 'Error al guardar configuración', description: 'Verifica tu conexión e intenta de nuevo.' });
+    }
   }
 
   // ===================== APPOINTMENT REQUESTS =====================
@@ -243,7 +249,10 @@ export class BookingService {
       responded_at: request.respondedAt || null,
     }).eq('id', requestId);
 
-    if (error) console.error('[Supabase] updateRequestStatus error:', error);
+    if (error) {
+      console.error('[Supabase] updateRequestStatus error:', error);
+      sileo.error({ title: 'Error al actualizar solicitud', description: 'No se pudo cambiar el estado de la solicitud.' });
+    }
     return request;
   }
 
@@ -252,7 +261,10 @@ export class BookingService {
     this.requests = this.requests.filter(r => r.id !== requestId);
 
     const { error } = await supabase.from('appointment_requests').delete().eq('id', requestId);
-    if (error) console.error('[Supabase] deleteRequest error:', error);
+    if (error) {
+      console.error('[Supabase] deleteRequest error:', error);
+      sileo.error({ title: 'Error al eliminar solicitud', description: 'No se pudo eliminar la solicitud.' });
+    }
   }
 
   // ===================== PUBLIC METHODS (no auth required) =====================
@@ -427,16 +439,29 @@ export class BookingService {
 
   generateAvailableSlots(date: string, availability: DoctorAvailability): string[] {
     const targetDate = new Date(date);
-    const dayOfWeek = targetDate.getDay();
+    // Parse targetDate properly from YYYY-MM-DD
+    const [y, m, d] = date.split('-').map(Number);
+    const localTargetDate = new Date(y, m - 1, d);
+    const dayOfWeek = localTargetDate.getDay();
     const dayConfig = availability.weeklySchedule.find(d => d.dayOfWeek === dayOfWeek);
     if (!dayConfig || !dayConfig.enabled) return [];
 
     const slots: string[] = [];
+    
+    // Calculate current time in minutes to filter out past slots if the date is today
+    const nowLocal = new Date();
+    const isToday = nowLocal.getFullYear() === y && nowLocal.getMonth() === m - 1 && nowLocal.getDate() === d;
+    const currentMinutes = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+    // Add a 30-minute buffer so they can't book for "right now"
+    const minimumMinutes = isToday ? currentMinutes + 30 : 0;
+
     for (const ts of dayConfig.timeSlots) {
       const start = timeToMinutes(ts.start);
       const end = timeToMinutes(ts.end);
       for (let t = start; t < end; t += availability.slotDuration) {
-        slots.push(minutesToTime(t));
+        if (t >= minimumMinutes) {
+          slots.push(minutesToTime(t));
+        }
       }
     }
     return slots;
@@ -456,15 +481,13 @@ export class BookingService {
 
     if (this.userId === did) {
       requests = this.requests;
-      // Also check in-memory appointments from persistenceService
-      // (we import it dynamically to avoid circular dependency at module level)
-      try {
-        const { persistenceService } = await import('./persistenceService');
-        const allAppointments = persistenceService.getAppointments();
-        confirmedAppointments = allAppointments
-          .filter(a => a.status !== 'Completada' || a.date >= getLocalISODate(new Date()))
-          .map(a => ({ date: a.date, time: a.time }));
-      } catch { /* ignore if not initialized */ }
+      // Query confirmed appointments directly from Supabase (persistenceService was decommissioned)
+      const { data: apptData } = await supabase
+        .from('appointments')
+        .select('date, time')
+        .eq('doctor_id', did)
+        .in('status', ['Programada', 'Completada']);
+      confirmedAppointments = (apptData || []).map(a => ({ date: a.date, time: a.time }));
     } else {
       // Public page: query both tables from Supabase
       const [reqs, appts] = await Promise.all([
@@ -496,12 +519,24 @@ export class BookingService {
     const availability = externalAvailability || this.getDoctorAvailability();
     const dates: string[] = [];
     const today = new Date();
-    for (let i = 1; i <= daysAhead; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+    
+    // Empezamos desde hoy (0) en adelante
+    for (let i = 0; i <= daysAhead; i++) {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      date.setDate(date.getDate() + i);
+      const dateStr = getLocalISODate(date);
+      
       const dayConfig = availability.weeklySchedule.find(d => d.dayOfWeek === date.getDay());
       if (dayConfig?.enabled && dayConfig.timeSlots.length > 0) {
-        dates.push(getLocalISODate(date));
+        // Validation for 'today' to ensure there are still future slots
+        if (i === 0) {
+          const futureSlots = this.generateAvailableSlots(dateStr, availability);
+          if (futureSlots.length > 0) {
+            dates.push(dateStr);
+          }
+        } else {
+          dates.push(dateStr);
+        }
       }
     }
     return dates;
