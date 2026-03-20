@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Appointment } from '../types';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
+import { whatsappService } from '../services/whatsappService';
 
 // Map DB row to UI model
 function dbToAppointment(a: any): Appointment {
@@ -46,7 +47,7 @@ export function useAppointments() {
 
 export function useAppointmentMutations() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const createMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
@@ -92,6 +93,23 @@ export function useAppointmentMutations() {
         queryClient.setQueryData(['appointments', user?.id], context.previous);
       }
       sileo.error({ title: 'Error', description: 'No se pudo agendar la cita en la nube.' });
+    },
+    onSuccess: (data) => {
+      // Enviar el recordatorio de WhatsApp automáticamente en segundo plano
+      if (data.phoneNumber && data.reminderStatus === 'not_sent') {
+        whatsappService.sendServerAppointmentReminder(data, profile?.full_name).then((res) => {
+          if (res.success) {
+            // Actualizar el estado en Supabase a 'sent' silenciosamente
+            supabase.from('appointments')
+              .update({ reminder_status: 'sent' })
+              .eq('id', data.id)
+              .then(() => {
+                // Invalidar la caché visualmente si se necesita refrescar
+                queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+              });
+          }
+        });
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
@@ -164,6 +182,21 @@ export function useAppointmentMutations() {
     onError: (err, _, context) => {
       if (context?.previous) queryClient.setQueryData(['appointments', user?.id], context.previous);
       sileo.error({ title: 'Error', description: 'No se pudo actualizar la cita.' });
+    },
+    onSuccess: (data) => {
+      // Enviar WhatsApp automáticamente si se cambió a "Programada" y no se ha enviado aún
+      if (data.status === 'Programada' && data.phoneNumber && data.reminderStatus === 'not_sent') {
+        whatsappService.sendServerAppointmentReminder(data, profile?.full_name).then((res) => {
+          if (res.success) {
+            supabase.from('appointments')
+              .update({ reminder_status: 'sent' })
+              .eq('id', data.id)
+              .then(() => {
+                queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+              });
+          }
+        });
+      }
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] })
   });
