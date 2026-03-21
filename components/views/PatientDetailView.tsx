@@ -50,14 +50,6 @@ const PatientDetailView: React.FC = () => {
             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{patient.identification.fullName}</h2>
             <p className="text-slate-400 font-medium text-xs mt-0.5">Expediente #{patient.id.slice(0, 8)}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate(`/calendar?patient=${encodeURIComponent(patient.identification.fullName)}&id=${patient.id}`)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
-            >
-              <History size={14} /> Agendar Cita
-            </button>
-          </div>
         </div>
       </header>
       <div className="flex-1 overflow-hidden">

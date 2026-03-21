@@ -5,7 +5,7 @@ import { usePatients } from '../../hooks/usePatients';
 import ConfirmModal from '../ConfirmModal';
 import { Appointment, AppointmentType } from '../../types';
 import { cn, generateId, getInitials, getLocalISODate } from '../../lib/utils';
-import { Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
 import { sileo } from 'sileo';
 
 const APPOINTMENT_TYPES: AppointmentType[] = ['Consulta', 'Seguimiento', 'Cirugía', 'Revisión'];
@@ -18,14 +18,15 @@ const CalendarView: React.FC = () => {
   const { data: patientsList = [] } = usePatients();
   const { createAppointment, deleteAppointment } = useAppointmentMutations();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [isAdding, setIsAdding] = useState(false);
+
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
 
   const patientNameFromParams = searchParams.get('patient') || '';
   const patientIdFromParams = searchParams.get('id') || '';
-
+  const [isAdding, setIsAdding] = useState(!!patientIdFromParams || searchParams.get('new') === 'true');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [newApt, setNewApt] = useState({
     patientName: patientNameFromParams,
     patientId: patientIdFromParams,
@@ -151,9 +152,6 @@ const CalendarView: React.FC = () => {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 flex-shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <button onClick={() => navigate('/')} className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
-                <ChevronLeft size={16} />
-              </button>
               <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Calendario</h1>
             </div>
             <p className="text-slate-500 font-medium pl-11">Organiza tu clínica fácilmente.</p>
@@ -222,13 +220,17 @@ const CalendarView: React.FC = () => {
                 const d = i + 1;
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isToday = todayStr === dateStr;
+                const isPast = dateStr < todayStr;
                 const dayApts = appointments.filter(a => a.date === dateStr);
 
                 return (
                   <div
                     key={d}
                     onClick={() => { setCurrentDate(new Date(dateStr)); setViewMode('day'); }}
-                    className="flex flex-col bg-white border-r border-b border-slate-100 p-1.5 cursor-pointer group hover:bg-slate-100/60 hover:z-10 transition-all relative min-h-0 overflow-hidden"
+                    className={cn(
+                        "flex flex-col border-r border-b border-slate-100 p-1.5 cursor-pointer transition-all relative min-h-0 overflow-hidden",
+                        isPast ? "bg-slate-50 opacity-60 grayscale-[0.3]" : "bg-white group hover:bg-slate-100/60 hover:z-10"
+                    )}
                   >
                     <div className="flex justify-end flex-shrink-0 mb-1">
                       <span className={cn(
@@ -286,15 +288,22 @@ const CalendarView: React.FC = () => {
                       {getWeekDates().map((date, di) => {
                         const dateStr = fmtDate(date);
                         const isToday = dateStr === todayStr;
+                        const isPast = dateStr < todayStr;
                         const hourApts = appointments.filter(a => a.date === dateStr && parseInt(a.time.split(':')[0] || '0', 10) === hour);
                         
                         return (
                           <div 
                             key={`${hour}-${di}`} 
-                            onClick={() => { setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); setIsAdding(true); }}
+                            onClick={() => { 
+                              if (!isPast) {
+                                setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); 
+                                setIsAdding(true); 
+                              }
+                            }}
                             className={cn(
-                              "h-24 border-r border-b border-slate-50 p-1 cursor-pointer group hover:bg-blue-50/40 transition-colors",
-                              isToday && "bg-blue-50/10"
+                              "h-24 border-r border-b border-slate-50 p-1 transition-colors",
+                              isPast ? "bg-slate-50/50 cursor-not-allowed" : "cursor-pointer group hover:bg-blue-50/40",
+                              isToday && !isPast && "bg-blue-50/10"
                             )}
                           >
                             {hourApts.map(a => (
@@ -364,8 +373,16 @@ const CalendarView: React.FC = () => {
                       
                       {hourApts.length === 0 && (
                         <div 
-                          onClick={() => { setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); setIsAdding(true); }}
-                          className="h-full border-2 border-dashed border-transparent hover:border-slate-200 rounded-2xl flex items-center px-4 opacity-0 group-hover:opacity-100 cursor-pointer transition-all"
+                          onClick={() => { 
+                            if (!(dateStr < todayStr)) {
+                              setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); 
+                              setIsAdding(true); 
+                            }
+                          }}
+                          className={cn(
+                            "h-full border-2 border-dashed border-transparent rounded-2xl flex items-center px-4 transition-all",
+                            dateStr < todayStr ? "hidden" : "hover:border-slate-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                          )}
                         >
                           <span className="text-xs font-bold text-slate-400 flex items-center gap-2"><Plus size={14}/> Agendar aquí</span>
                         </div>
@@ -393,43 +410,96 @@ const CalendarView: React.FC = () => {
             <div className="space-y-6">
               <div className="space-y-2 relative">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Paciente *</label>
-                <input
-                  autoFocus
-                  className="w-full px-5 py-3.5 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all border border-slate-100"
-                  value={newApt.patientName}
-                  onChange={e => { setNewApt(p => ({...p, patientName: e.target.value, patientId: ''})); setFormError(''); }}
-                  placeholder="Escribe el nombre del paciente..."
-                />
-                
-                {/* Auto-suggest dropdown */}
-                {newApt.patientName.length >= 2 && !newApt.patientId && (() => {
-                  const matches = patientsList.filter(p => p.identification.fullName.toLowerCase().includes(newApt.patientName.toLowerCase())).slice(0, 4);
-                  if (matches.length === 0) return null;
-                  return (
-                    <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl z-20 overflow-hidden">
-                      {matches.map(p => (
-                        <div 
-                          key={p.id} 
-                          onClick={() => { setNewApt(prev => ({...prev, patientName: p.identification.fullName, patientId: p.id})); setFormError(''); }}
-                          className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer transition-colors"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-center flex-shrink-0">{getInitials(p.identification.fullName)}</div>
-                          <p className="text-sm font-semibold text-slate-700">{p.identification.fullName}</p>
-                        </div>
-                      ))}
+                {newApt.patientId ? (
+                  <div className="w-full p-4 bg-blue-50/50 border border-blue-100/50 rounded-xl flex items-center justify-between animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-600/20">
+                        {getInitials(newApt.patientName)}
+                      </div>
+                      <div>
+                        <p className="text-[15px] font-bold text-slate-900 leading-tight">{newApt.patientName}</p>
+                        {(() => {
+                          const p = patientsList.find(x => x.id === newApt.patientId);
+                          return p && p.identification.phone ? (
+                            <p className="text-[12px] font-semibold text-slate-500 mt-0.5">{p.identification.phone}</p>
+                          ) : <p className="text-[12px] font-semibold text-slate-500 mt-0.5">Expediente Encontrado</p>;
+                        })()}
+                      </div>
                     </div>
-                  );
-                })()}
+                    <button onClick={() => { setNewApt(p => ({...p, patientName: '', patientId: ''})); setShowDropdown(true); }} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-slate-200 bg-white/50" title="Cambiar paciente">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                      <Search size={16} />
+                    </div>
+                    <input
+                      autoFocus
+                      className="w-full pl-11 pr-5 py-3.5 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all border border-slate-100"
+                      value={newApt.patientName}
+                      onChange={e => { setNewApt(p => ({...p, patientName: e.target.value})); setShowDropdown(true); setFormError(''); }}
+                      onFocus={() => setShowDropdown(true)}
+                      placeholder="Busca o escribe el nombre..."
+                    />
+                    
+                    {showDropdown && (
+                      <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl z-20 max-h-[260px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                        {(() => {
+                          const query = newApt.patientName.toLowerCase().trim();
+                          const matches = query ? patientsList.filter(p => p.identification.fullName.toLowerCase().includes(query) || (p.identification.phone && p.identification.phone.includes(query))) : patientsList;
+                          
+                          if (matches.length === 0) {
+                            return (
+                              <div className="p-5 text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setShowDropdown(false)}>
+                                <p className="text-[15px] font-bold text-slate-700">"{newApt.patientName}"</p>
+                                <p className="text-xs text-slate-500 font-medium mt-1">Clic aquí para continuar y crear registro básico.</p>
+                              </div>
+                            );
+                          }
+
+                          return matches.map(p => (
+                            <div 
+                              key={p.id} 
+                              onClick={() => { setNewApt(prev => ({...prev, patientName: p.identification.fullName, patientId: p.id})); setShowDropdown(false); setFormError(''); }}
+                              className="flex items-center gap-4 p-3 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0 group"
+                            >
+                              <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 group-hover:bg-blue-600 group-hover:text-white font-bold text-sm flex items-center justify-center flex-shrink-0 transition-colors">
+                                {getInitials(p.identification.fullName)}
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-700 leading-tight group-hover:text-blue-700 transition-colors">{p.identification.fullName}</p>
+                                <p className="text-[11px] text-slate-400 font-semibold mt-0.5 uppercase tracking-wider">{p.identification.phone || 'Sin teléfono'}</p>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Fecha</label>
-                  <input type="date" className="w-full px-4 py-3.5 bg-slate-50 rounded-xl outline-none text-sm font-bold text-slate-900 focus:bg-white border border-slate-100" value={newApt.date} onChange={e => setNewApt(p => ({...p, date: e.target.value}))}/>
+                  <input type="date" min={todayStr} className="w-full px-4 py-3.5 bg-slate-50 rounded-xl outline-none text-sm font-bold text-slate-900 focus:bg-white border border-slate-100" value={newApt.date} onChange={e => setNewApt(p => ({...p, date: e.target.value}))}/>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Hora</label>
-                  <input type="time" className="w-full px-4 py-3.5 bg-slate-50 rounded-xl outline-none text-sm font-bold text-slate-900 focus:bg-white border border-slate-100" value={newApt.time} onChange={e => setNewApt(p => ({...p, time: e.target.value}))}/>
+                  <select 
+                    className="w-full px-4 py-3.5 bg-slate-50 rounded-xl outline-none text-sm font-bold text-slate-900 focus:bg-white border border-slate-100 appearance-none cursor-pointer" 
+                    value={newApt.time} 
+                    onChange={e => setNewApt(p => ({...p, time: e.target.value}))}
+                  >
+                    {Array.from({ length: 27 }).map((_, i) => {
+                      const hour = Math.floor(i / 2) + 7;
+                      const mins = i % 2 === 0 ? '00' : '30';
+                      const timeStr = `${hour.toString().padStart(2, '0')}:${mins}`;
+                      return <option key={timeStr} value={timeStr}>{timeStr}</option>;
+                    })}
+                  </select>
                 </div>
               </div>
 

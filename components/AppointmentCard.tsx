@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Appointment, ReminderStatus } from '../types';
 import { cn, getInitials, formatAppDate } from '../lib/utils';
 import { whatsappService } from '../services/whatsappService';
@@ -163,7 +164,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
       </div>
 
       {/* Appointment Detail Modal */}
-      {showDetail && (
+      {showDetail && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm"
           onClick={() => setShowDetail(false)}
@@ -310,7 +311,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

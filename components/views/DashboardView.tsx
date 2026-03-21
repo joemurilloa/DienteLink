@@ -65,23 +65,44 @@ const Dashboard: React.FC = () => {
     return { monthlyRevenue, revenueChange, totalPatientsCount: allPatients.length, newPatientsCount, totalPending, completedThisMonth };
   }, [allPatients, allAppointments]);
 
-  const { appointments, isShowingUpcoming } = useMemo(() => {
-    let todayApts = allAppointments.filter(a => a.date === today && a.status !== 'Eliminada');
-    todayApts.sort((a, b) => a.time.localeCompare(b.time));
-
-    if (todayApts.length === 0) {
-      const allUpcoming = allAppointments
-        .filter(a => a.date > today && a.status !== 'Eliminada')
-        .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  const { groupedAppointments, isShowingUpcoming } = useMemo(() => {
+    const upcoming = allAppointments
+      .filter(a => a.date >= today && a.status !== 'Eliminada')
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+      .slice(0, 6);
       
-      if (allUpcoming.length > 0) {
-        return { appointments: allUpcoming.slice(0, 5), isShowingUpcoming: true };
+    const groups: { label: string, items: typeof upcoming }[] = [];
+    
+    upcoming.forEach(apt => {
+      let label = '';
+      const dateObj = new Date(apt.date + 'T12:00:00');
+      const todayObj = new Date(today + 'T12:00:00');
+      const diffTime = dateObj.getTime() - todayObj.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+      
+      if (diffDays === 0) label = 'Hoy';
+      else if (diffDays === 1) label = 'Mañana';
+      else if (diffDays < 7) {
+        const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        label = `El ${days[dateObj.getDay()]}`;
+      } else if (diffDays < 14) {
+        label = 'Sig. Semana';
       } else {
-        return { appointments: [], isShowingUpcoming: false };
+        label = 'Más adelante';
       }
-    } else {
-      return { appointments: todayApts, isShowingUpcoming: false };
-    }
+
+      const lastGroup = groups[groups.length - 1];
+      if (lastGroup && lastGroup.label === label) {
+        lastGroup.items.push(apt);
+      } else {
+        groups.push({ label, items: [apt] });
+      }
+    });
+
+    return { 
+      groupedAppointments: groups, 
+      isShowingUpcoming: upcoming.some(a => a.date > today) 
+    };
   }, [allAppointments, today]);
   const loadPendingRequests = useCallback(async () => {
     try { 
@@ -126,19 +147,12 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-3 px-5 py-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors group flex-1 md:flex-none md:w-72"
+              className="flex items-center gap-3 px-5 py-3.5 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-colors group flex-1 md:flex-none md:w-72"
             >
-              <Search size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
-              <span className="text-sm font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
-              <kbd className="hidden lg:flex items-center gap-1 px-2 py-1 bg-white rounded text-[10px] font-bold text-slate-400 ml-auto shadow-sm">⌘K</kbd>
+              <Search size={18} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
+              <span className="text-sm font-semibold text-slate-500 group-hover:text-slate-700 transition-colors">Buscar paciente...</span>
+              <kbd className="hidden lg:flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-500 ml-auto shadow-sm">⌘K</kbd>
             </button>
-            <div 
-              onClick={() => navigate('/settings')}
-              className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors shrink-0"
-              title="Ajustes"
-            >
-              <User size={18} className="text-slate-600" />
-            </div>
           </div>
         </header>
 
@@ -149,7 +163,7 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">{isShowingUpcoming ? 'Próximas Citas' : 'Agenda'}</h2>
               <button
-                onClick={() => navigate('/calendar')}
+                onClick={() => navigate('/calendar?new=true')}
                 className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors active:scale-95"
                 title="Nueva Cita"
               >
@@ -157,26 +171,33 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            {appointments.length === 0 ? (
+            {groupedAppointments.length === 0 ? (
               <div className="py-16 text-center">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <CalendarIcon size={24} className="text-slate-300" />
                 </div>
                 <h3 className="text-lg font-medium text-slate-900 mb-2">Sin citas programadas</h3>
-                <p className="text-slate-500 text-sm max-w-xs mx-auto">No tienes ninguna cita para el día de hoy. Disfruta tu tiempo libre.</p>
+                <p className="text-slate-500 text-sm max-w-xs mx-auto">No tienes citas próximas en tu agenda. Disfruta tu tiempo libre o registra a un nuevo paciente.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {appointments.map(apt => (
-                  <AppointmentCard
-                    key={apt.id}
-                    appointment={apt}
-                    showDate={isShowingUpcoming}
-                    onReminderSent={handleReminderStatusUpdate}
-                    onNavigateToPatient={(a) => {
-                      if (a.patientId) navigate(`/patient/${a.patientId}`);
-                    }}
-                  />
+              <div className="space-y-8">
+                {groupedAppointments.map(group => (
+                  <div key={group.label} className="space-y-3">
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 pl-2">{group.label}</h3>
+                    <div className="space-y-3">
+                      {group.items.map(apt => (
+                        <AppointmentCard
+                          key={apt.id}
+                          appointment={apt}
+                          showDate={group.label === 'Sig. Semana' || group.label === 'Más adelante'}
+                          onReminderSent={handleReminderStatusUpdate}
+                          onNavigateToPatient={(a) => {
+                            if (a.patientId) navigate(`/patient/${a.patientId}`);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -190,21 +211,8 @@ const Dashboard: React.FC = () => {
               <h2 className="text-lg font-semibold text-slate-900 tracking-tight mb-6">Resumen del Mes</h2>
               <div className="grid grid-cols-2 gap-x-8 gap-y-10">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Ingresos</p>
-                    {metrics.revenueChange !== 0 && (
-                      <span className={cn("text-[10px] font-bold flex items-center", metrics.revenueChange > 0 ? "text-emerald-500" : "text-red-500")}>
-                        {metrics.revenueChange > 0 ? <ArrowUpRight size={12}/> : <ArrowDownRight size={12}/>}
-                        {Math.abs(metrics.revenueChange)}%
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-2xl font-semibold text-slate-900 tracking-tight">{formatCurrency(metrics.monthlyRevenue)}</p>
-                </div>
-                
-                <div>
-                  <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Por Cobrar</p>
-                  <p className="text-2xl font-semibold text-slate-900 tracking-tight">{formatCurrency(metrics.totalPending)}</p>
+                  <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-1">Citas Completadas</p>
+                  <p className="text-3xl font-bold text-slate-900 tracking-tight">{metrics.completedThisMonth}</p>
                 </div>
 
                 <div>

@@ -109,7 +109,6 @@ const SettingsView: React.FC = () => {
         requireText="BORRAR"
       />
       <header className="flex items-center gap-4 mb-8">
-        <button onClick={() => navigate('/')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95">←</button>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ajustes</h2>
       </header>
 

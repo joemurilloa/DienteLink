@@ -245,12 +245,6 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <button
-                onClick={onBack}
-                className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
-              >
-                <ArrowLeft size={16} />
-              </button>
               <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Solicitudes</h1>
               {pendingCount > 0 && (
                 <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold animate-pulse">

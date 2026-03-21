@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, User } from 'lucide-react';
 import { usePatients } from '../hooks/usePatients';
@@ -85,7 +86,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] p-6">
             <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
 
@@ -113,32 +114,32 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                                 onClick={() => handleSelect(patient.id)}
                                 className={cn(
                                     "w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-left group",
-                                    selectedIndex === index ? "bg-blue-600 shadow-lg shadow-blue-500/20 scale-[1.02]" : "hover:bg-blue-50"
+                                    selectedIndex === index ? "bg-blue-50 border-2 border-blue-500 shadow-sm outline-none" : "hover:bg-slate-50 border-2 border-transparent"
                                 )}
                             >
                                 <div className={cn(
                                     "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
-                                    selectedIndex === index ? "bg-white/20 text-white" : "bg-blue-100 text-blue-600"
+                                    selectedIndex === index ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-600"
                                 )}>
                                     <User size={20} />
                                 </div>
                                 <div className="flex-1">
                                     <h4 className={cn(
                                         "font-bold transition-colors",
-                                        selectedIndex === index ? "text-white" : "text-slate-900 group-hover:text-blue-600"
+                                        selectedIndex === index ? "text-blue-700" : "text-slate-900 group-hover:text-blue-600"
                                     )}>
                                         {patient.identification.fullName}
                                     </h4>
                                     <p className={cn(
                                         "text-[10px] font-bold uppercase tracking-widest transition-colors",
-                                        selectedIndex === index ? "text-blue-100" : "text-slate-400"
+                                        selectedIndex === index ? "text-blue-500" : "text-slate-400"
                                     )}>
                                         ID: {patient.id} • {patient.identification.phone}
                                     </p>
                                 </div>
                                 <span className={cn(
                                     "text-[10px] font-black uppercase tracking-widest transition-all",
-                                    selectedIndex === index ? "text-white opacity-100" : "text-slate-300 opacity-0 group-hover:opacity-100"
+                                    selectedIndex === index ? "text-blue-700 opacity-100" : "text-slate-300 opacity-0 group-hover:opacity-100"
                                 )}>
                                     {selectedIndex === index ? "ENTER ↵" : "Ver →"}
                                 </span>
@@ -164,7 +165,8 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                     </div>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

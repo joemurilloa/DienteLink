@@ -31,7 +31,6 @@ import PrescriptionManager from './PrescriptionManager';
 import PatientIdTab from './patient-record/PatientIdTab';
 import AnamnesisTab from './patient-record/AnamnesisTab';
 import EvolutionTab from './patient-record/EvolutionTab';
-import BudgetTab from './patient-record/BudgetTab';
 import HistoryTab from './patient-record/HistoryTab';
 import AppointmentsTab from './patient-record/AppointmentsTab';
 import XraysTab from './patient-record/XraysTab';
@@ -41,7 +40,7 @@ interface Props {
     onUpdate: (updatedPatient: PatientRecordType) => void;
 }
 
-type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'budget' | 'consent' | 'prescriptions' | 'citas' | 'history' | 'xrays';
+type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'consent' | 'prescriptions' | 'citas' | 'history' | 'xrays';
 
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
@@ -67,7 +66,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         { id: 'anamnesis', label: 'Anamnesis', icon: History },
         { id: 'periodontogram', label: 'Periodonto', icon: BarChart3 },
         { id: 'notes', label: 'Evolución', icon: ClipboardList },
-        { id: 'budget', label: 'Presupuesto', icon: DollarSign },
         { id: 'consent', label: 'Consentimiento', icon: FileCheck },
         { id: 'prescriptions', label: 'Recetas', icon: Pill },
         { id: 'citas', label: 'Agenda', icon: Calendar },
@@ -121,27 +119,19 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
             case 'odontogram':
                 return (
                     <div className="space-y-6 animate-in-up duration-500 min-h-[600px]">
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Odontograma</h3>
-                            <p className="text-slate-400 text-sm mt-1">Mapa dental interactivo</p>
-                        </div>
+
                         <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} onSaveSnapshot={handleSnapshotSaved} />
                     </div>
                 );
             case 'periodontogram':
                 return (
                     <div className="space-y-6 animate-in-up duration-500 min-h-[600px]">
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Periodontograma</h3>
-                            <p className="text-slate-400 text-sm mt-1">Estado de salud periodontal</p>
-                        </div>
+
                         <Periodontogram data={ensurePeriodontogramData(patient.periodontogram)} onUpdate={(periodontogram) => onUpdate({ ...patient, periodontogram })} />
                     </div>
                 );
             case 'notes':
                 return <EvolutionTab patient={patient} onUpdate={onUpdate} />;
-            case 'budget':
-                return <BudgetTab patient={patient} onUpdate={onUpdate} />;
             case 'consent':
                 return <ConsentManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />;
             case 'prescriptions':
