@@ -60,6 +60,17 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         if (tab) setActiveTab(tab as TabId);
     }, [searchParams]);
 
+    // Tecla ESC para cerrar Focus Mode
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isFocusMode) {
+                setIsFocusMode(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isFocusMode]);
+
     const tabs = [
         { id: 'id', label: 'Ficha', icon: User },
         { id: 'odontogram', label: 'Odontograma', icon: LayoutGrid },
@@ -166,24 +177,24 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     );
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden animate-in fade-in duration-500 pb-20 lg:pb-0">
+        <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500 pb-20 lg:pb-0 relative">
             {isFocusMode && createPortal(FocusModeContent, document.body)}
 
-            {/* Sidebar Tabs */}
+            {/* Top Horizontal Tabs */}
             <div className={cn(
-                "lg:w-56 flex flex-row lg:flex-col overflow-x-auto lg:overflow-y-auto gap-1.5 pb-3 lg:pb-0 hide-scrollbar transition-all duration-500",
-                isFocusMode ? "lg:w-0 opacity-0 pointer-events-none -ml-8 overflow-hidden" : "opacity-100"
+                "w-full overflow-x-auto hide-scrollbar shrink-0 mb-4 transition-all duration-500 z-10",
+                isFocusMode ? "h-0 opacity-0 pointer-events-none mb-0 overflow-hidden" : "opacity-100"
             )}>
-                <nav className="flex flex-row lg:flex-col gap-1 w-full">
+                <nav className="flex flex-row gap-2 w-max px-1 py-1">
                     {tabs.map((tab, index) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as TabId)}
                             className={cn(
-                                "flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap min-w-max animate-in-up duration-200",
+                                "flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all min-w-max animate-in-up duration-200 border",
                                 activeTab === tab.id
-                                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                                    ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/10"
+                                    : "bg-white border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50"
                             )}
                             style={{ animationDelay: `${index * 40}ms` }}
                         >

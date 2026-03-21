@@ -198,24 +198,20 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
         />
 
         {/* Probe line (the draggable indicator) */}
-        <motion.div
+        <div
           className="absolute left-1 right-1 flex items-center justify-center pointer-events-none"
-          style={{ top: probeY - 2 }}
-          animate={{ top: probeY - 2 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+          style={{ top: probeY - 2, transition: isSelected && !isDragging.current ? 'top 0.15s ease-out' : 'none' }}
         >
           <div
             className="w-full h-[3px] rounded-full shadow-md"
             style={{ backgroundColor: color }}
           />
-        </motion.div>
+        </div>
 
         {/* Probe needle visual */}
-        <motion.div
+        <div
           className="absolute left-1/2 -translate-x-1/2 w-[2px] top-0 pointer-events-none origin-top"
-          style={{ height: probeY, backgroundColor: `${color}80` }}
-          animate={{ height: probeY }}
-          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+          style={{ height: probeY, backgroundColor: `${color}80`, transition: isSelected && !isDragging.current ? 'height 0.15s ease-out' : 'none' }}
         />
 
         {/* Mm label */}

@@ -10,7 +10,7 @@ import { usePatients } from '../../hooks/usePatients';
 import { useAuth } from '../../services/authService';
 import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
 import { cn, formatCurrency, getInitials, getLocalISODate } from '../../lib/utils';
-import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, ArrowDownRight, User } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, User, UserPlus } from 'lucide-react';
 import { sileo } from 'sileo';
 
 function getGreeting(): string {
@@ -34,74 +34,76 @@ const Dashboard: React.FC = () => {
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
 
-  // ===== Dashboard Metrics =====
-  const metrics = useMemo(() => {
-    const now = new Date();
-    const monthStart = getLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1));
-    const monthEnd = getLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-    const prevMonthStart = getLocalISODate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-    const prevMonthEnd = getLocalISODate(new Date(now.getFullYear(), now.getMonth(), 0));
+  // ===== Daily Pulse Metrics =====
+  const pulseMetrics = useMemo(() => {
+    const todayApts = allAppointments.filter(a => a.date === today);
+    const totalToday = todayApts.length;
+    const completedToday = todayApts.filter(a => a.status === 'Completada').length;
+    const canceledToday = todayApts.filter(a => a.status === 'Eliminada').length;
+    const remainingToday = Math.max(0, totalToday - completedToday - canceledToday);
 
-    const monthlyRevenue = allPatients.reduce((sum, p) => sum + (p.payments || []).filter(pay => pay.date >= monthStart && pay.date <= monthEnd).reduce((s, pay) => s + pay.amount, 0), 0);
-    const prevMonthRevenue = allPatients.reduce((sum, p) => sum + (p.payments || []).filter(pay => pay.date >= prevMonthStart && pay.date <= prevMonthEnd).reduce((s, pay) => s + pay.amount, 0), 0);
-    const revenueChange = prevMonthRevenue > 0 ? Math.round(((monthlyRevenue - prevMonthRevenue) / prevMonthRevenue) * 100) : 0;
-
-    const monthlyAppointments = allAppointments.filter(a => a.date >= monthStart && a.date <= monthEnd);
-    const completedThisMonth = monthlyAppointments.filter(a => a.status === 'Completada').length;
-    
-    const newPatientsCount = allPatients.filter(p => {
-      const history = p.history || [];
-      const notes = p.evolutionNotes || [];
-      const firstEvent = [...history, ...notes].sort((a, b) => a.date.localeCompare(b.date))[0];
-      return firstEvent && firstEvent.date >= monthStart && firstEvent.date <= monthEnd;
-    }).length;
-
-    const totalPending = allPatients.reduce((sum, p) => {
-      const budgetTotal = (p.budget || []).reduce((s, b) => s + b.unitCost * b.quantity, 0);
-      const paidTotal = (p.payments || []).reduce((s, pay) => s + pay.amount, 0);
-      return sum + Math.max(0, budgetTotal - paidTotal);
-    }, 0);
-
-    return { monthlyRevenue, revenueChange, totalPatientsCount: allPatients.length, newPatientsCount, totalPending, completedThisMonth };
-  }, [allPatients, allAppointments]);
+    return { totalToday, completedToday, remainingToday, canceledToday };
+  }, [allAppointments, today]);
 
   const { groupedAppointments, isShowingUpcoming } = useMemo(() => {
-    const upcoming = allAppointments
-      .filter(a => a.date >= today && a.status !== 'Eliminada')
-      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
-      .slice(0, 6);
+    const relevant = allAppointments
+      .filter(a => {
+        if (a.status === 'Eliminada') return false;
+        if (a.date < today) return false;
+        if (a.status === 'Completada' && a.date !== today) return false;
+        return true;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
       
-    const groups: { label: string, items: typeof upcoming }[] = [];
+    const groupedMap: Record<string, typeof relevant> = {};
     
-    upcoming.forEach(apt => {
-      let label = '';
+    // Función auxiliar para agrupar
+    const addToGroup = (lbl: string, apt: any) => {
+      if (!groupedMap[lbl]) groupedMap[lbl] = [];
+      groupedMap[lbl].push(apt);
+    };
+
+    relevant.forEach(apt => {
       const dateObj = new Date(apt.date + 'T12:00:00');
       const todayObj = new Date(today + 'T12:00:00');
-      const diffTime = dateObj.getTime() - todayObj.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+      const diffDays = Math.round((dateObj.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
       
-      if (diffDays === 0) label = 'Hoy';
-      else if (diffDays === 1) label = 'Mañana';
-      else if (diffDays < 7) {
+      if (apt.status === 'Completada') {
+        addToGroup('Completadas Hoy', apt);
+      } else if (diffDays === 0) {
+        addToGroup('Hoy', apt);
+      } else if (diffDays === 1) {
+        addToGroup('Mañana', apt);
+      } else if (diffDays < 7) {
         const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        label = `El ${days[dateObj.getDay()]}`;
+        addToGroup(`El ${days[dateObj.getDay()]}`, apt);
       } else if (diffDays < 14) {
-        label = 'Sig. Semana';
+        addToGroup('Sig. Semana', apt);
       } else {
-        label = 'Más adelante';
+        addToGroup('Más adelante', apt);
       }
+    });
 
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup && lastGroup.label === label) {
-        lastGroup.items.push(apt);
-      } else {
-        groups.push({ label, items: [apt] });
+    // Definir el orden deseado de las etiquetas
+    const labelOrder = ['Hoy', 'Mañana'];
+    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    days.forEach(d => labelOrder.push(`El ${d}`));
+    labelOrder.push('Sig. Semana', 'Más adelante', 'Completadas Hoy');
+
+    const groups: { label: string, items: typeof relevant }[] = [];
+    
+    labelOrder.forEach(lbl => {
+      if (groupedMap[lbl] && groupedMap[lbl].length > 0) {
+        // Limit total upcoming to avoid endless scroll, but keeping completed visible
+        if (groups.length < 5 || lbl === 'Completadas Hoy') {
+           groups.push({ label: lbl, items: groupedMap[lbl] });
+        }
       }
     });
 
     return { 
       groupedAppointments: groups, 
-      isShowingUpcoming: upcoming.some(a => a.date > today) 
+      isShowingUpcoming: relevant.some(a => a.date > today && a.status !== 'Completada') 
     };
   }, [allAppointments, today]);
   const loadPendingRequests = useCallback(async () => {
@@ -183,7 +185,7 @@ const Dashboard: React.FC = () => {
               <div className="space-y-8">
                 {groupedAppointments.map(group => (
                   <div key={group.label} className="space-y-3">
-                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 pl-2">{group.label}</h3>
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 pl-2">{group.label}</h3>
                     <div className="space-y-3">
                       {group.items.map(apt => (
                         <AppointmentCard
@@ -204,31 +206,62 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* ===== Right Column (Metrics & Requests) ===== */}
-          <div className="lg:col-span-5 xl:col-span-4 space-y-12 animate-in-up stagger-delay-3">
+          <div className="lg:col-span-5 xl:col-span-4 space-y-10 animate-in-up stagger-delay-3">
             
-            {/* Minimal Metrics Summary */}
+            {/* Quick Actions (Accesos Rápidos) */}
             <section>
-              <h2 className="text-lg font-semibold text-slate-900 tracking-tight mb-6">Resumen del Mes</h2>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-10">
-                <div>
-                  <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-1">Citas Completadas</p>
-                  <p className="text-3xl font-bold text-slate-900 tracking-tight">{metrics.completedThisMonth}</p>
-                </div>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 pl-1 mb-4">Accesos Rápidos</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigate('/patient/new')}
+                  className="flex flex-col gap-3 p-5 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:shadow-blue-900/5 transition-all group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <UserPlus size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-bold text-slate-900 leading-tight">Nuevo Paciente</p>
+                    <p className="text-[10px] text-slate-500 font-medium mt-1">Crear expediente</p>
+                  </div>
+                </button>
 
-                <div>
-                  <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Pacientes Totales</p>
-                  <p className="text-2xl font-semibold text-slate-900 tracking-tight">{metrics.totalPatientsCount}</p>
-                </div>
-
-                <div>
-                  <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nuevos (Mes)</p>
-                  <p className="text-2xl font-semibold text-slate-900 tracking-tight">+{metrics.newPatientsCount}</p>
-                </div>
+                <button
+                  onClick={() => navigate('/calendar')}
+                  className="flex flex-col gap-3 p-5 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-900/5 transition-all group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <CalendarIcon size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-bold text-slate-900 leading-tight">Ver Agenda</p>
+                    <p className="text-[10px] text-slate-500 font-medium mt-1">Calendario general</p>
+                  </div>
+                </button>
               </div>
             </section>
 
-            {/* Subtle separator */}
-            <hr className="border-slate-100" />
+            {/* Pulso del Día */}
+            <section>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 pl-1 mb-4">Pulso del Día</h2>
+              <div className="bg-slate-900 rounded-[24px] p-6 sm:p-8 shadow-xl shadow-slate-900/10 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+                
+                <div className="relative z-10 grid grid-cols-3 gap-6 divide-x divide-slate-800">
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Total Hoy</p>
+                    <p className="text-4xl font-light tracking-tight">{pulseMetrics.totalToday}</p>
+                  </div>
+                  <div className="text-center pl-6">
+                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">Atendidas</p>
+                    <p className="text-4xl font-light tracking-tight text-emerald-300">{pulseMetrics.completedToday}</p>
+                  </div>
+                  <div className="text-center pl-6">
+                    <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2">En Espera</p>
+                    <p className="text-4xl font-light tracking-tight text-amber-300">{pulseMetrics.remainingToday}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             {/* Pending Requests */}
             <section>

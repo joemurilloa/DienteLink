@@ -7,7 +7,9 @@ import { whatsappService } from '../services/whatsappService';
 import { emailReminderService } from '../services/emailReminderService';
 import { useAuth } from '../services/authService';
 import { usePatient } from '../hooks/usePatients';
-import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle } from 'lucide-react';
+import { useAppointmentMutations } from '../hooks/useAppointments';
+import { useNavigate } from 'react-router-dom';
+import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle, Play, Ban } from 'lucide-react';
 import { sileo } from 'sileo';
 
 interface AppointmentCardProps {
@@ -37,6 +39,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const [isDeleting, setIsDeleting] = useState(false);
   const { profile } = useAuth();
   const { patient } = usePatient(appointment.patientId);
+  const { updateAppointment } = useAppointmentMutations();
+  const navigate = useNavigate();
+  
   const isToday = appointment.date === new Date().toISOString().split('T')[0];
   const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-emerald-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
@@ -299,15 +304,40 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                 )}
               </button>
               </div>
-              <div className="flex gap-2.5">
-              {onNavigateToPatient && appointment.patientId && (
-                <button
-                  onClick={() => { setShowDetail(false); onNavigateToPatient(appointment); }}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all"
-                >
-                  <User size={14} /> Expediente
-                </button>
-              )}
+              
+              <div className="flex gap-2.5 mt-2 pt-2 border-t border-slate-100">
+                {onNavigateToPatient && appointment.patientId && appointment.status === 'Programada' && (
+                  <>
+                    <button
+                      onClick={() => { 
+                        updateAppointment.mutate({ ...appointment, status: 'Eliminada' });
+                        setShowDetail(false); 
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-100"
+                      title="Marcar como No Asistió o Cancelada"
+                    >
+                      <Ban size={16} /> Cancelar
+                    </button>
+                    <button
+                      onClick={() => { 
+                        setShowDetail(false);
+                        navigate(`/consultation?patientId=${appointment.patientId}&appointmentId=${appointment.id}`);
+                      }}
+                      className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all"
+                    >
+                      <Play size={16} className="fill-white" /> Iniciar Consulta
+                    </button>
+                  </>
+                )}
+
+                {onNavigateToPatient && appointment.patientId && appointment.status !== 'Programada' && (
+                  <button
+                    onClick={() => { setShowDetail(false); onNavigateToPatient(appointment); }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-md"
+                  >
+                    <User size={16} /> Ver Expediente
+                  </button>
+                )}
               </div>
             </div>
           </div>

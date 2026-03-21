@@ -166,15 +166,50 @@ export function usePatientMutations() {
 
             if (pErr) throw new Error(`Error en paciente: ${pErr.message}`);
 
-            // 2. Sub-tables
+            // 2. Sub-tables sync logic
             const syncSubTable = async (tableName: string, items: any[], mapFn: (i: any) => any) => {
+                const doctorId = user.id;
+                
+                // A. Upsert all current items
                 if (items && items.length > 0) {
-                    const { error } = await supabase.from(tableName).upsert(items.map(mapFn), { onConflict: 'id' });
-                    if (error) throw error;
-                    const currentIds = items.map(i => i.id);
-                    await supabase.from(tableName).delete().eq('patient_id', patient.id).not('id', 'in', `(${currentIds.join(',')})`);
+                    const mapped = items.map(mapFn);
+                    console.log(`[Supabase Sync] Intentando Upsert en ${tableName}:`, mapped.length, "ítems para doctor:", doctorId);
+                    
+                    const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
+                    if (upsertErr) {
+                        console.error(`[Error Upserting ${tableName}]:`, upsertErr);
+                        throw upsertErr;
+                    }
+
+                    // B. Delete items belonging to this patient/doctor that are NOT in the current list
+                    const rawIds = items.map(i => i.id);
+                    const currentIds = rawIds.filter(id => typeof id === 'string' && id.length > 0);
+                    
+                    // Log for debugging if needed
+                    if (currentIds.length !== rawIds.length) {
+                        console.warn(`[Supabase Sync] Warning: Filtered out ${rawIds.length - currentIds.length} invalid IDs in ${tableName}`, rawIds);
+                    }
+
+                    if (currentIds.length > 0) {
+                        const { error: delErr } = await supabase.from(tableName)
+                            .delete()
+                            .eq('patient_id', patient.id)
+                            .eq('doctor_id', doctorId)
+                            .not('id', 'in', `(${currentIds.join(',')})`); // PostgREST IN requires parentheses
+                        
+                        if (delErr) {
+                            console.error(`[Error Cleaning ${tableName}]:`, delErr);
+                            throw delErr;
+                        }
+                    }
                 } else {
-                    await supabase.from(tableName).delete().eq('patient_id', patient.id);
+                    // C. If no items, delete all for this patient/doctor
+                    const { error: delErr } = await supabase.from(tableName)
+                        .delete()
+                        .eq('patient_id', patient.id)
+                        .eq('doctor_id', doctorId);
+                    
+                    if (delErr) throw delErr;
                 }
             };
 

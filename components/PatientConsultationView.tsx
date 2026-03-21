@@ -2,328 +2,517 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, 
-  Users, 
-  Calendar, 
-  AlertTriangle, 
-  Activity, 
-  FileText, 
-  LayoutGrid, 
-  Clock, 
-  CheckCircle,
-  ArrowLeft,
-  Plus,
-  Eye,
-  Stethoscope
+  ArrowLeft, Clock, AlertTriangle, FileText, CheckCircle, Activity, LayoutGrid, Save, Loader2, Pill, Plus, Trash2, User, Play
 } from 'lucide-react';
-import { usePatients } from '../hooks/usePatients';
-import { PatientRecord } from '../types';
-import { cn } from '../lib/utils';
+import { usePatients, usePatientMutations } from '../hooks/usePatients';
+import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
+import { PatientRecord, EvolutionNote, ClinicalEvent, Prescription } from '../types';
+import { sileo } from 'sileo';
+import { cn, getInitials } from '../lib/utils';
+import { useAuth } from '../services/authService';
+import PatientRecordComponent from './PatientRecord';
 
 const PatientConsultationView: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialPatientId = searchParams.get('patientId');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const patientId = searchParams.get('patientId');
+  const appointmentId = searchParams.get('appointmentId');
   
-  const [searchTerm, setSearchTerm] = useState('');
   const { data: allPatients = [] } = usePatients();
-  const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);
-  const [consultationStarted, setConsultationStarted] = useState(false);
+  const { data: allAppointments = [] } = useAppointments();
+  const { savePatient } = usePatientMutations();
+  const { updateAppointment } = useAppointmentMutations();
+
+  const [patient, setPatient] = useState<PatientRecord | null>(null);
+  const [appointment, setAppointment] = useState<any | null>(null);
+
+  const [formData, setFormData] = useState({
+    motivo: '',
+    procedimiento: '',
+    diagnostico: '',
+    notas: ''
+  });
+
+  const [showPrescription, setShowPrescription] = useState(false);
+  const [medications, setMedications] = useState<any[]>([]);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [timer, setTimer] = useState(0);
+  
+  const [viewMode, setViewMode] = useState<'form' | 'expediente'>('form');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    if (initialPatientId && !selectedPatient && allPatients.length > 0) {
-      const p = allPatients.find(p => p.id === initialPatientId);
-      if (p) {
-        setSelectedPatient(p);
-        setConsultationStarted(true);
+    if (patientId) {
+      const p = allPatients.find(x => x.id === patientId);
+      if (p) setPatient(p);
+    }
+    if (appointmentId) {
+      const a = allAppointments.find(x => x.id === appointmentId);
+      if (a) {
+        setAppointment(a);
+        if (!formData.motivo) {
+          setFormData(prev => ({ ...prev, motivo: a.type }));
+        }
       }
     }
-  }, [initialPatientId, allPatients, selectedPatient]);
+  }, [patientId, appointmentId, allPatients, allAppointments]);
 
-  // Filtrar pacientes basado en búsqueda
-  const filteredPatients = allPatients.filter(patient => 
-    patient.identification.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Tecla ESC para navegación fluida
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showConfirm) setShowConfirm(false);
+        else if (viewMode === 'expediente') setViewMode('form');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showConfirm, viewMode]);
 
-  // Obtener último tratamiento
+  // Timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimer(t => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const addMedication = () => {
+    setMedications(prev => [...prev, { id: crypto.randomUUID(), name: '', dosage: '', frequency: '', duration: '', instructions: '' }]);
+  };
+
+  const removeMedication = (id: string) => {
+    setMedications(prev => prev.filter(m => m.id !== id));
+  };
+
   const getLastTreatment = (patient: PatientRecord) => {
-    if (patient.history.length === 0) return 'Sin tratamientos previos';
+    if (!patient.history || patient.history.length === 0) return 'Ninguno';
     const last = patient.history[0];
     return `${last.description} (${last.date})`;
   };
 
-  // Iniciar consulta
-  const startConsultation = (patient: PatientRecord) => {
-    setSelectedPatient(patient);
-    setConsultationStarted(true);
-    setSearchTerm('');
+  const handleFinish = async () => {
+    if (!patient) return;
+    if (!formData.procedimiento.trim() && !formData.notas.trim() && !formData.diagnostico.trim()) {
+      sileo.warning({ title: 'Consulta vacía', description: 'Por favor agrega algún procedimiento o nota para guardar la sesión.' });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      const newPatient = { ...patient };
+      let hasChanges = false;
+
+      // 1. Crear Nota de Evolución
+      if (formData.notas.trim() || formData.procedimiento.trim() || formData.diagnostico.trim()) {
+        const newNote: EvolutionNote = {
+          id: crypto.randomUUID(),
+          date: dateStr,
+          procedure: formData.procedimiento.trim() || 'Consulta General',
+          content: `${formData.motivo ? `**Motivo:** ${formData.motivo}\n` : ''}${formData.diagnostico ? `**Diagnóstico:** ${formData.diagnostico}\n` : ''}${formData.notas ? `\n**Notas:**\n${formData.notas.trim()}` : ''}`
+        };
+        newPatient.evolutionNotes = [newNote, ...(newPatient.evolutionNotes || [])];
+        hasChanges = true;
+      }
+
+      // 2. Crear Historial Clínico
+      if (formData.procedimiento.trim()) {
+        const newEvent: ClinicalEvent = {
+          id: crypto.randomUUID(),
+          date: dateStr,
+          type: 'treatment',
+          description: formData.procedimiento.trim()
+        };
+        newPatient.history = [newEvent, ...(newPatient.history || [])];
+        hasChanges = true;
+      }
+
+      // 3. Crear Receta
+      if (showPrescription && medications.some(m => m.name.trim())) {
+        const validMeds = medications.filter(m => m.name.trim());
+        const newPrescription: Prescription = {
+          id: crypto.randomUUID(),
+          date: dateStr,
+          diagnosis: formData.diagnostico || 'Atención General',
+          medications: validMeds,
+          notes: ''
+        };
+        newPatient.prescriptions = [newPrescription, ...(newPatient.prescriptions || [])];
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        await savePatient.mutateAsync(newPatient);
+      }
+
+      if (appointment) {
+        await updateAppointment.mutateAsync({ ...appointment, status: 'Completada' });
+      }
+
+      sileo.success({ title: 'Consulta Finalizada', description: 'El expediente ha sido actualizado automáticamente.' });
+      navigate('/');
+    } catch (error) {
+      console.error(error);
+      sileo.error({ title: 'Error', description: 'Hubo un problema guardando la consulta.' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // Finalizar consulta
-  const endConsultation = () => {
-    setSelectedPatient(null);
-    setConsultationStarted(false);
-    setSearchTerm('');
-  };
-
-  if (!consultationStarted || !selectedPatient) {
+  if (!patientId || allPatients.length === 0) {
     return (
-      <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
-        {/* Header */}
-        <header className="flex items-center gap-4 mb-8">
-          <button 
-            onClick={() => navigate('/')} 
-            className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all active:scale-95"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h2 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Recepción de Paciente</h2>
-            <p className="text-slate-500 text-sm mt-1">Busque al paciente para iniciar la consulta</p>
-          </div>
-        </header>
-
-        {/* Búsqueda */}
-        <div className="max-w-2xl mx-auto">
-          <div className="relative mb-8">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input
-              type="text"
-              placeholder="Buscar por nombre del paciente o ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 text-lg bg-white border border-slate-200 rounded-2xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-              autoFocus
-            />
-          </div>
-
-          {/* Resultados de búsqueda */}
-          <AnimatePresence>
-            {searchTerm && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-3"
-              >
-                {filteredPatients.length === 0 ? (
-                  <div className="text-center py-12 bg-slate-50 rounded-2xl">
-                    <Users className="mx-auto text-slate-300 mb-4" size={48} />
-                    <p className="text-slate-500 font-medium">No se encontraron pacientes</p>
-                    <p className="text-slate-400 text-sm mt-1">Verifique el nombre o ID del paciente</p>
-                  </div>
-                ) : (
-                  filteredPatients.map(patient => (
-                    <motion.div
-                      key={patient.id}
-                      layout
-                      className="bg-white rounded-2xl border border-slate-100 p-6 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group"
-                      onClick={() => startConsultation(patient)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
-                            {patient.identification.fullName}
-                          </h3>
-                          <p className="text-slate-500 text-sm">ID: {patient.id.slice(0, 8)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-slate-400 mb-1">Último tratamiento</p>
-                          <p className="text-sm font-medium text-slate-600">{getLastTreatment(patient)}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Alergias importantes */}
-                      {patient.clinicalHistory.allergies.length > 0 && (
-                        <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg border border-red-100">
-                          <AlertTriangle size={16} className="text-red-500" />
-                          <span className="text-red-700 text-sm font-medium">
-                            Alergias: {patient.clinicalHistory.allergies.join(', ')}
-                          </span>
-                        </div>
-                      )}
-                    </motion.div>
-                  ))
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Estado inicial */}
-          {!searchTerm && (
-            <div className="text-center py-16 bg-gradient-to-br from-blue-50 to-blue-50 rounded-2xl border border-blue-100">
-              <Stethoscope className="mx-auto text-blue-300 mb-6" size={64} />
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Listo para recibir pacientes</h3>
-              <p className="text-slate-600 max-w-md mx-auto">
-                Utilice el buscador para encontrar al paciente y acceder rápidamente a su expediente completo.
-              </p>
-            </div>
-          )}
-        </div>
+      <div className="flex-1 h-full flex items-center justify-center bg-slate-50">
+        <Loader2 size={32} className="animate-spin text-blue-600" />
       </div>
     );
   }
 
-  // Vista de consulta activa
+  if (!patient) return null;
+
   return (
-    <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
-      {/* Header de consulta */}
-      <header className="flex items-center justify-between mb-8">
+    <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col font-sans">
+      {/* Top Navigation */}
+      <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 relative z-10 shadow-sm">
         <div className="flex items-center gap-4">
           <button 
-            onClick={endConsultation}
-            className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-red-600 hover:border-red-200 transition-all active:scale-95"
+            onClick={() => navigate('/')} 
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={16} />
           </button>
           <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-900">{selectedPatient.identification.fullName}</h2>
-            <p className="text-slate-500 text-sm">En consulta • ID: {selectedPatient.id.slice(0, 8)}</p>
+            <h1 className="text-sm font-bold text-slate-900 leading-tight flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Consulta Activa
+            </h1>
+            <p className="text-xs font-bold text-slate-600">DienteLink Co-Pilot</p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-            En consulta
+
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            <Clock size={14} className="text-slate-500" />
+            <span className="text-sm font-mono font-bold text-slate-700">{formatTime(timer)}</span>
           </div>
-          <button
-            onClick={endConsultation}
-            className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-all border border-red-100"
+          <button 
+            onClick={() => setShowConfirm(true)} 
+            disabled={isSaving}
+            className="h-9 px-5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all"
           >
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
             Finalizar Consulta
           </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Información del Paciente */}
-        <div className="lg:col-span-1 space-y-4">
-          {/* Datos básicos */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Eye size={18} className="text-slate-500" />
-              Información Básica
-            </h3>
-            <div className="space-y-3 text-sm">
-              <div>
-                <span className="text-slate-500 block">Edad:</span>
-                <span className="font-medium">{new Date().getFullYear() - new Date(selectedPatient.identification.birthDate).getFullYear()} años</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Teléfono:</span>
-                <span className="font-medium">{selectedPatient.identification.phone}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Email:</span>
-                <span className="font-medium text-xs">{selectedPatient.identification.email}</span>
-              </div>
+      {viewMode === 'expediente' ? (
+        <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+          <div className="bg-white px-6 py-3 border-b border-slate-200 flex items-center shadow-sm z-10 w-full shrink-0">
+            <button 
+              onClick={() => {
+                setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '' });
+                setViewMode('form');
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 font-bold text-sm rounded-xl hover:bg-blue-100 transition-colors"
+            >
+              <ArrowLeft size={16} /> Volver a Consulta Activa
+            </button>
+            <span className="ml-4 text-sm font-semibold text-slate-500 flex items-center gap-2 divide-x divide-slate-300">
+              <span className="pr-2 text-slate-800">Expediente de {patient.identification.fullName}</span>
+              <span className="pl-2 uppercase tracking-widest text-[10px]">{searchParams.get('tab') || ''}</span>
+            </span>
+          </div>
+          <div className="flex-1 overflow-auto relative">
+            <div className="absolute inset-0 p-4 sm:p-6 lg:p-8">
+              <PatientRecordComponent patient={patient} onUpdate={(p) => setPatient(p)} />
             </div>
           </div>
+        </div>
+      ) : (
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* Left Column: Context Area */}
+        <aside className="w-[320px] bg-white border-r border-slate-200 flex flex-col overflow-y-auto hide-scrollbar">
+          <div className="p-6 space-y-6">
+            
+            {/* Patient Identity */}
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-2xl mb-4 shadow-sm">
+                {getInitials(patient.identification.fullName)}
+              </div>
+              <h2 className="text-lg font-bold text-slate-900 leading-tight">{patient.identification.fullName}</h2>
+              <p className="text-sm font-medium text-slate-500 mt-1">
+                {new Date().getFullYear() - new Date(patient.identification.birthDate).getFullYear()} años
+              </p>
+            </div>
 
-          {/* Alergias y medicamentos */}
-          {(selectedPatient.clinicalHistory.allergies.length > 0 || selectedPatient.clinicalHistory.medications) && (
-            <div className="bg-red-50 rounded-2xl border border-red-100 p-6">
-              <h3 className="font-bold text-red-700 mb-4 flex items-center gap-2">
-                <AlertTriangle size={18} />
-                Información Crítica
-              </h3>
-              {selectedPatient.clinicalHistory.allergies.length > 0 && (
-                <div className="mb-3">
-                  <span className="text-red-600 text-xs font-semibold block mb-1">ALERGIAS:</span>
-                  <span className="text-red-700 font-medium">{selectedPatient.clinicalHistory.allergies.join(', ')}</span>
+            <hr className="border-slate-100" />
+
+            {/* Critical Info */}
+            <div className="space-y-4">
+              {patient.clinicalHistory.allergies.length > 0 && (
+                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
+                  <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase tracking-wider mb-2">
+                    <AlertTriangle size={14} /> Alergias
+                  </div>
+                  <p className="text-sm font-semibold text-red-900">{patient.clinicalHistory.allergies.join(', ')}</p>
                 </div>
               )}
-              {selectedPatient.clinicalHistory.medications && (
-                <div>
-                  <span className="text-red-600 text-xs font-semibold block mb-1">MEDICAMENTOS:</span>
-                  <span className="text-red-700 font-medium">{selectedPatient.clinicalHistory.medications}</span>
+              
+              <div className="bg-blue-50/50 border border-blue-100/50 p-4 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2 text-blue-700 font-bold text-xs uppercase tracking-wider">
+                  <Activity size={14} /> Último Trat.
+                </div>
+                <p className="text-sm font-medium text-blue-900 leading-snug">
+                  {getLastTreatment(patient)}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Nav (Inline toggle) */}
+            <div className="pt-4 space-y-2">
+              <button 
+                onClick={() => {
+                  setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'odontogram' });
+                  setViewMode('expediente');
+                }}
+                className="w-full h-10 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <LayoutGrid size={14} /> Ver Odontograma
+              </button>
+              <button 
+                onClick={() => {
+                  setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'id' });
+                  setViewMode('expediente');
+                }}
+                className="w-full h-10 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <User size={14} /> Expediente Completo
+              </button>
+            </div>
+
+          </div>
+        </aside>
+
+        {/* Right Column: Active Form */}
+        <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6 sm:p-10 hide-scrollbar">
+          <div className="max-w-3xl mx-auto space-y-8">
+            
+            <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-8">
+              
+              {/* Motivo */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Motivo de Consulta</label>
+                <input 
+                  type="text"
+                  placeholder="Ej. Evaluación de caries, Dolor de muela..."
+                  value={formData.motivo}
+                  onChange={e => setFormData(p => ({ ...p, motivo: e.target.value }))}
+                  className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
+                />
+              </div>
+
+              {/* Diagnóstico */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Diagnóstico (Opcional)</label>
+                <input 
+                  type="text"
+                  placeholder="Ej. Pulpitis irreversible en pieza 46"
+                  value={formData.diagnostico}
+                  onChange={e => setFormData(p => ({ ...p, diagnostico: e.target.value }))}
+                  className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
+                />
+              </div>
+
+              {/* Procedimiento Realizado */}
+              <div className="space-y-3">
+                <label className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-600">
+                  <span>Procedimiento Realizado <span className="text-red-400">*</span></span>
+                  <span className="text-[10px] text-slate-400 capitalize normal-case font-medium">Se añadirá al historial de tratamientos</span>
+                </label>
+                <input 
+                  type="text"
+                  placeholder="Ej. Limpieza ultrasónica, Extracción, Resina"
+                  value={formData.procedimiento}
+                  onChange={e => setFormData(p => ({ ...p, procedimiento: e.target.value }))}
+                  className="w-full px-5 py-4 bg-blue-50/30 rounded-2xl outline-none text-blue-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-blue-100 transition-all placeholder:text-blue-300"
+                />
+              </div>
+
+              {/* Notas de Evolución */}
+              <div className="space-y-3">
+                <label className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-600">
+                  <span>Notas de Evolución</span>
+                  <span className="text-[10px] text-slate-400 capitalize normal-case font-medium">Observaciones generales de la atención</span>
+                </label>
+                <textarea 
+                  rows={4}
+                  placeholder="Describe la evolución, anestesia aplicada, complicaciones o indicaciones..."
+                  value={formData.notas}
+                  onChange={e => setFormData(p => ({ ...p, notas: e.target.value }))}
+                  className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-medium focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all resize-none"
+                />
+              </div>
+
+            </div>
+
+            {/* Prescriptions Section */}
+            <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                    <Pill size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 leading-tight">Receta Médica</h2>
+                    <p className="text-xs font-semibold text-slate-500">Opcional. Se guardará en el expediente.</p>
+                  </div>
+                </div>
+                {!showPrescription ? (
+                  <button 
+                    onClick={() => { setShowPrescription(true); if(medications.length===0) addMedication(); }} 
+                    className="px-4 py-2 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-600 font-bold text-xs rounded-lg transition-colors border border-slate-200 hover:border-violet-200"
+                  >
+                    + Agregar Medicamentos
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => { setShowPrescription(false); setMedications([]); }} 
+                    className="px-4 py-2 bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-600 font-bold text-xs rounded-lg transition-colors border border-slate-200 hover:border-red-200"
+                  >
+                    Quitar Receta
+                  </button>
+                )}
+              </div>
+
+              {showPrescription && (
+                <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                  {medications.map((med, index) => (
+                    <div key={med.id} className="p-5 bg-slate-50 border border-slate-100 rounded-2xl relative group">
+                      <button 
+                        onClick={() => removeMedication(med.id)} 
+                        className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white text-red-400 border border-slate-200 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Medicamento</label>
+                          <input 
+                            type="text" value={med.name} placeholder="Ej. Amoxicilina 500mg"
+                            onChange={e => { const m = [...medications]; m[index].name = e.target.value; setMedications(m); }}
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Dosis / Frecuencia</label>
+                          <input 
+                            type="text" value={med.frequency} placeholder="Ej. 1 tableta cada 8 horas"
+                            onChange={e => { const m = [...medications]; m[index].frequency = e.target.value; setMedications(m); }}
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Duración</label>
+                          <input 
+                            type="text" value={med.duration} placeholder="Ej. Por 7 días"
+                            onChange={e => { const m = [...medications]; m[index].duration = e.target.value; setMedications(m); }}
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Indicaciones Adicionales</label>
+                          <input 
+                            type="text" value={med.instructions} placeholder="Opcional"
+                            onChange={e => { const m = [...medications]; m[index].instructions = e.target.value; setMedications(m); }}
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button 
+                    onClick={addMedication} 
+                    className="w-full py-4 bg-white border-2 border-dashed border-slate-200 hover:border-violet-300 rounded-2xl text-violet-600 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Plus size={16} /> Añadir otro medicamento
+                  </button>
                 </div>
               )}
             </div>
-          )}
 
-          {/* Último tratamiento */}
-          <div className="bg-blue-50 rounded-2xl border border-blue-100 p-6">
-            <h3 className="font-bold text-blue-700 mb-4 flex items-center gap-2">
-              <Clock size={18} />
-              Último Tratamiento
-            </h3>
-            <p className="text-blue-800 font-medium">{getLastTreatment(selectedPatient)}</p>
+            {/* Bottom Footer Action Area */}
+            <div className="pt-8 pb-12 flex items-center justify-end">
+              <button 
+                onClick={() => setShowConfirm(true)} 
+                disabled={isSaving}
+                className="px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white text-base font-bold rounded-2xl shadow-xl shadow-slate-900/20 flex items-center gap-2 transition-all active:scale-95"
+              >
+                {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                {isSaving ? 'Guardando Expediente...' : 'Finalizar y Guardar Consulta'}
+              </button>
+            </div>
+
           </div>
-        </div>
+        </main>
 
-        {/* Acciones Clínicas */}
-        <div className="lg:col-span-2">
-          <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <Activity size={20} />
-            Herramientas de Consulta
-          </h3>
-          
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Odontograma */}
-            <button
-              onClick={() => navigate(`/patient/${selectedPatient.id}?tab=odontogram`)}
-              className="bg-white rounded-2xl border border-slate-100 p-6 hover:border-blue-200 hover:bg-blue-50/50 transition-all group text-center"
-            >
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mx-auto mb-3 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <LayoutGrid size={24} />
-              </div>
-              <h4 className="font-semibold text-slate-700 mb-1">Odontograma</h4>
-              <p className="text-xs text-slate-500">Diagnóstico dental</p>
-            </button>
-
-            {/* Evolución */}
-            <button
-              onClick={() => navigate(`/patient/${selectedPatient.id}?tab=notes`)}
-              className="bg-white rounded-2xl border border-slate-100 p-6 hover:border-blue-200 hover:bg-blue-50/50 transition-all group text-center"
-            >
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mx-auto mb-3 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <FileText size={24} />
-              </div>
-              <h4 className="font-semibold text-slate-700 mb-1">Evolución</h4>
-              <p className="text-xs text-slate-500">Notas de seguimiento</p>
-            </button>
-
-            {/* Historial */}
-            <button
-              onClick={() => navigate(`/patient/${selectedPatient.id}?tab=history`)}
-              className="bg-white rounded-2xl border border-slate-100 p-6 hover:border-blue-200 hover:bg-blue-50/50 transition-all group text-center"
-            >
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mx-auto mb-3 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <Activity size={24} />
-              </div>
-              <h4 className="font-semibold text-slate-700 mb-1">Historial</h4>
-              <p className="text-xs text-slate-500">Tratamientos</p>
-            </button>
-
-            {/* Agendar Cita */}
-            <button
-              onClick={() => navigate(`/calendar?patient=${encodeURIComponent(selectedPatient.identification.fullName)}&id=${selectedPatient.id}`)}
-              className="bg-white rounded-2xl border border-slate-100 p-6 hover:border-purple-200 hover:bg-purple-50/50 transition-all group text-center"
-            >
-              <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 mx-auto mb-3 group-hover:bg-purple-600 group-hover:text-white transition-all">
-                <Calendar size={24} />
-              </div>
-              <h4 className="font-semibold text-slate-700 mb-1">Agendar</h4>
-              <p className="text-xs text-slate-500">Próxima cita</p>
-            </button>
-
-            {/* Ver Expediente Completo */}
-            <button
-              onClick={() => navigate(`/patient/${selectedPatient.id}`)}
-              className="bg-white rounded-2xl border border-slate-100 p-6 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group text-center col-span-2 lg:col-span-1"
-            >
-              <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 mx-auto mb-3 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                <FileText size={24} />
-              </div>
-              <h4 className="font-semibold text-slate-700 mb-1">Expediente</h4>
-              <p className="text-xs text-slate-500">Vista completa</p>
-            </button>
-          </div>
-        </div>
       </div>
+      )}
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md"
+            >
+              <div className="p-8">
+                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <CheckCircle size={32} className="text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 text-center mb-2">¿Finalizar Consulta?</h3>
+                <p className="text-slate-500 text-center text-sm leading-relaxed mb-8">
+                  Se generarán las notas clínicas, se agregará al historial del paciente y la cita se marcará como completada. 
+                  Asegúrate de haber ingresado toda la información necesaria.
+                </p>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setShowConfirm(false)}
+                    disabled={isSaving}
+                    className="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                  >
+                    Volver a Editar
+                  </button>
+                  <button 
+                    onClick={() => {
+                        setShowConfirm(false);
+                        handleFinish();
+                    }}
+                    disabled={isSaving}
+                    className="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

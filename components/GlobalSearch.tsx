@@ -98,8 +98,8 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Buscar paciente por nombre, teléfono o ID..."
-                        className="flex-1 bg-transparent outline-none text-lg font-medium text-slate-900 placeholder:text-slate-300"
+                        placeholder="Buscar paciente por nombre o teléfono..."
+                        className="flex-1 bg-transparent outline-none text-lg font-medium text-slate-900 placeholder:text-slate-400"
                     />
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
                         <X size={18} className="text-slate-400" />
@@ -132,9 +132,9 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                                     </h4>
                                     <p className={cn(
                                         "text-[10px] font-bold uppercase tracking-widest transition-colors",
-                                        selectedIndex === index ? "text-blue-500" : "text-slate-400"
+                                        selectedIndex === index ? "text-blue-500" : "text-slate-500"
                                     )}>
-                                        ID: {patient.id} • {patient.identification.phone}
+                                        {patient.identification.phone || 'Sin teléfono'}
                                     </p>
                                 </div>
                                 <span className={cn(
@@ -159,7 +159,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
 
                 {query.length < 2 && (
                     <div className="p-8 text-center">
-                        <p className="text-slate-300 font-medium text-sm">
+                        <p className="text-slate-500 font-medium text-sm">
                             Escribe al menos 2 caracteres para buscar
                         </p>
                     </div>
