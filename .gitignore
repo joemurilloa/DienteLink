@@ -32,6 +32,3 @@ Thumbs.db
 # Test coverage
 coverage/
 
-# Capacitor native builds
-android/app/build/
-ios/App/Pods/

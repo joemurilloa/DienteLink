@@ -47,29 +47,20 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
   const statusInfo = statusLabels[appointment.status] || statusLabels.Programada;
 
-  const handleSendReminder = async (e: React.MouseEvent) => {
+  const handleSendReminder = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (appointment.reminderStatus === 'sent' || appointment.reminderStatus === 'sending') return;
+    if (appointment.reminderStatus === 'sent') return;
     if (!appointment.phoneNumber) {
       sileo.warning({ title: 'Sin teléfono', description: 'Este paciente no tiene número registrado' });
       return;
     }
     
-    // Set loading state visually if parent handles it
-    if (onReminderSent) onReminderSent(appointment.id, 'sending');
-    
-    const result = await whatsappService.sendServerAppointmentReminder(appointment);
+    // Open WhatsApp with pre-filled reminder message (manual link)
+    const result = whatsappService.sendManualAppointmentReminder(appointment);
     
     if (result.success) {
       if (onReminderSent) onReminderSent(appointment.id, 'sent');
-      sileo.success({ title: 'WhatsApp Enviado', description: `Recordatorio entregado a ${appointment.patientName}` });
-    } else {
-      // Revert loading state
-      if (onReminderSent) onReminderSent(appointment.id, 'not_sent');
-      sileo.error({ title: 'Error de WhatsApp', description: result.error || 'Verifica la configuración o intenta de forma manual.' });
-      
-      // Opcionalmente podemos abrir el enlace manual si falla la API
-      // whatsappService.sendManualAppointmentReminder(appointment);
+      sileo.success({ title: 'WhatsApp abierto', description: `Recordatorio preparado para ${appointment.patientName}` });
     }
   };
 

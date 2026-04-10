@@ -1,21 +1,16 @@
-
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { ConsentForm, PatientRecord as PatientRecordType } from '../types';
 import { cn } from '../lib/utils';
 import { sileo } from 'sileo';
 import jsPDF from 'jspdf';
 import {
-    FileCheck,
     Plus,
     Download,
     Trash2,
-    PenTool,
-    RotateCcw,
     Calendar,
     Eye,
     X,
-    CheckCircle2,
-    AlertTriangle
+    FileCheck,
 } from 'lucide-react';
 
 interface Props {
@@ -25,262 +20,48 @@ interface Props {
     clinicName: string;
 }
 
-const CONSENT_TEMPLATES: { title: string; content: string }[] = [
-    {
-        title: 'Consentimiento General de Tratamiento Dental',
-        content: `Yo, {PACIENTE}, mayor de edad, con pleno uso de mis facultades mentales y sin que medie coacción alguna, declaro que:
+export type ConsentTemplateType = 'general' | 'extraction' | 'endodontics' | 'orthodontics';
 
-1. He sido informado/a de manera clara y comprensible sobre mi diagnóstico, el tratamiento dental propuesto, sus alternativas, riesgos, beneficios y posibles complicaciones.
-
-2. Entiendo que todo procedimiento dental conlleva riesgos inherentes, incluyendo pero no limitados a: dolor, inflamación, sangrado, infección, daño a estructuras adyacentes, reacciones adversas a medicamentos o anestesia.
-
-3. He tenido la oportunidad de hacer preguntas y estas han sido respondidas satisfactoriamente por el/la Dr(a). {DOCTOR}.
-
-4. Autorizo al profesional dental y a su equipo a realizar los procedimientos diagnósticos y terapéuticos que consideren necesarios para mi tratamiento.
-
-5. Me comprometo a seguir las indicaciones post-operatorias y a asistir a las citas de seguimiento programadas.
-
-6. Entiendo que tengo derecho a revocar este consentimiento en cualquier momento antes de la realización del procedimiento.
-
-Firmo el presente documento en {CLINICA}, en señal de conformidad.`
-    },
-    {
-        title: 'Consentimiento para Extracción Dental',
-        content: `Yo, {PACIENTE}, autorizo al Dr(a). {DOCTOR} a realizar la extracción de la(s) pieza(s) dental(es) indicada(s).
-
-He sido informado/a sobre:
-• El procedimiento de extracción y la necesidad del mismo
-• Los riesgos potenciales: dolor, sangrado, inflamación, infección, daño a nervios o dientes adyacentes, fractura de raíz, comunicación oroantral
-• Las alternativas al tratamiento propuesto
-• Las instrucciones de cuidado post-operatorio
-
-Declaro que he proporcionado información veraz sobre mi historial médico, alergias y medicamentos actuales.
-
-Firmo en {CLINICA} en constancia de mi consentimiento voluntario.`
-    },
-    {
-        title: 'Consentimiento para Tratamiento de Conducto',
-        content: `Yo, {PACIENTE}, autorizo al Dr(a). {DOCTOR} a realizar el tratamiento endodóntico (tratamiento de conducto) en la(s) pieza(s) indicada(s).
-
-He sido informado/a sobre:
-• La naturaleza del procedimiento endodóntico
-• Los riesgos: fractura del instrumento, perforación, fractura dental, posible necesidad de retratamiento o extracción
-• Que el tratamiento puede requerir múltiples sesiones
-• La necesidad de restauración posterior (corona) para proteger el diente tratado
-• Las alternativas disponibles, incluyendo la extracción
-
-Acepto los riesgos y autorizo el tratamiento de forma voluntaria.
-
-Firma en {CLINICA}.`
-    },
-    {
-        title: 'Consentimiento para Ortodoncia',
-        content: `Yo, {PACIENTE}, autorizo al Dr(a). {DOCTOR} a iniciar el tratamiento de ortodoncia.
-
-He sido informado/a sobre:
-• El plan de tratamiento ortodóntico, su duración estimada y fases
-• Los riesgos: descalcificación dental, reabsorción radicular, recidiva, dolor e incomodidad, problemas en la articulación temporomandibular
-• La importancia de una higiene oral rigurosa durante el tratamiento
-• La necesidad de retenedores post-tratamiento
-• Los costos estimados y el plan de pagos acordado
-• La importancia de asistir a las citas programadas
-
-Me comprometo a seguir las instrucciones del profesional y mantener una higiene oral adecuada durante todo el tratamiento.
-
-Firma en {CLINICA}.`
-    }
+const CONSENT_TYPES: { id: ConsentTemplateType; title: string; icon: string }[] = [
+    { id: 'general', title: 'Consentimiento General', icon: 'FileText' },
+    { id: 'extraction', title: 'Extracción Dental', icon: 'Scissors' },
+    { id: 'endodontics', title: 'Tratamiento de Conducto', icon: 'Zap' },
+    { id: 'orthodontics', title: 'Ortodoncia', icon: 'Hash' },
 ];
-
-const SignatureCanvas: React.FC<{
-    onSave: (dataUrl: string) => void;
-    onCancel: () => void;
-}> = ({ onSave, onCancel }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [hasContent, setHasContent] = useState(false);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        // Set canvas size
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * 2;
-        canvas.height = rect.height * 2;
-        ctx.scale(2, 2);
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        // White background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, rect.width, rect.height);
-        // Signature line
-        ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(20, rect.height - 40);
-        ctx.lineTo(rect.width - 20, rect.height - 40);
-        ctx.stroke();
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '11px sans-serif';
-        ctx.fillText('Firma del paciente', 20, rect.height - 22);
-        // Reset for drawing
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 2;
-    }, []);
-
-    const getPos = (e: React.MouseEvent | React.TouchEvent) => {
-        const canvas = canvasRef.current!;
-        const rect = canvas.getBoundingClientRect();
-        if ('touches' in e) {
-            return {
-                x: e.touches[0].clientX - rect.left,
-                y: e.touches[0].clientY - rect.top
-            };
-        }
-        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    };
-
-    const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
-        e.preventDefault();
-        const ctx = canvasRef.current?.getContext('2d');
-        if (!ctx) return;
-        setIsDrawing(true);
-        const pos = getPos(e);
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
-    };
-
-    const draw = (e: React.MouseEvent | React.TouchEvent) => {
-        e.preventDefault();
-        if (!isDrawing) return;
-        const ctx = canvasRef.current?.getContext('2d');
-        if (!ctx) return;
-        const pos = getPos(e);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-        setHasContent(true);
-    };
-
-    const endDraw = () => setIsDrawing(false);
-
-    const clear = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        const rect = canvas.getBoundingClientRect();
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(20, rect.height - 40);
-        ctx.lineTo(rect.width - 20, rect.height - 40);
-        ctx.stroke();
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '11px sans-serif';
-        ctx.fillText('Firma del paciente', 20, rect.height - 22);
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 2;
-        setHasContent(false);
-    };
-
-    const handleSave = () => {
-        if (!hasContent) {
-            sileo.error({ title: 'Firma requerida', description: 'Dibuja tu firma antes de guardar' });
-            return;
-        }
-        const dataUrl = canvasRef.current?.toDataURL('image/png') || '';
-        onSave(dataUrl);
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <PenTool size={16} className="text-blue-600" />
-                    Dibuja tu firma
-                </div>
-                <button onClick={clear} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-red-500 bg-slate-50 rounded-lg hover:bg-red-50 transition-all">
-                    <RotateCcw size={12} /> Limpiar
-                </button>
-            </div>
-            <canvas
-                ref={canvasRef}
-                className="w-full h-48 border-2 border-dashed border-slate-200 rounded-xl cursor-crosshair touch-none bg-white"
-                onMouseDown={startDraw}
-                onMouseMove={draw}
-                onMouseUp={endDraw}
-                onMouseLeave={endDraw}
-                onTouchStart={startDraw}
-                onTouchMove={draw}
-                onTouchEnd={endDraw}
-            />
-            <div className="flex gap-3">
-                <button
-                    onClick={handleSave}
-                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                    <CheckCircle2 size={16} /> Firmar y Guardar
-                </button>
-                <button
-                    onClick={onCancel}
-                    className="px-5 py-3 text-slate-400 text-sm font-semibold hover:text-red-500 transition-colors"
-                >
-                    Cancelar
-                </button>
-            </div>
-        </div>
-    );
-};
+import { SignatureCanvas } from './SignatureCanvas';
+import ProfessionalConsentForm from './ProfessionalConsentForm';
 
 const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinicName }) => {
     const [isCreating, setIsCreating] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState(0);
-    const [customTitle, setCustomTitle] = useState('');
-    const [customContent, setCustomContent] = useState('');
-    const [witnessName, setWitnessName] = useState('');
-    const [showSigning, setShowSigning] = useState(false);
+    const [selectedType, setSelectedType] = useState<ConsentTemplateType | null>(null);
+    const [isSelectingType, setIsSelectingType] = useState(false);
     const [viewingConsent, setViewingConsent] = useState<ConsentForm | null>(null);
 
     const consents = patient.consents || [];
 
-    const getProcessedContent = useCallback((content: string) => {
-        return content
-            .replace(/\{PACIENTE\}/g, patient.identification.fullName)
-            .replace(/\{DOCTOR\}/g, doctorName)
-            .replace(/\{CLINICA\}/g, clinicName || 'la clínica');
-    }, [patient.identification.fullName, doctorName, clinicName]);
-
-    const handleSelectTemplate = (idx: number) => {
-        setSelectedTemplate(idx);
-        const t = CONSENT_TEMPLATES[idx];
-        setCustomTitle(t.title);
-        setCustomContent(getProcessedContent(t.content));
-    };
-
     const handleStartNew = () => {
-        setIsCreating(true);
-        handleSelectTemplate(0);
+        setIsSelectingType(true);
     };
 
-    const handleSign = (signatureData: string) => {
+    const handleSelectType = (type: ConsentTemplateType) => {
+        setSelectedType(type);
+        setIsSelectingType(false);
+        setIsCreating(true);
+    };
+
+    const handleSign = (signatureData: string, overrideTitle: string, overrideContent: string, overrideWitness?: string) => {
         const consent: ConsentForm = {
             id: crypto.randomUUID(),
-            title: customTitle,
-            content: customContent,
+            title: overrideTitle,
+            content: overrideContent,
             signatureData,
             signedAt: new Date().toISOString(),
-            witnessName: witnessName.trim() || undefined,
+            witnessName: overrideWitness?.trim() || undefined,
         };
         onUpdate({ ...patient, consents: [consent, ...consents], consentSigned: true });
         setIsCreating(false);
-        setShowSigning(false);
-        setWitnessName('');
-        sileo.success({ title: 'Consentimiento firmado', description: `"${customTitle}" guardado exitosamente` });
+        setSelectedType(null);
+        sileo.success({ title: 'Documento Guardado', description: `Se ha registrado el consentimiento exitosamente.` });
     };
 
     const handleDelete = (id: string) => {
@@ -293,58 +74,167 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
             if (!doc || !doc.internal) throw new Error("jsPDF initialization failed");
 
             const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const marginX = 20;
+            const marginY = 25;
+            const contentWidth = pageW - (marginX * 2);
+            let currentY = 0;
 
-            // Header
-            doc.setFontSize(18);
-            doc.setTextColor(15, 23, 42);
-            doc.text(consent.title, pageW / 2, 25, { align: 'center' });
+            // Simple Markdown-ish Bold Parser for jspdf
+            const drawMarkdownText = (text: string, x: number, y: number, maxWidth: number) => {
+                const parts = text.split(/(\*\*.*?\*\*)/g);
+                let currentLineX = x;
+                const lineHeight = 6;
+                const spaceW = 1.2;
 
-            doc.setFontSize(9);
-            doc.setTextColor(148, 163, 184);
-            doc.text(`Fecha: ${new Date(consent.signedAt).toLocaleDateString('es-HN')} | Paciente: ${patient.identification.fullName}`, pageW / 2, 33, { align: 'center' });
+                parts.forEach(part => {
+                    const isBold = part.startsWith('**') && part.endsWith('**');
+                    const cleanText = isBold ? part.slice(2, -2) : part;
+                    
+                    doc.setFont("helvetica", isBold ? "bold" : "normal");
+                    const words = cleanText.split(/(\s+)/);
 
-            // Divider
-            doc.setDrawColor(226, 232, 240);
-            doc.line(20, 38, pageW - 20, 38);
+                    words.forEach(word => {
+                        const wordW = doc.getTextWidth(word);
+                        if (currentLineX + wordW > x + maxWidth) {
+                            currentY += lineHeight;
+                            currentLineX = x;
+                            if (currentY > pageH - 25) {
+                                doc.addPage();
+                                drawBranding(false);
+                                currentY = 35;
+                                currentLineX = x;
+                            }
+                        }
+                        doc.text(word, currentLineX, currentY);
+                        currentLineX += wordW;
+                    });
+                });
+                currentY += lineHeight;
+            };
 
-            // Content
-            doc.setFontSize(11);
-            doc.setTextColor(51, 65, 85);
-            const splitText = doc.splitTextToSize(consent.content, pageW - 40);
-            doc.text(splitText, 20, 48);
+            const drawBranding = (isFirstPage: boolean) => {
+                if (isFirstPage) {
+                    // Modern Header Bar
+                    doc.setFillColor(15, 23, 42); // slate-900
+                    doc.rect(0, 0, pageW, 40, 'F');
 
-            const contentEndY = 48 + splitText.length * 5;
-
-            // Witness
-            if (consent.witnessName) {
-                doc.setFontSize(10);
-                doc.setTextColor(100, 116, 139);
-                doc.text(`Testigo: ${consent.witnessName}`, 20, contentEndY + 15);
-            }
-
-            // Signature
-            if (consent.signatureData) {
-                const sigY = contentEndY + (consent.witnessName ? 25 : 15);
-                // Check if we need a new page
-                if (sigY + 50 > doc.internal.pageSize.getHeight() - 20) {
-                    doc.addPage();
-                    doc.addImage(consent.signatureData, 'PNG', 20, 20, 80, 40);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(14);
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(clinicName.toUpperCase(), marginX, 18);
+                    
                     doc.setFontSize(9);
-                    doc.setTextColor(148, 163, 184);
-                    doc.text(`Firmado digitalmente el ${new Date(consent.signedAt).toLocaleString('es-HN')}`, 20, 65);
+                    doc.setFont("helvetica", "normal");
+                    doc.setTextColor(148, 163, 184); // slate-400
+                    doc.text("DOCUMENTACIÓN CLÍNICA OFICIAL", marginX, 24);
+
+                    doc.setFontSize(16);
+                    doc.setTextColor(255, 255, 255);
+                    const titleShort = consent.title.length > 50 ? consent.title.substring(0, 47) + "..." : consent.title;
+                    doc.text(titleShort, pageW - marginX, 22, { align: 'right' });
+
+                    currentY = 55;
                 } else {
-                    doc.addImage(consent.signatureData, 'PNG', 20, sigY, 80, 40);
-                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "italic");
+                    doc.setFontSize(8);
                     doc.setTextColor(148, 163, 184);
-                    doc.text(`Firmado digitalmente el ${new Date(consent.signedAt).toLocaleString('es-HN')}`, 20, sigY + 45);
+                    doc.text(`${consent.title} - pág. ${doc.internal.getNumberOfPages()}`, marginX, 15);
+                    doc.setDrawColor(226, 232, 240);
+                    doc.line(marginX, 18, pageW - marginX, 18);
+                    currentY = 30;
                 }
+            };
+
+            drawBranding(true);
+
+            // Metadata Box
+            doc.setFillColor(248, 250, 252); // slate-50
+            doc.roundedRect(marginX, currentY - 5, contentWidth, 20, 3, 3, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(51, 65, 85); // slate-700
+            doc.text("PACIENTE:", marginX + 5, currentY + 3);
+            doc.text("ID/DOCUMENTO:", marginX + 80, currentY + 3);
+            doc.text("FECHA:", marginX + 130, currentY + 3);
+
+            doc.setFont("helvetica", "normal");
+            doc.text(patient.identification.fullName, marginX + 5, currentY + 8);
+            doc.text(patient.identification.idNumber || "---", marginX + 80, currentY + 8);
+            doc.text(new Date(consent.signedAt).toLocaleDateString('es-HN'), marginX + 130, currentY + 8);
+            currentY += 30;
+
+            // Content paragraphs
+            doc.setFontSize(10.5);
+            doc.setTextColor(30, 41, 59); // slate-800
+            
+            const paragraphs = consent.content.split('\n');
+            paragraphs.forEach(para => {
+                if (para.trim()) {
+                    if (currentY > pageH - 25) {
+                        doc.addPage();
+                        drawBranding(false);
+                    }
+                    drawMarkdownText(para, marginX, currentY, contentWidth);
+                    currentY += 3; // spacing between paras
+                }
+            });
+
+            currentY += 15;
+
+            // Signature Section
+            if (currentY > pageH - 70) {
+                doc.addPage();
+                drawBranding(false);
             }
 
-            doc.save(`Consentimiento_${patient.identification.fullName.replace(/\s+/g, '_')}_${consent.title.slice(0, 30).replace(/\s+/g, '_')}.pdf`);
-            sileo.success({ title: 'PDF descargado', description: 'Consentimiento exportado correctamente' });
+            // Lines for signatures
+            const sigWidth = 60;
+            doc.setDrawColor(203, 213, 225); // slate-300
+            
+            // Patient Signature
+            if (consent.signatureData) {
+                doc.addImage(consent.signatureData, 'PNG', marginX, currentY - 25, 60, 30);
+                doc.line(marginX, currentY + 5, marginX + sigWidth, currentY + 5);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "bold");
+                doc.text("FIRMA DEL PACIENTE", marginX, currentY + 10);
+                doc.setFont("helvetica", "normal");
+                doc.text(patient.identification.fullName, marginX, currentY + 14);
+            }
+
+            // Doctor / Witness
+            const col2X = pageW - marginX - sigWidth;
+            doc.line(col2X, currentY + 5, pageW - marginX, currentY + 5);
+            doc.setFont("helvetica", "bold");
+            doc.text("FIRMA DEL ODONTÓLOGO", col2X, currentY + 10);
+            doc.setFont("helvetica", "normal");
+            doc.text(doctorName, col2X, currentY + 14);
+
+            if (consent.witnessName) {
+                currentY += 25;
+                if (currentY > pageH - 30) {
+                    doc.addPage();
+                    drawBranding(false);
+                }
+                doc.line(marginX, currentY + 5, marginX + sigWidth, currentY + 5);
+                doc.setFont("helvetica", "bold");
+                doc.text("TESTIGO", marginX, currentY + 10);
+                doc.setFont("helvetica", "normal");
+                doc.text(consent.witnessName, marginX, currentY + 14);
+            }
+
+            // Footer for authenticity
+            doc.setFontSize(7);
+            doc.setTextColor(148, 163, 184);
+            const footerText = `Documento generado digitalmente por DienteLink. ID de autenticidad: ${consent.id.substring(0, 8)}`;
+            doc.text(footerText, pageW / 2, pageH - 10, { align: 'center' });
+
+            doc.save(`Consentimiento_${patient.identification.fullName.replace(/\s+/g, '_')}_${new Date(consent.signedAt).getTime()}.pdf`);
+            sileo.success({ title: 'PDF Profesional Descargado', description: 'El documento ha sido exportado exitosamente.' });
         } catch (error) {
             console.error("Error generating PDF:", error);
-            sileo.error({ title: "Error al generar PDF", description: "Ocurrió un problema, intenta de nuevo." });
+            sileo.error({ title: "Error en Exportación", description: "Ocurrió un problema al generar el archivo profesional." });
         }
     };
 
@@ -395,95 +285,55 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
         );
     }
 
-    // Creating new consent
-    if (isCreating) {
+    if (isSelectingType) {
         return (
             <div className="space-y-6 animate-in-up duration-500">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Nuevo Consentimiento</h3>
-                        <p className="text-slate-400 text-sm mt-1">Selecciona una plantilla o personaliza</p>
+                        <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Tipo de Consentimiento</h3>
+                        <p className="text-slate-400 text-sm mt-1">Selecciona el formato clínico a generar</p>
                     </div>
                     <button
-                        onClick={() => { setIsCreating(false); setShowSigning(false); }}
+                        onClick={() => setIsSelectingType(false)}
                         className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
                     >
                         <X size={18} />
                     </button>
                 </div>
 
-                {/* Template selector */}
-                <div className="flex gap-2 flex-wrap">
-                    {CONSENT_TEMPLATES.map((t, i) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {CONSENT_TYPES.map((type) => (
                         <button
-                            key={i}
-                            onClick={() => handleSelectTemplate(i)}
-                            className={cn(
-                                "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
-                                selectedTemplate === i
-                                    ? "bg-blue-600 text-white shadow-sm"
-                                    : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-blue-50 hover:text-blue-600"
-                            )}
+                            key={type.id}
+                            onClick={() => handleSelectType(type.id)}
+                            className="group p-6 bg-white border border-slate-200 rounded-2xl hover:border-blue-500 hover:shadow-lg transition-all text-left flex items-center gap-4"
                         >
-                            {t.title.length > 25 ? t.title.slice(0, 25) + '...' : t.title}
+                            <div className="w-12 h-12 bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 rounded-xl flex items-center justify-center transition-colors">
+                                <Plus size={24} />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-900">{type.title}</h4>
+                                <p className="text-xs text-slate-400 mt-1">Generar documento legal detallado</p>
+                            </div>
                         </button>
                     ))}
                 </div>
-
-                {/* Title */}
-                <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Título del consentimiento</label>
-                    <input
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
-                        value={customTitle}
-                        onChange={e => setCustomTitle(e.target.value)}
-                    />
-                </div>
-
-                {/* Content */}
-                <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Contenido</label>
-                    <textarea
-                        className="w-full px-4 py-4 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm text-slate-700 leading-relaxed resize-none min-h-[250px] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
-                        value={customContent}
-                        onChange={e => setCustomContent(e.target.value)}
-                    />
-                </div>
-
-                {/* Witness */}
-                <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Nombre del testigo (opcional)</label>
-                    <input
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 transition-all"
-                        value={witnessName}
-                        onChange={e => setWitnessName(e.target.value)}
-                        placeholder="Nombre completo del testigo..."
-                    />
-                </div>
-
-                {/* Signature area */}
-                {showSigning ? (
-                    <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl">
-                        <SignatureCanvas
-                            onSave={handleSign}
-                            onCancel={() => setShowSigning(false)}
-                        />
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => {
-                            if (!customTitle.trim() || !customContent.trim()) {
-                                sileo.error({ title: 'Faltan datos', description: 'Completa el título y contenido antes de firmar' });
-                                return;
-                            }
-                            setShowSigning(true);
-                        }}
-                        className="w-full py-4 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                        <PenTool size={16} /> Proceder a Firmar
-                    </button>
-                )}
             </div>
+        );
+    }
+
+    if (isCreating) {
+        return (
+            <ProfessionalConsentForm
+                patient={patient}
+                doctorName={doctorName}
+                clinicName={clinicName}
+                templateType={selectedType || 'general'}
+                onCancel={() => { setIsCreating(false); setSelectedType(null); }}
+                onSave={(data) => {
+                    handleSign(data.signatureData, data.title, data.content, data.witnessName);
+                }}
+            />
         );
     }
 
@@ -492,14 +342,14 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
         <div className="space-y-8 animate-in-up duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Consentimiento Informado</h3>
-                    <p className="text-slate-400 text-sm mt-1">Formularios de autorización y firma digital</p>
+                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Documentación Clínica</h3>
+                    <p className="text-slate-400 text-sm mt-1">Gestión de consentimientos y avisos legales</p>
                 </div>
                 <button
                     onClick={handleStartNew}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 active:scale-95"
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
                 >
-                    <Plus size={16} /> Nuevo Consentimiento
+                    <Plus size={18} /> Agregar Nuevo Consentimiento
                 </button>
             </div>
 

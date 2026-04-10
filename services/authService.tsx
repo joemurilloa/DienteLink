@@ -141,10 +141,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
+    // Determine redirect URL. On Vercel, window.location.origin should be used.
+    // Ensure this match EXACTLY with the "Redirect URLs" in Supabase Dashboard.
+    const redirectTo = window.location.origin;
+    
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       }
     });
   };
