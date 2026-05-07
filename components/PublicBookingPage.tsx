@@ -502,6 +502,7 @@ const PublicBookingPage: React.FC = () => {
                         </button>
                       ))}
                     </div>
+                  </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">

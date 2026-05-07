@@ -1188,15 +1188,29 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
           <ConditionPanel selected={selectedCondition} onSelect={setSelectedCondition} />
         )}
 
-        <div className={cn("flex-1 space-y-8", !isReadOnly && "xl:pb-0 pb-20")}>
+        <div className={cn("flex-1 space-y-2 relative pb-20 xl:pb-0")}>
+          {/* Quadrant Vertical Center Line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-0 hidden md:block" />
+          
+          {/* Quadrant Labels */}
+          <div className="absolute inset-0 pointer-events-none z-0 hidden md:block">
+            <span className="absolute top-0 left-1/4 -translate-x-1/2 text-[40px] font-black text-slate-50 opacity-[0.03]">1</span>
+            <span className="absolute top-0 right-1/4 translate-x-1/2 text-[40px] font-black text-slate-50 opacity-[0.03]">2</span>
+            <span className="absolute bottom-20 left-1/4 -translate-x-1/2 text-[40px] font-black text-slate-50 opacity-[0.03]">4</span>
+            <span className="absolute bottom-20 right-1/4 translate-x-1/2 text-[40px] font-black text-slate-50 opacity-[0.03]">3</span>
+            
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-black text-slate-300 uppercase tracking-widest">Derecho</span>
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-[10px] font-black text-slate-300 uppercase tracking-widest">Izquierdo</span>
+          </div>
+
           {/* Upper Arch */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-px w-8 bg-slate-200" />
-              <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Arcada Superior</span>
-              <div className="h-px w-8 bg-slate-200" />
+          <div className="flex flex-col items-center relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200" />
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-[3px]">Arcada Superior</span>
+              <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
             </div>
-            <div className="flex flex-wrap justify-center gap-1 md:gap-2">
+            <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
               {upper.map(tooth => (
                 <ToothDiagram
                   key={tooth.id}
@@ -1211,30 +1225,56 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
             </div>
           </div>
 
-          {/* Centerline */}
-          <div className="flex items-center justify-center">
-            <div className="h-px flex-1 max-w-xs bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+          {/* Horizontal Quadrant Line */}
+          <div className="flex items-center justify-center py-8 relative z-10">
+            <div className="h-px w-full max-w-4xl bg-slate-300" />
           </div>
 
           {/* Lower Arch */}
-          <div className="flex flex-col items-center">
-            <div className="flex flex-wrap justify-center gap-1 md:gap-2">
-              {lower.map(tooth => (
-                <ToothDiagram
-                  key={tooth.id}
-                  tooth={tooth}
-                  selectedCondition={selectedCondition}
-                  onSurfaceClick={handleSurfaceClick}
-                  onClearSurface={handleClearSurface}
-                  highlight={compareMode && changedTeeth.has(tooth.id)}
-                  readOnly={isReadOnly}
-                />
-              ))}
+          <div className="flex flex-col items-center relative z-10">
+            <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
+              {/* Lower Arch Reordered to match clinical standard: Quadrant 4 (Right) | Quadrant 3 (Left) */}
+              {/* FDI 48-41 (IDs 32 to 25) */}
+              {[32, 31, 30, 29, 28, 27, 26, 25].map(id => {
+                const tooth = lower.find(t => t.id === id);
+                if (!tooth) return null;
+                return (
+                  <ToothDiagram
+                    key={tooth.id}
+                    tooth={tooth}
+                    selectedCondition={selectedCondition}
+                    onSurfaceClick={handleSurfaceClick}
+                    onClearSurface={handleClearSurface}
+                    highlight={compareMode && changedTeeth.has(tooth.id)}
+                    readOnly={isReadOnly}
+                  />
+                );
+              })}
+              
+              {/* Separator gap for the vertical line */}
+              <div className="w-1 hidden md:block" />
+
+              {/* FDI 31-38 (IDs 24 to 17) */}
+              {[24, 23, 22, 21, 20, 19, 18, 17].map(id => {
+                const tooth = lower.find(t => t.id === id);
+                if (!tooth) return null;
+                return (
+                  <ToothDiagram
+                    key={tooth.id}
+                    tooth={tooth}
+                    selectedCondition={selectedCondition}
+                    onSurfaceClick={handleSurfaceClick}
+                    onClearSurface={handleClearSurface}
+                    highlight={compareMode && changedTeeth.has(tooth.id)}
+                    readOnly={isReadOnly}
+                  />
+                );
+              })}
             </div>
-            <div className="flex items-center gap-3 mt-3">
-              <div className="h-px w-8 bg-slate-200" />
-              <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Arcada Inferior</span>
-              <div className="h-px w-8 bg-slate-200" />
+            <div className="flex items-center gap-3 mt-10">
+              <div className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200" />
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-[3px]">Arcada Inferior</span>
+              <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
             </div>
           </div>
 
