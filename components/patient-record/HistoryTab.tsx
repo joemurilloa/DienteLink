@@ -75,8 +75,11 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
             <div className="space-y-3">
                 {patient.history.length === 0 ? (
                     <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                        <Activity size={28} className="mx-auto mb-3 text-slate-200" />
-                        <p className="text-slate-400 text-sm font-medium">No hay procedimientos registrados</p>
+                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                            <Activity size={28} className="text-slate-300" />
+                        </div>
+                        <h4 className="text-lg font-bold text-slate-700 mb-1">Sin procedimientos registrados</h4>
+                        <p className="text-slate-400 text-sm max-w-xs mx-auto">Usa el registro rápido de arriba para documentar tratamientos, limpiezas o extracciones.</p>
                     </div>
                 ) : (
                     patient.history.map((event, index) => (

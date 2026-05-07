@@ -11,6 +11,7 @@ import {
     Eye,
     X,
     FileCheck,
+    Loader2,
 } from 'lucide-react';
 
 interface Props {
@@ -36,6 +37,7 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
     const [selectedType, setSelectedType] = useState<ConsentTemplateType | null>(null);
     const [isSelectingType, setIsSelectingType] = useState(false);
     const [viewingConsent, setViewingConsent] = useState<ConsentForm | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     const consents = patient.consents || [];
 
@@ -68,7 +70,8 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
         onUpdate({ ...patient, consents: consents.filter(c => c.id !== id) });
     };
 
-    const handleExportPDF = (consent: ConsentForm) => {
+    const handleExportPDF = async (consent: ConsentForm) => {
+        setIsExporting(true);
         try {
             const doc = new jsPDF() as any;
             if (!doc || !doc.internal) throw new Error("jsPDF initialization failed");
@@ -235,6 +238,8 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
         } catch (error) {
             console.error("Error generating PDF:", error);
             sileo.error({ title: "Error en Exportación", description: "Ocurrió un problema al generar el archivo profesional." });
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -252,9 +257,10 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                     <div className="flex gap-2">
                         <button
                             onClick={() => handleExportPDF(viewingConsent)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all"
+                            disabled={isExporting}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
                         >
-                            <Download size={14} /> PDF
+                            {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} PDF
                         </button>
                         <button
                             onClick={() => setViewingConsent(null)}

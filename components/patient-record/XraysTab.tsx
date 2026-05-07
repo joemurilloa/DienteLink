@@ -11,6 +11,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { sileo } from 'sileo';
+import { supabase } from '../../lib/supabase';
 
 interface Props {
     patient: PatientRecordType;
@@ -88,44 +89,57 @@ const XraysTab: React.FC<Props> = ({ patient, onUpdate }) => {
         setIsUploading(true);
 
         try {
-            // TODO: En el Sprint 3.3, aquí subiremos el archivo físico a Supabase Storage:
-            // const { data } = await supabase.storage.from('xrays').upload(`${patient.id}/${crypto.randomUUID()}`, pendingFile);
-            // const url = supabase.storage.from('xrays').getPublicUrl(data.path).data.publicUrl;
+            const fileExt = pendingFile.name.split('.').pop();
+            const fileName = `${crypto.randomUUID()}.${fileExt}`;
+            const filePath = `${patient.id}/xrays/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('patients')
+                .upload(filePath, pendingFile);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('patients')
+                .getPublicUrl(filePath);
             
-            // Por ahora (Sprint 3.2 UI), simularemos que se sube guardando la URL temporal (blob)
-            // o un Base64 solo de forma temporal para ver la UI funcionando.
-            // Convertimos la imagen a base64 solo para que la UI no se rompa al recargar si no configuramos storage aún.
-            const reader = new FileReader();
-            reader.readAsDataURL(pendingFile);
-            reader.onload = () => {
-                const base64Url = reader.result as string;
-                const newXray: XRayImage = {
-                    id: crypto.randomUUID(),
-                    url: base64Url, // Temporal
-                    date: getLocalISODate(new Date()),
-                    title: uploadMeta.title,
-                    notes: uploadMeta.notes,
-                    createdAt: new Date().toISOString()
-                };
-
-                onUpdate({
-                    ...patient,
-                    xrays: [newXray, ...(patient.xrays || [])]
-                });
-
-                sileo.success({ title: 'Imagen guardada', description: 'Radiografía incorporada al expediente.' });
-                handleCancelPending();
-                setIsUploading(false);
+            const newXray: XRayImage = {
+                id: crypto.randomUUID(),
+                url: publicUrl,
+                date: getLocalISODate(new Date()),
+                title: uploadMeta.title,
+                notes: uploadMeta.notes,
+                createdAt: new Date().toISOString(),
+                storagePath: filePath // Storing path for easier deletion
             };
 
-        } catch (error) {
-            sileo.error({ title: 'Error', description: 'No se pudo subir la imagen.' });
+            onUpdate({
+                ...patient,
+                xrays: [newXray, ...(patient.xrays || [])]
+            });
+
+            sileo.success({ title: 'Imagen guardada', description: 'Radiografía incorporada al expediente.' });
+            handleCancelPending();
+            setIsUploading(false);
+
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            sileo.error({ title: 'Error de subida', description: error.message || 'No se pudo subir la imagen a la nube.' });
             setIsUploading(false);
         }
     };
 
-    const handleDelete = (id: string, e: React.MouseEvent) => {
+    const handleDelete = async (id: string, e: React.MouseEvent, storagePath?: string) => {
         e.stopPropagation();
+
+        if (storagePath) {
+            try {
+                await supabase.storage.from('patients').remove([storagePath]);
+            } catch (err) {
+                console.error('Error deleting from storage:', err);
+            }
+        }
+
         onUpdate({
             ...patient,
             xrays: (patient.xrays || []).filter(x => x.id !== id)
@@ -142,92 +156,19 @@ const XraysTab: React.FC<Props> = ({ patient, onUpdate }) => {
                 <p className="text-slate-400 text-sm mt-1">Soporte visual y radiográfico ({xrays.length} imágenes)</p>
             </div>
 
-            {/* Zona de Subida (Upload Zone) */}
-            {!pendingFile ? (
-                <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={cn(
-                        "relative flex justify-center items-center px-6 py-12 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-200 overflow-hidden group",
-                        isDragging ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-400 hover:bg-slate-50"
-                    )}
-                >
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileInput}
-                        className="hidden"
-                        accept="image/png, image/jpeg, image/jpg"
-                    />
-                    <div className="text-center">
-                        <div className={cn(
-                            "w-16 h-16 mx-auto rounded-3xl flex items-center justify-center mb-4 transition-all duration-200",
-                            isDragging ? "bg-blue-600 text-white shadow-xl shadow-blue-500/30 scale-110" : "bg-white text-blue-600 shadow-sm group-hover:shadow-md"
-                        )}>
-                            <Upload size={28} />
-                        </div>
-                        <h4 className="text-base font-bold text-slate-800 mb-1">Subir nueva radiografía</h4>
-                        <p className="text-sm text-slate-500">Arrastra una imagen aquí o haz clic para explorar</p>
-                        <p className="text-xs text-slate-400 font-medium mt-3">JPG, PNG (Max 5MB)</p>
-                    </div>
+            {/* Zona de Subida (Upload Zone) - Oculta por ahora para mantener costos bajos en Supabase */}
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center animate-in fade-in duration-300">
+                <div className="w-16 h-16 mx-auto bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
+                    <ImageIcon size={28} />
                 </div>
-            ) : (
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-in fade-in zoom-in-95 duration-300">
-                    <div className="flex items-center justify-between mb-5">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><ImageIcon size={20} /></div>
-                            <div>
-                                <h4 className="font-bold text-slate-900 text-sm">Detalles de la Imagen</h4>
-                                <p className="text-xs text-slate-500">{pendingFile.name}</p>
-                            </div>
-                        </div>
-                        <button onClick={handleCancelPending} disabled={isUploading} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
-                            <X size={16} />
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="relative aspect-video bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
-                            {previewUrl && <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />}
-                        </div>
-                        
-                        <div className="flex flex-col justify-between space-y-4">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Título / Tipo de placa</label>
-                                    <input 
-                                        type="text" 
-                                        value={uploadMeta.title}
-                                        onChange={e => setUploadMeta(p => ({ ...p, title: e.target.value }))}
-                                        placeholder="Ej. Radiografía Panorámica" 
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Notas diagnósticas (Opcional)</label>
-                                    <textarea 
-                                        value={uploadMeta.notes}
-                                        onChange={e => setUploadMeta(p => ({ ...p, notes: e.target.value }))}
-                                        placeholder="Observaciones de la imagen..." 
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all resize-none h-20"
-                                    />
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleConfirmUpload}
-                                disabled={isUploading}
-                                className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/25 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
-                            >
-                                {isUploading && <Loader2 size={18} className="animate-spin" />}
-                                {isUploading ? 'Guardando imagen...' : 'Guardar en Expediente'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                <h4 className="text-lg font-bold text-slate-800 mb-2">Módulo de Radiografías</h4>
+                <p className="text-slate-500 max-w-md mx-auto text-sm leading-relaxed">
+                    El almacenamiento en la nube para radiografías, fotos intraorales y archivos clínicos estará disponible próximamente en nuestra próxima actualización.
+                </p>
+                <span className="inline-block mt-4 px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                    Próximamente
+                </span>
+            </div>
 
             {/* Galería de Imágenes */}
             {xrays.length > 0 && (
@@ -257,7 +198,7 @@ const XraysTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                         <Maximize2 size={14} />
                                     </button>
                                     <button 
-                                        onClick={(e) => handleDelete(xray.id, e)}
+                                        onClick={(e) => handleDelete(xray.id, e, xray.storagePath)}
                                         className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500 transition-all"
                                         title="Eliminar"
                                     >

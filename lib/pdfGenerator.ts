@@ -56,7 +56,11 @@ export const generatePatientPDF = async (patient: PatientRecord, clinicName: str
         doc.setFontSize(10);
         doc.setTextColor(SECONDARY[0], SECONDARY[1], SECONDARY[2]);
         doc.text(`Dr(a). ${doctorName}`, 15, y + 6);
-        doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 15, y + 11);
+        
+        const dateStr = new Intl.DateTimeFormat('es-HN', { 
+            day: '2-digit', month: 'long', year: 'numeric' 
+        }).format(new Date());
+        doc.text(`Generado: ${dateStr}`, 15, y + 11);
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);

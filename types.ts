@@ -2,6 +2,16 @@
 import React from 'react';
 
 export type ReminderStatus = 'not_sent' | 'sending' | 'sent' | 'error';
+export type UserRole = 'admin' | 'assistant' | 'receptionist';
+
+export interface TeamInvitation {
+  id: string;
+  clinic_id: string;
+  email: string;
+  role: UserRole;
+  status: 'pending' | 'accepted';
+  created_at: string;
+}
 
 // Legacy type kept for migration
 export type ToothStatus = 'healthy' | 'caries' | 'missing' | 'treated';
@@ -171,6 +181,7 @@ export interface XRayImage {
   title: string;
   notes?: string;
   createdAt: string;
+  storagePath?: string;
 }
 
 

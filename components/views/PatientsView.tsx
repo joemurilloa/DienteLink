@@ -4,6 +4,7 @@ import PatientList from '../PatientList';
 import NewPatientModal from '../NewPatientModal';
 import { usePatients, usePatientMutations } from '../../hooks/usePatients';
 import { PatientRecord as PatientRecordType } from '../../types';
+import { usePatientsTip } from '../ContextualTips';
 
 const PatientsView: React.FC = () => {
   const navigate = useNavigate();
@@ -11,6 +12,9 @@ const PatientsView: React.FC = () => {
   const { data: patients = [] } = usePatients();
   const { savePatient } = usePatientMutations();
   const [isModalOpen, setIsModalOpen] = useState(searchParams.get('new') === 'true');
+
+  // Contextual tip (show once)
+  usePatientsTip();
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {

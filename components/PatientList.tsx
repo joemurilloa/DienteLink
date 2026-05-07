@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PatientRecord } from '../types';
-import { Search, Plus, User, Phone, Calendar, ArrowRight, Filter, FileText } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { Search, Plus, User, Phone, Calendar, ArrowRight, Filter, FileText, AlertCircle } from 'lucide-react';
+import { cn, formatCurrency } from '../lib/utils';
 import { PatientCardSkeleton, generateSkeletons } from './LoadingSkeletons';
 import { useOptimizedSearch } from '../lib/PerformanceOptimizations';
 
@@ -13,6 +13,7 @@ interface Props {
 
 const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
     const [search, setSearch] = useState('');
+    const [filterDebt, setFilterDebt] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     // Simulate loading state for better UX
@@ -22,11 +23,19 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
     }, []);
 
     // Optimized search with debouncing
-    const filteredPatients = useOptimizedSearch(
+    const baseFiltered = useOptimizedSearch(
         patients,
         search,
         ['identification.fullName', 'identification.phone']
     );
+
+    const filteredPatients = filterDebt 
+        ? baseFiltered.filter(p => {
+            const totalBudget = p.budget?.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
+            const totalPaid = (p.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
+            return (totalBudget - totalPaid) > 0;
+          })
+        : baseFiltered;
 
     if (!isLoading && patients.length === 0) {
         return (
@@ -71,6 +80,19 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                         />
                     </div>
                     <button
+                        onClick={() => setFilterDebt(!filterDebt)}
+                        className={cn(
+                            "h-12 px-5 rounded-[14px] flex items-center justify-center gap-2 font-bold text-[13px] border-2 transition-all flex-shrink-0",
+                            filterDebt 
+                                ? "bg-amber-50 border-amber-500 text-amber-700 shadow-sm" 
+                                : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50 hover:border-slate-200"
+                        )}
+                        title="Pacientes con saldo pendiente"
+                    >
+                        <AlertCircle size={16} className={filterDebt ? "text-amber-500" : "text-slate-400"} />
+                        <span className="hidden sm:inline">Con Deuda</span>
+                    </button>
+                    <button
                         onClick={onAdd}
                         data-new-patient
                         title="Nuevo Paciente (Ctrl+N)"
@@ -104,6 +126,22 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                                 <p className="text-[13px] text-slate-400 font-medium mt-0.5 truncate">{patient.identification.occupation || 'Sin ocupación'}</p>
                             </div>
                         </div>
+
+                        {(() => {
+                            const totalBudget = patient.budget?.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
+                            const totalPaid = (patient.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
+                            const balance = Math.max(0, totalBudget - totalPaid);
+                            
+                            if (balance > 0) {
+                                return (
+                                    <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between">
+                                        <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Saldo Pdte.</span>
+                                        <span className="text-[13px] font-bold text-amber-700">{formatCurrency(balance)}</span>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
 
                         <div className="space-y-2 mb-6">
                             <div className="flex items-center gap-3">

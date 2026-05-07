@@ -9,8 +9,11 @@ import {
     Clock,
     Loader2,
     Trash2,
+    Download,
 } from 'lucide-react';
 import { sileo } from 'sileo';
+import { generatePaymentReceiptPDF, generateAccountStatementPDF } from '../../lib/invoiceGenerator';
+import { useAuth } from '../../services/authService';
 
 interface Props {
     patient: PatientRecordType;
@@ -18,6 +21,10 @@ interface Props {
 }
 
 const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
+    const { profile } = useAuth();
+    const doctorName = profile?.full_name || 'Doctor';
+    const clinicName = profile?.clinic_name || 'Clínica Dental';
+
     const [newTreatment, setNewTreatment] = useState({ treatment: '', unitCost: '', quantity: '1', toothId: '' });
     const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash' as Payment['method'], note: '' });
     const [budgetError, setBudgetError] = useState('');
@@ -95,7 +102,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-500 mb-1">Total</p>
                     <p className="text-lg font-bold text-blue-700">{formatCurrency(totalBudget)}</p>
@@ -159,9 +166,11 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             {/* Treatment Items List */}
             {budgetItems.length === 0 ? (
                 <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                    <DollarSign size={28} className="mx-auto mb-3 text-slate-200" />
-                    <p className="text-slate-400 text-sm font-medium">Sin tratamientos en el presupuesto</p>
-                    <p className="text-slate-300 text-xs mt-1">Agrega tratamientos arriba para crear el plan</p>
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <DollarSign size={28} className="text-slate-300" />
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-700 mb-1">Sin tratamientos en el presupuesto</h4>
+                    <p className="text-slate-400 text-sm max-w-xs mx-auto">Agrega tratamientos arriba para crear el plan financiero del paciente.</p>
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -247,7 +256,15 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
 
                 {payments.length > 0 && (
                     <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Historial de Pagos ({payments.length})</p>
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Historial de Pagos ({payments.length})</p>
+                            <button 
+                                onClick={() => generateAccountStatementPDF(patient, clinicName, doctorName)}
+                                className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                                <Download size={12} /> Estado de Cuenta
+                            </button>
+                        </div>
                         {payments.map((pay) => (
                             <div key={pay.id} className="flex items-center justify-between p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl group">
                                 <div className="flex items-center gap-3">
@@ -260,9 +277,22 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                         </p>
                                     </div>
                                 </div>
-                                <button onClick={() => handleDeletePayment(pay.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
-                                    <Trash2 size={12} />
-                                </button>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                    <button 
+                                        onClick={() => generatePaymentReceiptPDF(patient, pay, clinicName, doctorName)}
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                        title="Generar Recibo"
+                                    >
+                                        <Download size={14} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDeletePayment(pay.id)} 
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                                        title="Eliminar Pago"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

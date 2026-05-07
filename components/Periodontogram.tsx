@@ -102,7 +102,8 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
     const rect = containerRef.current.getBoundingClientRect();
     const relY = clientY - rect.top;
     const clamped = Math.max(0, Math.min(PROBE_ZONE_H, relY));
-    const mm = Math.round((clamped / PROBE_ZONE_H) * MAX_MM);
+    // Calculate mm with 0.5 precision
+    const mm = Math.round((clamped / PROBE_ZONE_H) * MAX_MM * 2) / 2;
     onUpdateDepth(mm);
   }, [onUpdateDepth]);
 
@@ -199,8 +200,8 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
 
         {/* Probe line (the draggable indicator) */}
         <div
-          className="absolute left-1 right-1 flex items-center justify-center pointer-events-none"
-          style={{ top: probeY - 2, transition: isSelected && !isDragging.current ? 'top 0.15s ease-out' : 'none' }}
+          className="absolute left-1 right-1 flex items-center justify-center pointer-events-none transition-all duration-75"
+          style={{ top: probeY - 2 }}
         >
           <div
             className="w-full h-[3px] rounded-full shadow-md"
@@ -210,8 +211,8 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
 
         {/* Probe needle visual */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 w-[2px] top-0 pointer-events-none origin-top"
-          style={{ height: probeY, backgroundColor: `${color}80`, transition: isSelected && !isDragging.current ? 'height 0.15s ease-out' : 'none' }}
+          className="absolute left-1/2 -translate-x-1/2 w-[2px] top-0 pointer-events-none origin-top transition-all duration-75"
+          style={{ height: probeY, backgroundColor: `${color}80` }}
         />
 
         {/* Mm label */}
@@ -281,7 +282,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
               {/* Depth */}
               <div className="flex items-center gap-1 mb-2">
                 <button
-                  onClick={() => updateSite(face, idx, { depth: Math.max(0, site.depth - 1) })}
+                  onClick={() => updateSite(face, idx, { depth: Math.max(0, site.depth - 0.5) })}
                   className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-100 active:scale-90 text-sm font-bold"
                 >
                   −
@@ -293,7 +294,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
                   {site.depth}
                 </div>
                 <button
-                  onClick={() => updateSite(face, idx, { depth: Math.min(15, site.depth + 1) })}
+                  onClick={() => updateSite(face, idx, { depth: Math.min(15, site.depth + 0.5) })}
                   className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-100 active:scale-90 text-sm font-bold"
                 >
                   +
@@ -475,6 +476,8 @@ const SummaryStats: React.FC<{ data: PeriodontogramData }> = React.memo(({ data 
   );
 });
 
+import { sileo } from 'sileo';
+
 /* ================================================================
    MAIN COMPONENT
    ================================================================ */
@@ -484,6 +487,19 @@ interface PeriodontogramProps {
 }
 
 const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate }) => {
+  // Ref to debounced save or just track updates
+  const lastUpdateRef = useRef<number>(0);
+
+  const handleUpdateWithToast = useCallback((newData: PeriodontogramData) => {
+    onUpdate(newData);
+    const now = Date.now();
+    // Only show toast every 3 seconds to avoid spam
+    if (now - lastUpdateRef.current > 3000) {
+      sileo.success({ title: 'Periodontograma guardado', description: 'Los cambios se han sincronizado con el expediente.' });
+      lastUpdateRef.current = now;
+    }
+  }, [onUpdate]);
+
   const data = rawData && rawData.teeth ? rawData : createDefaultPeriodontogramData();
   const [selectedToothId, setSelectedToothId] = useState<number | null>(null);
   const [viewArch, setViewArch] = useState<'upper' | 'lower'>('upper');
@@ -497,7 +513,7 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
 
   /** Update the vestibular center depth for a tooth (quick visual mode) */
   const handleQuickDepth = useCallback((toothId: number, depth: number) => {
-    onUpdate({
+    handleUpdateWithToast({
       ...data,
       teeth: data.teeth.map(t => {
         if (t.toothId !== toothId) return t;
@@ -506,7 +522,7 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
         return { ...t, buccal: newBuccal };
       }),
     });
-  }, [data, onUpdate]);
+  }, [data, handleUpdateWithToast]);
 
   const handleSelectTooth = useCallback((toothId: number) => {
     setSelectedToothId(prev => prev === toothId ? null : toothId);
@@ -631,7 +647,7 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
               key={selectedTooth.toothId}
               tooth={selectedTooth}
               data={data}
-              onUpdate={onUpdate}
+              onUpdate={handleUpdateWithToast}
               onPrev={() => navigateTooth(-1)}
               onNext={() => navigateTooth(1)}
             />

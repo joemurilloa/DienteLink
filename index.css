@@ -8,10 +8,8 @@
   --sileo-state-warning: oklch(0.80 0.18 86);
 }
 
-/* Make description text brighter on dark background */
-[data-sileo-viewport][data-theme="light"] [data-sileo-description] {
-  color: rgba(255, 255, 255, 0.75);
-}
+
+
 
 /* ================================
    PROFESSIONAL APP STYLING
@@ -365,6 +363,17 @@ select:focus-visible {
 
 :root {
   --background: #F8FAFC;
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #f8fafc;
+  --bg-muted: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-primary: #f1f5f9;
+  --border-subtle: #f8fafc;
   --primary: #2563eb;
   --primary-light: #3b82f6;
   --primary-dark: #1d4ed8;
@@ -515,7 +524,7 @@ body, input, textarea, button, select {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #ffffff;
+  background: var(--background, #ffffff);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -545,7 +554,7 @@ body, input, textarea, button, select {
 
 /* ===== Sidebar Dark Theme ===== */
 .sidebar-dark {
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(180deg, #15202b 0%, #192734 100%);
 }
 
 /* ===== KPI Card Accent Borders ===== */

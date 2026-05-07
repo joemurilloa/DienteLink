@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn, getInitials } from '../lib/utils';
 import { LayoutDashboard, Users, Calendar as CalendarIcon, Settings, Bell, Menu } from 'lucide-react';
 import { useAuth } from '../services/authService';
+import { useRoleAccess } from './RoleGuard';
 
 interface SidebarProps {
   activePath: string;
@@ -25,19 +26,21 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   const doctorName = profile?.full_name || 'Doctor';
   const doctorRole = profile?.role || 'Odontólogo';
   const doctorInitials = getInitials(doctorName, 'DR');
+  const { canViewFinancial, isAdmin } = useRoleAccess();
 
-  const items: { id: string; label: string; icon: React.FC<any>; path: string; badge?: number }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { id: 'patients', label: 'Pacientes', icon: Users, path: '/patients' },
-    { id: 'calendar', label: 'Calendario', icon: CalendarIcon, path: '/calendar' },
-    { id: 'solicitudes', label: 'Solicitudes', icon: Bell, path: '/booking/manage', badge: pendingRequestsCount },
-    { id: 'settings', label: 'Ajustes', icon: Settings, path: '/settings' },
-  ];
+  const items: { id: string; label: string; icon: React.FC<any>; path: string; badge?: number; allowed: boolean }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/', allowed: canViewFinancial },
+    { id: 'patients', label: 'Pacientes', icon: Users, path: '/patients', allowed: true },
+    { id: 'calendar', label: 'Calendario', icon: CalendarIcon, path: '/calendar', allowed: true },
+    { id: 'solicitudes', label: 'Solicitudes', icon: Bell, path: '/booking/manage', badge: pendingRequestsCount, allowed: true },
+    { id: 'settings', label: 'Ajustes', icon: Settings, path: '/settings', allowed: isAdmin },
+  ].filter(i => i.allowed);
 
   return (
     <aside className={cn(
-      "hidden md:flex flex-col h-full bg-white border-r border-slate-200 p-3 lg:py-6 transition-all duration-300 relative",
-      isCollapsed ? "w-[72px]" : "w-[72px] lg:w-[260px] lg:px-4"
+      "hidden md:flex flex-col h-full bg-white border-r border-slate-200 p-3 lg:py-6 transition-all duration-300 relative z-40",
+      isCollapsed ? "w-[72px]" : "w-[72px] lg:w-[260px] lg:px-4",
+      "shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
     )}>
       {/* Logo & Toggle */}
       <div className={cn(

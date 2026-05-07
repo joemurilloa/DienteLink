@@ -1,7 +1,13 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-[#F8FAFC]">
+<html lang="es" class="h-full">
 
 <head>
+    <script>
+      // Always light mode — dark mode temporarily disabled
+      document.documentElement.classList.remove('dark');
+      document.documentElement.style.backgroundColor = '#F8FAFC';
+      localStorage.setItem('dientelink_theme', 'light');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">

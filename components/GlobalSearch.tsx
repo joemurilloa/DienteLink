@@ -40,18 +40,8 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
             p.id.includes(query)
         );
         setResults(filtered.slice(0, 5));
+        // Results are shown in the dropdown, no need for toast noise during typing
         setSelectedIndex(filtered.length > 0 ? 0 : -1);
-        
-        // Friendly search feedback
-        if (query.length >= 3) {
-            if (filtered.length === 0) {
-                sileo.warning({ title: 'No encontré a ese paciente 🔍', description: 'Intenta con otro nombre, teléfono o cédula' });
-            } else if (filtered.length === 1) {
-                sileo.success({ title: '¡Encuentro perfecto!', description: `Encontré a ${filtered[0].identification.fullName}` });
-            } else {
-                sileo.info({ title: `Encontré ${filtered.length} pacientes`, description: 'Selecciona el que necesitas' });
-            }
-        }
     }, [query]);
 
     const handleSelect = (patientId: string) => {

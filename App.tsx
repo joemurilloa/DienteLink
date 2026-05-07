@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { HashRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
-import { Suspense, lazy } from 'react';
 import { bookingService } from './services/bookingService';
 import { AuthProvider, useAuth } from './services/authService';
 import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcuts';
@@ -21,6 +20,7 @@ const PatientConsultationView = lazy(() => import('./components/PatientConsultat
 const PublicBookingPage = lazy(() => import('./components/PublicBookingPage'));
 const BookingManagementView = lazy(() => import('./components/BookingManagementView'));
 const AuthPage = lazy(() => import('./components/AuthPage'));
+const LandingPage = lazy(() => import('./components/LandingPage'));
 
 // Booking Wrapper Components
 const BookingManagementWrapper: React.FC = () => {
@@ -34,21 +34,21 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, clinicId } = useAuth();
   const [servicesReady, setServicesReady] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Initialize booking services when user is available
+  // Initialize booking services when clinicId is available
   useEffect(() => {
-    if (!user) { setServicesReady(false); return; }
+    if (!clinicId) { setServicesReady(false); return; }
 
     const initServices = async () => {
-      await bookingService.init(user.id);
+      await bookingService.init(clinicId);
       setPendingCount(bookingService.getPendingRequests().length);
       setServicesReady(true);
     };
     initServices().catch(console.error);
-  }, [user]);
+  }, [clinicId]);
 
   // Keep pending count in sync when requests change
   useEffect(() => {
@@ -170,7 +170,7 @@ const AuthGuard: React.FC = () => {
     );
   }
 
-  if (!user) return <AuthPage />;
+  if (!user) return <Navigate to="/welcome" replace />;
 
   return <Layout />;
 };
@@ -184,6 +184,13 @@ const App: React.FC = () => (
           <Routes>
             {/* Public booking page - completely independent, no sidebar/nav */}
             <Route path="/p/:doctorId" element={<PublicBookingPage />} />
+            
+            {/* Public Landing Page */}
+            <Route path="/welcome" element={<LandingPage />} />
+            
+            {/* Auth Page */}
+            <Route path="/login" element={<AuthPage />} />
+            
             {/* Main app with auth guard */}
             <Route path="/*" element={<AuthGuard />} />
           </Routes>

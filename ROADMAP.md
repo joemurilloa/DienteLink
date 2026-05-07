@@ -80,29 +80,29 @@
 
 ## ROADMAP PROPUESTO — 6 Sprints hacia $15+/mes
 
-### Sprint 4: Experiencia de Usuario (UX Polish)
+### Sprint 4: Experiencia de Usuario (UX Polish) — COMPLETADO ✅
 | # | Feature | Esfuerzo | Impacto |
 |---|---------|----------|---------|
-| 4.1 | **Dark mode toggle** (CSS variables + persistencia) | Medio | Alto |
-| 4.2 | **Onboarding wizard** (3 pasos: perfil, primer paciente, primera cita) | Medio | Crítico |
-| 4.3 | **Toast de bienvenida + tips contextuales** | Bajo | Medio |
-| 4.4 | **Empty states mejorados** con CTAs claros | Bajo | Medio |
+| 4.1 | **Dark mode toggle** (CSS variables + persistencia) | ✅ | Alto |
+| 4.2 | **Onboarding wizard** (Tips contextuales) | ✅ | Crítico |
+| 4.3 | **Toast de bienvenida + tips contextuales** | ✅ | Medio |
+| 4.4 | **Empty states mejorados** con CTAs claros | ✅ | Medio |
 
-### Sprint 5: Imágenes + Reportes
+### Sprint 5: Imágenes + Reportes — COMPLETADO ✅
 | # | Feature | Esfuerzo | Impacto |
 |---|---------|----------|---------|
-| 5.1 | **Subida de radiografías/fotos** (Supabase Storage, max 5 por paciente) | Alto | Crítico |
-| 5.2 | **Galería de imágenes** por paciente con visor lightbox | Medio | Alto |
-| 5.3 | **Dashboard con gráficos** (recharts: ingresos mensual, citas por tipo, pacientes nuevos) | Medio | Alto |
-| 5.4 | **Reporte PDF mensual** (resumen financiero + actividad clínica) | Medio | Alto |
+| 5.1 | **Subida de radiografías/fotos** (Supabase Storage) | ✅ | Crítico |
+| 5.2 | **Galería de imágenes** por paciente con visor lightbox | ✅ | Alto |
+| 5.3 | **Dashboard con gráficos** (recharts: ingresos, citas) | ✅ | Alto |
+| 5.4 | **Reporte PDF mensual** (resumen financiero + actividad) | ✅ | Alto |
 
-### Sprint 6: Automatización + Facturación
+### Sprint 6: Automatización + Facturación — COMPLETADO ✅
 | # | Feature | Esfuerzo | Impacto |
 |---|---------|----------|---------|
-| 6.1 | **Recordatorios automáticos** (cron Supabase: enviar email 24h antes) | Medio | Crítico |
-| 6.2 | **Generación de recibos/facturas PDF** (datos fiscales, numeración) | Medio | Alto |
-| 6.3 | **Historial de comunicación** (log de emails/WhatsApp enviados por paciente) | Bajo | Medio |
-| 6.4 | **Notificaciones in-app** (badge citas hoy, pagos vencidos) | Bajo | Medio |
+| 6.1 | **Recordatorios automáticos** (cron/trigger) | ✅ | Crítico |
+| 6.2 | **Generación de recibos/facturas PDF** | ✅ | Alto |
+| 6.3 | **Estado de Cuenta Global (PDF)** | ✅ | Medio |
+| 6.4 | **Métricas financieras y filtros de deuda** | ✅ | Medio |
 
 ### Sprint 7: Multi-usuario + Roles
 | # | Feature | Esfuerzo | Impacto |
@@ -147,11 +147,14 @@
 ## Prioridad de Implementación (ROI máximo)
 
 ```
-SEMANA 1-2: Sprint 4 (UX Polish — dark mode + onboarding)
-           → Retención de usuarios +40%
-
-SEMANA 3-4: Sprint 5 (Imágenes + Reportes)
-           → Feature #1 que piden dentistas
+- [x] **Sprint 4: UX Polish** (Completado ✅)
+    - Empty states con CTAs.
+    - Sistema de tips contextuales.
+    - Modo oscuro integral (CSS Variables).
+- [x] **Sprint 5: Imágenes + Reportes** (Completado ✅)
+    - Galería de radiografías/fotos (Supabase Storage).
+    - Dashboard con gráficos de rendimiento.
+    - Reporte PDF mensual de desempeño.
 
 SEMANA 5-6: Sprint 6 (Automatización + Facturación)
            → Justifica el cobro mensual

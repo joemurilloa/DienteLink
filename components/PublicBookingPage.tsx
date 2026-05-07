@@ -488,20 +488,20 @@ const PublicBookingPage: React.FC = () => {
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo de cita</label>
-                    <div className="flex gap-1.5 flex-wrap">
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Tipo de cita</label>
+                    <div className="flex gap-2 flex-wrap">
                       {settings.availableTypes.map(type => (
                         <button key={type} type="button" onClick={() => setFormData({ ...formData, appointmentType: type })}
-                          className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                          className={cn('px-5 py-3 rounded-2xl text-sm font-bold transition-all border shadow-sm',
                             formData.appointmentType === type
-                              ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600'
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/30 ring-4 ring-blue-500/10' 
+                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
                           )}>
                           {type}
                         </button>
                       ))}
                     </div>
-                  </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">

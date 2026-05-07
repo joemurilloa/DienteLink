@@ -14,7 +14,8 @@ import {
     X,
     ClipboardList,
     Stethoscope,
-    FileText
+    FileText,
+    Loader2
 } from 'lucide-react';
 
 interface Props {
@@ -49,6 +50,8 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
     const [notes, setNotes] = useState('');
     const [medications, setMedications] = useState<PrescriptionMedication[]>([{ ...EMPTY_MED }]);
     const [formError, setFormError] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const prescriptions = patient.prescriptions || [];
 
@@ -76,7 +79,8 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
         });
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        setIsSaving(true);
         setFormError('');
         if (!diagnosis.trim()) {
             setFormError('Ingresa el diagnóstico');
@@ -102,13 +106,15 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
         setNotes('');
         setMedications([{ ...EMPTY_MED }]);
         sileo.success({ title: 'Receta guardada', description: `Receta con ${validMeds.length} medicamento(s) registrada` });
+        setIsSaving(false);
     };
 
     const handleDelete = (id: string) => {
         onUpdate({ ...patient, prescriptions: prescriptions.filter(r => r.id !== id) });
     };
 
-    const handleExportPDF = (rx: Prescription) => {
+    const handleExportPDF = async (rx: Prescription) => {
+        setIsExporting(true);
         try {
             const doc = new jsPDF() as any;
             if (!doc || !doc.internal) throw new Error("jsPDF initialization failed");
@@ -199,6 +205,8 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
         } catch (error) {
             console.error("Error generating PDF:", error);
             sileo.error({ title: "Error al generar PDF", description: "Ocurrió un problema, intenta de nuevo." });
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -214,9 +222,10 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                     <div className="flex gap-2">
                         <button
                             onClick={() => handleExportPDF(viewingRx)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all"
+                            disabled={isExporting}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
                         >
-                            <Download size={14} /> PDF
+                            {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} PDF
                         </button>
                         <button
                             onClick={() => setViewingRx(null)}
@@ -389,9 +398,11 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                 {/* Save */}
                 <button
                     onClick={handleSave}
-                    className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 active:scale-[0.98] flex items-center justify-center gap-2"
+                    disabled={isSaving}
+                    className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                    <FileText size={16} /> Guardar Receta
+                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />} 
+                    {isSaving ? 'Guardando...' : 'Guardar Receta'}
                 </button>
             </div>
         );

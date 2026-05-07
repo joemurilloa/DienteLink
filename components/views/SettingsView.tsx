@@ -9,6 +9,9 @@ import ConfirmModal from '../ConfirmModal';
 import { formatCurrency, exportPatientsCSV, exportAppointmentsCSV } from '../../lib/utils';
 import { Download, Calendar as CalendarIcon, Users, Trash2, RotateCcw, Archive } from 'lucide-react';
 import { sileo } from 'sileo';
+import { useSettingsTip } from '../ContextualTips';
+
+import TeamSettings from './Settings/TeamSettings';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -39,6 +42,11 @@ const SettingsView: React.FC = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Contextual tip (show once)
+  useSettingsTip();
+
+
 
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
@@ -114,6 +122,8 @@ const SettingsView: React.FC = () => {
 
       <div className="max-w-2xl space-y-5">
         {/* Profile Card - Editable */}
+
+
         <div className="card-premium p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-bold text-slate-900">Perfil del Doctor</h3>
@@ -256,7 +266,8 @@ const SettingsView: React.FC = () => {
           </div>
         </div>
 
-
+        {/* Team Settings */}
+        <TeamSettings />
 
         <div className="card-premium p-6 border-red-100">
           <h3 className="text-base font-bold text-red-600 mb-3">Zona de Peligro</h3>

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Appointment } from '../types';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
+import { emailReminderService } from '../services/emailReminderService';
 
 
 // Map DB row to UI model
@@ -22,16 +23,16 @@ function dbToAppointment(a: any): Appointment {
 }
 
 export function useAppointments() {
-  const { user } = useAuth();
+  const { user, clinicId } = useAuth();
   
   return useQuery({
-    queryKey: ['appointments', user?.id],
+    queryKey: ['appointments', clinicId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!clinicId) return [];
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
-        .eq('doctor_id', user.id)
+        .eq('doctor_id', clinicId)
         .order('date')
         .order('time');
         
@@ -41,21 +42,21 @@ export function useAppointments() {
       }
       return (data || []).map(dbToAppointment);
     },
-    enabled: !!user?.id,
+    enabled: !!clinicId,
   });
 }
 
 export function useAppointmentMutations() {
   const queryClient = useQueryClient();
-  const { user, profile } = useAuth();
+  const { user, profile, clinicId } = useAuth();
 
   const createMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
-      if (!user?.id) throw new Error('No doctor mapped');
+      if (!clinicId) throw new Error('No doctor/clinic mapped');
       
       const { data, error } = await supabase.from('appointments').upsert({
         id: appointment.id,
-        doctor_id: user.id,
+        doctor_id: clinicId,
         patient_id: appointment.patientId || null,
         patient_name: appointment.patientName,
         phone_number: appointment.phoneNumber || null,
@@ -71,12 +72,39 @@ export function useAppointmentMutations() {
         console.error('[Supabase Upsert Error - CREATE]:', error);
         throw error;
       }
+
+      // Automatically trigger email reminder if status is 'Programada'
+      if (appointment.status === 'Programada' && appointment.patientId) {
+        const { data: patientData } = await supabase
+          .from('patients')
+          .select('email')
+          .eq('id', appointment.patientId)
+          .single();
+
+        if (patientData?.email) {
+          emailReminderService.sendReminder({
+            patientName: appointment.patientName,
+            patientEmail: patientData.email,
+            appointmentDate: appointment.date,
+            appointmentTime: appointment.time,
+            appointmentType: appointment.type,
+            doctorName: profile?.full_name || 'Doctor',
+            clinicName: profile?.clinic_name || 'Clínica Dental'
+          }).then(res => {
+            if (res.success) {
+              // Optionally update reminder_status to 'sent' here
+              supabase.from('appointments').update({ reminder_status: 'sent' }).eq('id', appointment.id).then();
+            }
+          });
+        }
+      }
+
       return dbToAppointment(data);
     },
     onMutate: async (newAppointment) => {
       // Cancel queries
-      await queryClient.cancelQueries({ queryKey: ['appointments', user?.id] });
-      const previous = queryClient.getQueryData<Appointment[]>(['appointments', user?.id]);
+      await queryClient.cancelQueries({ queryKey: ['appointments', clinicId] });
+      const previous = queryClient.getQueryData<Appointment[]>(['appointments', clinicId]);
       
       // Optimistically update
       if (previous) {
@@ -84,39 +112,39 @@ export function useAppointmentMutations() {
         const next = [...previous];
         if (idx !== -1) next[idx] = newAppointment;
         else next.push(newAppointment);
-        queryClient.setQueryData(['appointments', user?.id], next);
+        queryClient.setQueryData(['appointments', clinicId], next);
       }
       return { previous };
     },
     onError: (err, newAppointment, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['appointments', user?.id], context.previous);
+        queryClient.setQueryData(['appointments', clinicId], context.previous);
       }
       sileo.error({ title: 'Error', description: 'No se pudo agendar la cita en la nube.' });
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] });
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (appointmentId: string) => {
-      if (!user?.id) throw new Error('No doctor mapped');
+      if (!clinicId) throw new Error('No doctor/clinic mapped');
       const deletedAt = new Date().toISOString();
       const { error } = await supabase
         .from('appointments')
         .update({ status: 'Eliminada', deleted_at: deletedAt })
         .eq('id', appointmentId)
-        .eq('doctor_id', user.id);
+        .eq('doctor_id', clinicId);
       if (error) throw error;
       return appointmentId;
     },
     onMutate: async (appointmentId) => {
-      await queryClient.cancelQueries({ queryKey: ['appointments', user?.id] });
-      const previous = queryClient.getQueryData<Appointment[]>(['appointments', user?.id]);
+      await queryClient.cancelQueries({ queryKey: ['appointments', clinicId] });
+      const previous = queryClient.getQueryData<Appointment[]>(['appointments', clinicId]);
       if (previous) {
-        queryClient.setQueryData(['appointments', user?.id], previous.map(a => 
+        queryClient.setQueryData(['appointments', clinicId], previous.map(a => 
           a.id === appointmentId ? { ...a, status: 'Eliminada', deletedAt: new Date().toISOString() } : a
         ));
       }
@@ -124,21 +152,21 @@ export function useAppointmentMutations() {
     },
     onError: (err, __, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['appointments', user?.id], context.previous);
+        queryClient.setQueryData(['appointments', clinicId], context.previous);
       }
       sileo.error({ title: 'Error', description: 'No se pudo eliminar la cita.' });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] });
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
-      if (!user?.id) throw new Error('No doctor mapped');
+      if (!clinicId) throw new Error('No doctor/clinic mapped');
       const { data, error } = await supabase.from('appointments').upsert({
         id: appointment.id,
-        doctor_id: user.id,
+        doctor_id: clinicId,
         patient_id: appointment.patientId || null,
         patient_name: appointment.patientName,
         phone_number: appointment.phoneNumber || null,
@@ -153,22 +181,48 @@ export function useAppointmentMutations() {
         console.error('[Supabase Upsert Error - UPDATE]:', error);
         throw error;
       }
+
+      // Automatically trigger email reminder if status changed to 'Programada' and hasn't been sent
+      if (appointment.status === 'Programada' && appointment.reminderStatus === 'not_sent' && appointment.patientId) {
+        const { data: patientData } = await supabase
+          .from('patients')
+          .select('email')
+          .eq('id', appointment.patientId)
+          .single();
+
+        if (patientData?.email) {
+          emailReminderService.sendReminder({
+            patientName: appointment.patientName,
+            patientEmail: patientData.email,
+            appointmentDate: appointment.date,
+            appointmentTime: appointment.time,
+            appointmentType: appointment.type,
+            doctorName: profile?.full_name || 'Doctor',
+            clinicName: profile?.clinic_name || 'Clínica Dental'
+          }).then(res => {
+            if (res.success) {
+              supabase.from('appointments').update({ reminder_status: 'sent' }).eq('id', appointment.id).then();
+            }
+          });
+        }
+      }
+
       return dbToAppointment(data);
     },
     onMutate: async (newAppt) => {
-      await queryClient.cancelQueries({ queryKey: ['appointments', user?.id] });
-      const previous = queryClient.getQueryData<Appointment[]>(['appointments', user?.id]);
+      await queryClient.cancelQueries({ queryKey: ['appointments', clinicId] });
+      const previous = queryClient.getQueryData<Appointment[]>(['appointments', clinicId]);
       if (previous) {
-        queryClient.setQueryData(['appointments', user?.id], previous.map(a => a.id === newAppt.id ? newAppt : a));
+        queryClient.setQueryData(['appointments', clinicId], previous.map(a => a.id === newAppt.id ? newAppt : a));
       }
       return { previous };
     },
     onError: (err, _, context) => {
-      if (context?.previous) queryClient.setQueryData(['appointments', user?.id], context.previous);
+      if (context?.previous) queryClient.setQueryData(['appointments', clinicId], context.previous);
       sileo.error({ title: 'Error', description: 'No se pudo actualizar la cita.' });
     },
 
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] })
   });
   
   return { 

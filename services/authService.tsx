@@ -2,12 +2,14 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
 import { queryClient } from '../lib/queryClient';
+import { teamService } from './teamService';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: DoctorProfile | null;
+  clinicId: string | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -21,6 +23,7 @@ export interface DoctorProfile {
   id: string;
   full_name: string;
   role: string;
+  clinic_id?: string;
   clinic_name: string;
   phone: string | null;
   currency: string;
@@ -43,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   // Fetch doctor profile from profiles table
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, email?: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -57,6 +60,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         locale: data.locale || 'es-HN',
         has_completed_onboarding: data.has_completed_onboarding || false,
       };
+
+      // Auto-redeem invitation if no clinic_id is set
+      if (!prof.clinic_id && email) {
+        try {
+          await teamService.redeemInvitation(prof.id, email);
+          // Refetch to get updated profile after redeem
+          const { data: updatedData } = await supabase.from('profiles').select('*').eq('id', userId).single();
+          if (updatedData) {
+            prof.clinic_id = updatedData.clinic_id;
+            prof.role = updatedData.role;
+          }
+        } catch (e) {
+          console.error("Error redeeming invitation", e);
+        }
+      }
+
       setProfile(prof);
       setCurrencyConfig(prof.currency, prof.locale);
     }
@@ -68,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, session.user.email);
       }
       setLoading(false);
     });
@@ -78,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, session.user.email);
       } else {
         queryClient.clear();
         setProfile(null);
@@ -157,8 +176,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const clinicId = profile?.clinic_id || profile?.id || null;
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, session, profile, clinicId, loading, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

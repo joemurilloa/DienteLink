@@ -7,6 +7,7 @@ import { Appointment, AppointmentType } from '../../types';
 import { cn, generateId, getInitials, getLocalISODate } from '../../lib/utils';
 import { Plus, Trash2, ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
 import { sileo } from 'sileo';
+import { useCalendarTip } from '../ContextualTips';
 
 const APPOINTMENT_TYPES: AppointmentType[] = ['Consulta', 'Seguimiento', 'Cirugía', 'Revisión'];
 
@@ -19,8 +20,12 @@ const CalendarView: React.FC = () => {
   const { createAppointment, deleteAppointment } = useAppointmentMutations();
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Contextual tip (show once)
+  useCalendarTip();
+
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
 
   const patientNameFromParams = searchParams.get('patient') || '';
@@ -55,13 +60,20 @@ const CalendarView: React.FC = () => {
   const handleToday = () => setCurrentDate(new Date());
 
   const handleAddAppointment = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
     setFormError('');
     if (!newApt.patientName.trim()) { setFormError('El nombre del paciente es requerido'); return; }
     if (newApt.patientName.trim().length < 3) { setFormError('El nombre es demasiado corto'); return; }
 
-    const conflict = appointments.find(a => a.date === newApt.date && a.time === newApt.time);
+    const conflict = appointments.find(a => 
+      a.date === newApt.date && 
+      a.time === newApt.time && 
+      a.status !== 'Eliminada'
+    );
     if (conflict) {
-      setFormError(`El bloque ${newApt.time} ya está ocupado por ${conflict.patientName}.`);
+      setFormError(`Conflicto de horario: ${newApt.time} ya está reservado para ${conflict.patientName}.`);
+      setIsCreating(false);
       return;
     }
 
@@ -86,13 +98,13 @@ const CalendarView: React.FC = () => {
       reminderStatus: 'not_sent'
     };
 
-    setIsAdding(false);
-    setNewApt({ patientName: '', patientId: '', time: '09:00', date: newApt.date, type: 'Consulta' });
-    
     createAppointment.mutate(appointment, {
       onSuccess: () => {
         sileo.success({ title: 'Cita Agendada', description: `${appointment.patientName} a las ${appointment.time}` });
-      }
+        setIsAdding(false);
+        setNewApt({ patientName: '', patientId: '', time: '09:00', date: newApt.date, type: 'Consulta' });
+      },
+      onSettled: () => setIsCreating(false)
     });
   };
 
@@ -241,7 +253,11 @@ const CalendarView: React.FC = () => {
 
                     <div className="flex-1 space-y-1 px-0.5 overflow-hidden">
                       {dayApts.slice(0, 3).map(a => (
-                        <div key={a.id} className="px-1.5 py-1 bg-blue-50/70 border border-blue-100/50 rounded-md flex items-center justify-between group/apt">
+                        <div 
+                          key={a.id} 
+                          onClick={(e) => { e.stopPropagation(); if (a.patientId) navigate(`/patient/${a.patientId}`); }}
+                          className="px-1.5 py-1 bg-blue-50/70 border border-blue-100/50 rounded-md flex items-center justify-between group/apt cursor-pointer hover:bg-blue-100 transition-colors"
+                        >
                           <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
                           <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-blue-300 hover:text-red-500 opacity-0 group-hover/apt:opacity-100">
                             <Trash2 size={10} />
@@ -307,7 +323,11 @@ const CalendarView: React.FC = () => {
                             )}
                           >
                             {hourApts.map(a => (
-                              <div key={a.id} className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)] hover:shadow-sm">
+                              <div 
+                                key={a.id} 
+                                onClick={(e) => { e.stopPropagation(); if (a.patientId) navigate(`/patient/${a.patientId}`); }}
+                                className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)] hover:shadow-sm cursor-pointer hover:bg-blue-100 transition-colors"
+                              >
                                 <div className="flex items-center justify-between">
                                   <span className="text-[10px] font-bold text-blue-600">{a.time}</span>
                                   <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -347,16 +367,20 @@ const CalendarView: React.FC = () => {
                       isNow ? "border-t-blue-200 bg-blue-50/5" : ""
                     )}>
                       {hourApts.map(a => (
-                        <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-100/60 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all group/apt">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-50 rounded-[14px] flex items-center justify-center text-blue-600 font-bold text-sm">
-                              {getInitials(a.patientName)}
+                          <div 
+                            key={a.id} 
+                            onClick={() => { if (a.patientId) navigate(`/patient/${a.patientId}`); }}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-100/60 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all group/apt cursor-pointer hover:border-blue-200"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-blue-50 rounded-[14px] flex items-center justify-center text-blue-600 font-bold text-sm">
+                                {getInitials(a.patientName)}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-slate-900 text-[15px]">{a.patientName}</h4>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">{a.time} · {a.type} · {a.status}</p>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="font-bold text-slate-900 text-[15px]">{a.patientName}</h4>
-                              <p className="text-xs text-slate-500 font-medium mt-0.5">{a.time} · {a.type} · {a.status}</p>
-                            </div>
-                          </div>
                           
                           <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:opacity-0 group-hover/apt:opacity-100 transition-opacity justify-end">
                             {a.patientId && (
@@ -506,23 +530,25 @@ const CalendarView: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Tipo de Consulta</label>
                 <div className="flex flex-wrap gap-2">
-                  {APPOINTMENT_TYPES.map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setNewApt(p => ({...p, type: t}))}
-                      className={cn(
-                        "px-4 py-2 rounded-[10px] text-[13px] font-bold transition-all border",
-                        newApt.type === t ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/10" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300"
-                      )}
-                    >{t}</button>
-                  ))}
+                      {APPOINTMENT_TYPES.map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setNewApt(p => ({...p, type: t}))}
+                          className={cn(
+                            "px-5 py-2.5 rounded-xl text-sm font-bold transition-all border",
+                            newApt.type === t ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/30" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300"
+                          )}
+                        >{t}</button>
+                      ))}
                 </div>
               </div>
 
               <div className="pt-6 flex gap-3">
                 <button onClick={() => { setIsAdding(false); setFormError(''); }} className="px-6 py-4 rounded-xl font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                <button onClick={handleAddAppointment} className="flex-1 bg-blue-600 text-white font-bold text-sm px-4 py-4 rounded-xl shadow-[0_8px_16px_rgba(37,99,235,0.2)] hover:-translate-y-0.5 transition-all">Confirmar Cita</button>
+                <button onClick={handleAddAppointment} disabled={isCreating} className="flex-1 bg-blue-600 text-white font-bold text-sm px-4 py-4 rounded-xl shadow-[0_8px_16px_rgba(37,99,235,0.2)] hover:-translate-y-0.5 transition-all disabled:opacity-50">
+                  {isCreating ? 'Guardando...' : 'Confirmar Cita'}
+                </button>
               </div>
             </div>
           </div>

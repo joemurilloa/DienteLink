@@ -90,21 +90,21 @@ function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [
 }
 
 export function usePatients() {
-    const { user } = useAuth();
+    const { user, clinicId } = useAuth();
 
     return useQuery({
-        queryKey: ['patients', user?.id],
+        queryKey: ['patients', clinicId],
         queryFn: async () => {
-            if (!user?.id) return [];
+            if (!clinicId) return [];
 
             const [patientsRes, notesRes, eventsRes, budgetRes, paymentsRes, consentsRes, prescriptionsRes] = await Promise.all([
-                supabase.from('patients').select('*').eq('doctor_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('evolution_notes').select('*').eq('doctor_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('clinical_events').select('*').eq('doctor_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('budget_items').select('*').eq('doctor_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('payments').select('*').eq('doctor_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('consent_forms').select('*').eq('doctor_id', user.id).order('created_at', { ascending: false }),
-                supabase.from('prescriptions').select('*').eq('doctor_id', user.id).order('created_at', { ascending: false }),
+                supabase.from('patients').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
+                supabase.from('evolution_notes').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
+                supabase.from('clinical_events').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
+                supabase.from('budget_items').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
+                supabase.from('payments').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
+                supabase.from('consent_forms').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
+                supabase.from('prescriptions').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
             ]);
 
             const notesByPatient = groupBy(notesRes.data || [], 'patient_id');
@@ -118,7 +118,7 @@ export function usePatients() {
                 dbToPatient(p, notesByPatient[p.id] || [], eventsByPatient[p.id] || [], budgetByPatient[p.id] || [], paymentsByPatient[p.id] || [], consentsByPatient[p.id] || [], prescriptionsByPatient[p.id] || [])
             );
         },
-        enabled: !!user?.id,
+        enabled: !!clinicId,
     });
 }
 
@@ -134,12 +134,12 @@ export function usePatient(patientId?: string) {
 
 export function usePatientMutations() {
     const queryClient = useQueryClient();
-    const { user } = useAuth();
+    const { user, clinicId } = useAuth();
 
     const saveMutation = useMutation({
         mutationFn: async (patient: PatientRecord) => {
-            if (!user?.id) throw new Error('No doctor mapped');
-            const doctorId = user.id;
+            if (!clinicId) throw new Error('No doctor/clinic mapped');
+            const doctorId = clinicId;
 
             // 1. Main patient record
             const { error: pErr } = await supabase.from('patients').upsert({
@@ -168,12 +168,11 @@ export function usePatientMutations() {
 
             // 2. Sub-tables sync logic
             const syncSubTable = async (tableName: string, items: any[], mapFn: (i: any) => any) => {
-                const doctorId = user.id;
+                const doctorId = clinicId;
                 
                 // A. Upsert all current items
                 if (items && items.length > 0) {
                     const mapped = items.map(mapFn);
-                    console.log(`[Supabase Sync] Intentando Upsert en ${tableName}:`, mapped.length, "ítems para doctor:", doctorId);
                     
                     const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
                     if (upsertErr) {
@@ -184,11 +183,6 @@ export function usePatientMutations() {
                     // B. Delete items belonging to this patient/doctor that are NOT in the current list
                     const rawIds = items.map(i => i.id);
                     const currentIds = rawIds.filter(id => typeof id === 'string' && id.length > 0);
-                    
-                    // Log for debugging if needed
-                    if (currentIds.length !== rawIds.length) {
-                        console.warn(`[Supabase Sync] Warning: Filtered out ${rawIds.length - currentIds.length} invalid IDs in ${tableName}`, rawIds);
-                    }
 
                     if (currentIds.length > 0) {
                         const { error: delErr } = await supabase.from(tableName)
@@ -241,8 +235,8 @@ export function usePatientMutations() {
         },
         // Optimistic Updates!!! This completely replaces the local 800ms debounce cache with instant UI reactions.
         onMutate: async (newPatient) => {
-            await queryClient.cancelQueries({ queryKey: ['patients', user?.id] });
-            const previous = queryClient.getQueryData<PatientRecord[]>(['patients', user?.id]);
+            await queryClient.cancelQueries({ queryKey: ['patients', clinicId] });
+            const previous = queryClient.getQueryData<PatientRecord[]>(['patients', clinicId]);
             
             if (previous) {
                 const idx = previous.findIndex(p => p.id === newPatient.id);
@@ -252,46 +246,46 @@ export function usePatientMutations() {
                 } else {
                     next.unshift({ ...newPatient, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
                 }
-                queryClient.setQueryData(['patients', user?.id], next);
+                queryClient.setQueryData(['patients', clinicId], next);
             }
             
             return { previous };
         },
         onError: (err, newPatient, context) => {
             if (context?.previous) {
-                queryClient.setQueryData(['patients', user?.id], context.previous);
+                queryClient.setQueryData(['patients', clinicId], context.previous);
             }
             sileo.error({ title: 'Error al sincronizar datos', description: 'Los cambios fueron revertidos. Verifica tu conexión.' });
         },
         onSettled: () => {
             // Keep it fresh without annoying the user
-            queryClient.invalidateQueries({ queryKey: ['patients', user?.id] });
+            queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
         }
     });
 
     const deleteMutation = useMutation({
         mutationFn: async (patientId: string) => {
-            if (!user?.id) throw new Error('No doctor mapped');
-            const { error: pErr } = await supabase.from('patients').delete().eq('id', patientId).eq('doctor_id', user.id);
+            if (!clinicId) throw new Error('No doctor/clinic mapped');
+            const { error: pErr } = await supabase.from('patients').delete().eq('id', patientId).eq('doctor_id', clinicId);
             if (pErr) throw pErr;
             return patientId;
         },
         onMutate: async (patientId) => {
-            await queryClient.cancelQueries({ queryKey: ['patients', user?.id] });
-            const previous = queryClient.getQueryData<PatientRecord[]>(['patients', user?.id]);
+            await queryClient.cancelQueries({ queryKey: ['patients', clinicId] });
+            const previous = queryClient.getQueryData<PatientRecord[]>(['patients', clinicId]);
             if (previous) {
-                queryClient.setQueryData(['patients', user?.id], previous.filter(p => p.id !== patientId));
+                queryClient.setQueryData(['patients', clinicId], previous.filter(p => p.id !== patientId));
             }
             return { previous };
         },
         onError: (err, _, context) => {
-            if (context?.previous) queryClient.setQueryData(['patients', user?.id], context.previous);
+            if (context?.previous) queryClient.setQueryData(['patients', clinicId], context.previous);
             sileo.error({ title: 'Error', description: 'No se pudo eliminar el paciente.' });
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['patients', user?.id] });
+            queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
             // Deleting a patient deletes their appointments via CASCADE, so invalidate appointments too
-            queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] });
+            queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] });
         }
     });
 

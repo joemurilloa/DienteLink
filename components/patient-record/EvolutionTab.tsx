@@ -93,9 +93,12 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     </div>
                 ))}
                 {patient.evolutionNotes.length === 0 && (
-                    <div className="text-center py-12 text-slate-400">
-                        <ClipboardList size={32} className="mx-auto mb-3 text-slate-200" />
-                        <p className="text-sm font-medium">Aún no hay notas de evolución</p>
+                    <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                            <ClipboardList size={28} className="text-slate-300" />
+                        </div>
+                        <h4 className="text-lg font-bold text-slate-700 mb-1">Sin notas de evolución</h4>
+                        <p className="text-slate-400 text-sm max-w-xs mx-auto">Registra el primer seguimiento clínico de este paciente usando el formulario de arriba.</p>
                     </div>
                 )}
             </div>

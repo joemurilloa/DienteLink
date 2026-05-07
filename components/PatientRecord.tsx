@@ -26,6 +26,7 @@ import Odontogram from './Odontogram';
 import Periodontogram from './Periodontogram';
 import ConsentManager from './ConsentManager';
 import PrescriptionManager from './PrescriptionManager';
+import { useRoleAccess } from './RoleGuard';
 
 // ─── Extracted tab components ───
 import PatientIdTab from './patient-record/PatientIdTab';
@@ -34,13 +35,14 @@ import EvolutionTab from './patient-record/EvolutionTab';
 import HistoryTab from './patient-record/HistoryTab';
 import AppointmentsTab from './patient-record/AppointmentsTab';
 import XraysTab from './patient-record/XraysTab';
+import BudgetTab from './patient-record/BudgetTab';
 
 interface Props {
     patient: PatientRecordType;
     onUpdate: (updatedPatient: PatientRecordType) => void;
 }
 
-type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'consent' | 'prescriptions' | 'citas' | 'history' | 'xrays';
+type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'consent' | 'prescriptions' | 'citas' | 'history' | 'xrays' | 'budget';
 
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
@@ -51,6 +53,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [activeTab, setActiveTab] = useState<TabId>(initialTab);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const { canViewClinical, canViewFinancial } = useRoleAccess();
 
     const [snapshotRefresh, setSnapshotRefresh] = useState(0);
     const handleSnapshotSaved = () => setSnapshotRefresh(n => n + 1);
@@ -72,17 +75,18 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     }, [isFocusMode]);
 
     const tabs = [
-        { id: 'id', label: 'Ficha', icon: User },
-        { id: 'odontogram', label: 'Odontograma', icon: LayoutGrid },
-        { id: 'anamnesis', label: 'Anamnesis', icon: History },
-        { id: 'periodontogram', label: 'Periodonto', icon: BarChart3 },
-        { id: 'notes', label: 'Evolución', icon: ClipboardList },
-        { id: 'consent', label: 'Consentimiento', icon: FileCheck },
-        { id: 'prescriptions', label: 'Recetas', icon: Pill },
-        { id: 'citas', label: 'Agenda', icon: Calendar },
-        { id: 'history', label: 'Historial', icon: Activity },
-        { id: 'xrays', label: 'Imágenes', icon: ImageIcon },
-    ];
+        { id: 'id', label: 'Ficha', icon: User, allowed: true },
+        { id: 'citas', label: 'Agenda', icon: Calendar, allowed: true },
+        { id: 'budget', label: 'Finanzas', icon: DollarSign, allowed: canViewFinancial },
+        { id: 'odontogram', label: 'Odontograma', icon: LayoutGrid, allowed: canViewClinical },
+        { id: 'periodontogram', label: 'Periodonto', icon: BarChart3, allowed: canViewClinical },
+        { id: 'anamnesis', label: 'Anamnesis', icon: History, allowed: canViewClinical },
+        { id: 'notes', label: 'Evolución', icon: ClipboardList, allowed: canViewClinical },
+        { id: 'consent', label: 'Consentimiento', icon: FileCheck, allowed: true },
+        { id: 'prescriptions', label: 'Recetas', icon: Pill, allowed: true },
+        { id: 'history', label: 'Historial', icon: Activity, allowed: canViewClinical },
+        { id: 'xrays', label: 'Imágenes', icon: ImageIcon, allowed: canViewClinical },
+    ].filter(t => t.allowed);
 
     const handleExportPDF = async () => {
         if (isExporting) return;
@@ -149,6 +153,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 return <PrescriptionManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />;
             case 'citas':
                 return <AppointmentsTab patient={patient} />;
+            case 'budget':
+                return <BudgetTab patient={patient} onUpdate={onUpdate} />;
             case 'history':
                 return <HistoryTab patient={patient} onUpdate={onUpdate} />;
             case 'xrays':
@@ -182,27 +188,39 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
             {/* Top Horizontal Tabs */}
             <div className={cn(
-                "w-full overflow-x-auto hide-scrollbar shrink-0 mb-4 transition-all duration-500 z-10",
+                "w-full shrink-0 mb-6 transition-all duration-500 z-10",
                 isFocusMode ? "h-0 opacity-0 pointer-events-none mb-0 overflow-hidden" : "opacity-100"
             )}>
-                <nav className="flex flex-row gap-2 w-max px-1 py-1">
-                    {tabs.map((tab, index) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as TabId)}
-                            className={cn(
-                                "flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all min-w-max animate-in-up duration-200 border",
-                                activeTab === tab.id
-                                    ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/10"
-                                    : "bg-white border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50"
-                            )}
-                            style={{ animationDelay: `${index * 40}ms` }}
-                        >
-                            <tab.icon size={16} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
+                <div className="relative group/tabs">
+                    <div className="flex items-center justify-between mb-3 px-1">
+                        <span className="text-[11px] font-black uppercase tracking-[2px] text-slate-400">Expediente Clínico</span>
+                        <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse delay-75"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse delay-150"></div>
+                        </div>
+                    </div>
+                    <nav className="flex flex-row gap-2 overflow-x-auto pb-4 pt-1 hide-scrollbar -mx-1 px-1">
+                        {tabs.map((tab, index) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as TabId)}
+                                className={cn(
+                                    "flex items-center gap-2.5 px-5 py-3 rounded-2xl text-[13px] font-bold transition-all min-w-max border-2",
+                                    activeTab === tab.id
+                                        ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20 scale-105 z-10"
+                                        : "bg-white border-slate-100 text-slate-500 hover:border-slate-200 hover:text-slate-800 hover:bg-slate-50/50 shadow-sm"
+                                )}
+                                style={{ animationDelay: `${index * 40}ms` }}
+                            >
+                                <tab.icon size={18} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </nav>
+                    {/* Subtle Gradient to indicate scroll */}
+                    <div className="absolute right-0 top-[40px] bottom-4 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none opacity-0 group-hover/tabs:opacity-100 transition-opacity"></div>
+                </div>
             </div>
 
             {/* Main Content */}

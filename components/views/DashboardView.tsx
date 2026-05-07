@@ -12,6 +12,13 @@ import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
 import { cn, formatCurrency, getInitials, getLocalISODate } from '../../lib/utils';
 import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, User, UserPlus } from 'lucide-react';
 import { sileo } from 'sileo';
+import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
+import { generateMonthlyReportPDF } from '../../lib/reportsGenerator';
+import { Download } from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  AreaChart, Area 
+} from 'recharts';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -30,7 +37,12 @@ const Dashboard: React.FC = () => {
   const { data: allPatients = [] } = usePatients();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const navigate = useNavigate();
+
+  // Contextual tips (show once)
+  useWelcomeTip();
+  useDashboardTip();
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
 
@@ -42,8 +54,14 @@ const Dashboard: React.FC = () => {
     const canceledToday = todayApts.filter(a => a.status === 'Eliminada').length;
     const remainingToday = Math.max(0, totalToday - completedToday - canceledToday);
 
-    return { totalToday, completedToday, remainingToday, canceledToday };
-  }, [allAppointments, today]);
+    const totalDebt = allPatients.reduce((totalAcc, p) => {
+        const totalBudget = p.budget?.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
+        const totalPaid = (p.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
+        return totalAcc + Math.max(0, totalBudget - totalPaid);
+    }, 0);
+
+    return { totalToday, completedToday, remainingToday, canceledToday, totalDebt };
+  }, [allAppointments, allPatients, today]);
 
   const { groupedAppointments, isShowingUpcoming } = useMemo(() => {
     const relevant = allAppointments
@@ -132,6 +150,47 @@ const Dashboard: React.FC = () => {
 
   const todayDateStr = new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // ===== Chart Data Calculation =====
+  const chartData = useMemo(() => {
+    // 1. Appointments per day (Last 7 days)
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return getLocalISODate(d);
+    });
+
+    const appointmentsByDay = last7Days.map(date => {
+      const count = allAppointments.filter(a => a.date === date).length;
+      const dayName = new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short' });
+      return { name: dayName, citas: count };
+    });
+
+    // 2. Revenue per month (Last 6 months)
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      return { month: d.getMonth(), year: d.getFullYear() };
+    });
+
+    const revenueByMonth = last6Months.map(({ month, year }) => {
+      const monthLabel = new Date(year, month).toLocaleDateString('es-ES', { month: 'short' });
+      let total = 0;
+      
+      allPatients.forEach(p => {
+        (p.payments || []).forEach(pay => {
+          const payDate = new Date(pay.date + 'T12:00:00');
+          if (payDate.getMonth() === month && payDate.getFullYear() === year) {
+            total += pay.amount;
+          }
+        });
+      });
+
+      return { name: monthLabel, ingresos: total };
+    });
+
+    return { appointmentsByDay, revenueByMonth };
+  }, [allAppointments, allPatients]);
+
   return (
     <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 md:pb-8 page-transition bg-white">
       <div className="max-w-[1200px] mx-auto p-6 lg:p-12 space-y-12">
@@ -148,6 +207,31 @@ const Dashboard: React.FC = () => {
           
           <div className="flex items-center gap-3">
             <button
+              onClick={async () => {
+                if (isGeneratingReport) return;
+                setIsGeneratingReport(true);
+                const now = new Date();
+                try {
+                  await generateMonthlyReportPDF(
+                    now.getMonth(),
+                    now.getFullYear(),
+                    allPatients,
+                    allAppointments,
+                    profile?.clinic_name || '',
+                    doctorName
+                  );
+                } finally {
+                  setIsGeneratingReport(false);
+                }
+              }}
+              disabled={isGeneratingReport}
+              className="hidden sm:flex items-center gap-2 px-4 py-3.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-2xl transition-all font-semibold text-sm shadow-sm disabled:opacity-50"
+              title="Descargar Reporte Mensual"
+            >
+              {isGeneratingReport ? <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent animate-spin rounded-full" /> : <Download size={18} />}
+              <span>{isGeneratingReport ? 'Generando...' : 'Reporte Mensual'}</span>
+            </button>
+            <button
               onClick={() => setIsSearchOpen(true)}
               className="flex items-center gap-3 px-5 py-3.5 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-colors group flex-1 md:flex-none md:w-72"
             >
@@ -158,154 +242,123 @@ const Dashboard: React.FC = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* ===== Left Column (Agenda) ===== */}
-          <div className="lg:col-span-7 xl:col-span-8 animate-in-up stagger-delay-2">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">{isShowingUpcoming ? 'Próximas Citas' : 'Agenda'}</h2>
-              <button
-                onClick={() => navigate('/calendar?new=true')}
-                className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors active:scale-95"
-                title="Nueva Cita"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
+          <div className="lg:col-span-8 animate-in-up stagger-delay-2">
+            <div className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{isShowingUpcoming ? 'Tu Agenda' : 'Agenda'}</h2>
+                <button
+                  onClick={() => navigate('/calendar?new=true')}
+                  className="px-5 py-2.5 rounded-2xl bg-blue-600 text-white flex items-center gap-2 hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 font-bold text-xs"
+                >
+                  <Plus size={16} /> Nueva Cita
+                </button>
+              </div>
 
-            {groupedAppointments.length === 0 ? (
-              <div className="py-16 text-center">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CalendarIcon size={24} className="text-slate-300" />
-                </div>
-                <h3 className="text-lg font-medium text-slate-900 mb-2">Sin citas programadas</h3>
-                <p className="text-slate-500 text-sm max-w-xs mx-auto">No tienes citas próximas en tu agenda. Disfruta tu tiempo libre o registra a un nuevo paciente.</p>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {groupedAppointments.map(group => (
-                  <div key={group.label} className="space-y-3">
-                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 pl-2">{group.label}</h3>
-                    <div className="space-y-3">
-                      {group.items.map(apt => (
-                        <AppointmentCard
-                          key={apt.id}
-                          appointment={apt}
-                          showDate={group.label === 'Sig. Semana' || group.label === 'Más adelante'}
-                          onReminderSent={handleReminderStatusUpdate}
-                          onNavigateToPatient={(a) => {
-                            if (a.patientId) navigate(`/patient/${a.patientId}`);
-                          }}
-                        />
-                      ))}
-                    </div>
+              {groupedAppointments.length === 0 ? (
+                <div className="py-20 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
+                  <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm ring-4 ring-slate-50">
+                    <CalendarIcon size={32} className="text-slate-200" />
                   </div>
-                ))}
-              </div>
-            )}
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">Todo despejado</h3>
+                  <p className="text-slate-400 text-sm max-w-xs mx-auto font-medium">No hay citas programadas. ¡Disfruta tu día!</p>
+                </div>
+              ) : (
+                <div className="space-y-10">
+                  {groupedAppointments.map(group => (
+                    <div key={group.label} className="space-y-4">
+                      <h3 className="text-[11px] font-black uppercase tracking-[2px] text-slate-400 pl-2">{group.label}</h3>
+                      <div className="grid grid-cols-1 gap-4">
+                        {group.items.map(apt => (
+                          <AppointmentCard
+                            key={apt.id}
+                            appointment={apt}
+                            showDate={group.label === 'Sig. Semana' || group.label === 'Más adelante'}
+                            onReminderSent={handleReminderStatusUpdate}
+                            onNavigateToPatient={(a) => {
+                              if (a.patientId) navigate(`/patient/${a.patientId}`);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* ===== Right Column (Metrics & Requests) ===== */}
-          <div className="lg:col-span-5 xl:col-span-4 space-y-10 animate-in-up stagger-delay-3">
+          {/* ===== Right Column (Quick Actions & Requests) ===== */}
+          <div className="lg:col-span-4 space-y-8 animate-in-up stagger-delay-3">
             
-            {/* Quick Actions (Accesos Rápidos) */}
-            <section>
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 pl-1 mb-4">Accesos Rápidos</h2>
-              <div className="grid grid-cols-2 gap-3">
+            {/* Quick Actions */}
+            <div className="bg-slate-50 rounded-[32px] p-8">
+              <h2 className="text-[11px] font-black uppercase tracking-[2px] text-slate-400 mb-6">Accesos Rápidos</h2>
+              <div className="space-y-3">
                 <button
-                  onClick={() => navigate('/patient/new')}
-                  className="flex flex-col gap-3 p-5 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-lg hover:shadow-blue-900/5 transition-all group text-left"
+                  onClick={() => navigate('/patients?new=true')}
+                  className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl hover:shadow-xl hover:shadow-blue-900/5 transition-all group border border-transparent hover:border-blue-100"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <UserPlus size={20} />
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <UserPlus size={24} />
                   </div>
                   <div>
-                    <p className="text-[13px] font-bold text-slate-900 leading-tight">Nuevo Paciente</p>
-                    <p className="text-[10px] text-slate-500 font-medium mt-1">Crear expediente</p>
+                    <p className="text-[15px] font-bold text-slate-900">Nuevo Paciente</p>
+                    <p className="text-xs text-slate-400 font-medium">Crear ficha clínica</p>
                   </div>
                 </button>
 
                 <button
                   onClick={() => navigate('/calendar')}
-                  className="flex flex-col gap-3 p-5 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-900/5 transition-all group text-left"
+                  className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl hover:shadow-xl hover:shadow-indigo-900/5 transition-all group border border-transparent hover:border-indigo-100"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <CalendarIcon size={20} />
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <CalendarIcon size={24} />
                   </div>
                   <div>
-                    <p className="text-[13px] font-bold text-slate-900 leading-tight">Ver Agenda</p>
-                    <p className="text-[10px] text-slate-500 font-medium mt-1">Calendario general</p>
+                    <p className="text-[15px] font-bold text-slate-900">Ver Calendario</p>
+                    <p className="text-xs text-slate-400 font-medium">Agenda completa</p>
                   </div>
                 </button>
               </div>
-            </section>
-
-            {/* Pulso del Día */}
-            <section>
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 pl-1 mb-4">Pulso del Día</h2>
-              <div className="bg-slate-900 rounded-[24px] p-6 sm:p-8 shadow-xl shadow-slate-900/10 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-                
-                <div className="relative z-10 grid grid-cols-3 gap-6 divide-x divide-slate-800">
-                  <div className="text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Total Hoy</p>
-                    <p className="text-4xl font-light tracking-tight">{pulseMetrics.totalToday}</p>
-                  </div>
-                  <div className="text-center pl-6">
-                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">Atendidas</p>
-                    <p className="text-4xl font-light tracking-tight text-emerald-300">{pulseMetrics.completedToday}</p>
-                  </div>
-                  <div className="text-center pl-6">
-                    <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2">En Espera</p>
-                    <p className="text-4xl font-light tracking-tight text-amber-300">{pulseMetrics.remainingToday}</p>
-                  </div>
-                </div>
-              </div>
-            </section>
+            </div>
 
             {/* Pending Requests */}
-            <section>
+            <div className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Solicitudes</h2>
-                  {pendingRequests.length > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">
-                      {pendingRequests.length}
-                    </span>
-                  )}
-                </div>
+                <h2 className="text-[11px] font-black uppercase tracking-[2px] text-slate-400">Solicitudes Web</h2>
                 {pendingRequests.length > 0 && (
-                  <button onClick={() => navigate('/booking/manage')} className="text-sm font-medium text-blue-600 hover:text-blue-700">Gestionar</button>
+                  <span className="px-2.5 py-1 rounded-full bg-blue-600 text-white text-[10px] font-black">
+                    {pendingRequests.length}
+                  </span>
                 )}
               </div>
 
               {pendingRequests.length === 0 ? (
-                <div className="bg-slate-50 rounded-2xl p-6 text-center">
-                  <p className="text-sm font-medium text-slate-500">Todo al día</p>
-                </div>
+                <p className="text-sm font-bold text-slate-300 text-center py-4 italic">Sin solicitudes pendientes</p>
               ) : (
-                <div className="space-y-3">
-                  {pendingRequests.slice(0, 3).map(request => (
+                <div className="space-y-4">
+                  {pendingRequests.slice(0, 2).map(request => (
                     <div 
                       key={request.id} 
                       onClick={() => navigate('/booking/manage')}
-                      className="group flex items-center justify-between p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="group flex items-center justify-between p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{request.patientName}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{request.requestedDate}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{request.patientName}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{request.requestedDate}</p>
                       </div>
-                      <ArrowUpRight size={16} className="text-slate-300 group-hover:text-slate-600 transition-colors" />
+                      <ArrowUpRight size={16} className="text-slate-300 group-hover:text-blue-600 transition-colors flex-shrink-0" />
                     </div>
                   ))}
-                  {pendingRequests.length > 3 && (
-                    <button onClick={() => navigate('/booking/manage')} className="w-full py-3 text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors">
-                      Ver {pendingRequests.length - 3} solicitudes más
-                    </button>
-                  )}
+                  <button onClick={() => navigate('/booking/manage')} className="w-full py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors">
+                    Ver todas las solicitudes
+                  </button>
                 </div>
               )}
-            </section>
+            </div>
 
           </div>
         </div>
