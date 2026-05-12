@@ -21,6 +21,8 @@ const PublicBookingPage = lazy(() => import('./components/PublicBookingPage'));
 const BookingManagementView = lazy(() => import('./components/BookingManagementView'));
 const AuthPage = lazy(() => import('./components/AuthPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
+const BillingView = lazy(() => import('./components/views/BillingView'));
+const PaymentSuccessView = lazy(() => import('./components/views/PaymentSuccessView'));
 
 // Booking Wrapper Components
 const BookingManagementWrapper: React.FC = () => {
@@ -96,6 +98,7 @@ const Layout: React.FC = () => {
     if (location.pathname === '/calendar') return 'calendar';
     if (location.pathname.startsWith('/booking/manage')) return 'solicitudes';
     if (location.pathname === '/settings') return 'settings';
+    if (location.pathname === '/billing' || location.pathname === '/payment-success') return 'billing';
     return 'dashboard';
   };
 
@@ -143,6 +146,8 @@ const Layout: React.FC = () => {
                 <Route path="/calendar" element={<CalendarView />} />
                 <Route path="/booking/manage" element={<BookingManagementWrapper />} />
                 <Route path="/settings" element={<SettingsView />} />
+                <Route path="/billing" element={<BillingView />} />
+                <Route path="/payment-success" element={<PaymentSuccessView />} />
                 <Route path="*" element={<Dashboard />} />
               </Routes>
             </Suspense>

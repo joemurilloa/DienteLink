@@ -43,13 +43,16 @@ export const teamService = {
 
   // Redeems invitation on signup
   redeemInvitation: async (userId: string, email: string) => {
-    // Look for pending invitation
-    const { data: invite } = await supabase
+    // Look for pending invitation — use .limit(1) instead of .single()/.maybeSingle()
+    // to avoid 406 HTTP errors when no rows match
+    const { data: invites } = await supabase
       .from('team_invitations')
       .select('*')
       .eq('email', email.toLowerCase())
       .eq('status', 'pending')
-      .single();
+      .limit(1);
+
+    const invite = invites?.[0];
 
     if (invite) {
       // Update profile with clinic_id and role

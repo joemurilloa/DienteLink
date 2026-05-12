@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn, getInitials } from '../lib/utils';
-import { LayoutDashboard, Users, Calendar as CalendarIcon, Settings, Bell, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar as CalendarIcon, Settings, Bell, Menu, CreditCard } from 'lucide-react';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 
@@ -29,11 +29,12 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   const { canViewFinancial, isAdmin } = useRoleAccess();
 
   const items: { id: string; label: string; icon: React.FC<any>; path: string; badge?: number; allowed: boolean }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/', allowed: canViewFinancial },
-    { id: 'patients', label: 'Pacientes', icon: Users, path: '/patients', allowed: true },
-    { id: 'calendar', label: 'Calendario', icon: CalendarIcon, path: '/calendar', allowed: true },
-    { id: 'solicitudes', label: 'Solicitudes', icon: Bell, path: '/booking/manage', badge: pendingRequestsCount, allowed: true },
-    { id: 'settings', label: 'Ajustes', icon: Settings, path: '/settings', allowed: isAdmin },
+    { id: 'dashboard', label: 'Dashboard',   icon: LayoutDashboard, path: '/',               allowed: canViewFinancial },
+    { id: 'patients',  label: 'Pacientes',   icon: Users,           path: '/patients',        allowed: true },
+    { id: 'calendar',  label: 'Calendario',  icon: CalendarIcon,    path: '/calendar',        allowed: true },
+    { id: 'solicitudes', label: 'Solicitudes', icon: Bell,          path: '/booking/manage', badge: pendingRequestsCount, allowed: true },
+    { id: 'billing',   label: 'Facturación', icon: CreditCard,      path: '/billing',         allowed: isAdmin },
+    { id: 'settings',  label: 'Ajustes',     icon: Settings,        path: '/settings',        allowed: isAdmin },
   ].filter(i => i.allowed);
 
   return (

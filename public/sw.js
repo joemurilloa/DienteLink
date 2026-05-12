@@ -1,5 +1,5 @@
-const CACHE_NAME = 'dientelink-v4';
-const STATIC_CACHE = 'dientelink-static-v4';
+const CACHE_NAME = 'dientelink-v5';
+const STATIC_CACHE = 'dientelink-static-v5';
 
 // Core shell URLs to pre-cache on install
 const PRECACHE_URLS = [
@@ -12,7 +12,20 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(PRECACHE_URLS))
+            .then((cache) => {
+                // Cache each URL individually so one failure doesn't break install
+                return Promise.all(
+                    PRECACHE_URLS.map((url) =>
+                        fetch(url)
+                            .then((response) => {
+                                if (response && response.status === 200) {
+                                    return cache.put(url, response);
+                                }
+                            })
+                            .catch(() => { /* skip failed URLs silently */ })
+                    )
+                );
+            })
             .then(() => self.skipWaiting())
     );
 });
