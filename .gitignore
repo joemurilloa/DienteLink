@@ -17,6 +17,10 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Hardcoded credentials / test scripts with secrets
+test-exec.js
+test-exec*.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

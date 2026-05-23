@@ -43,7 +43,7 @@
 | **Multi-usuario/roles** | ❌ | ✅ | ✅ | ❌ | ❌ |
 | **Facturación formal** | ❌ | ✅ | ❌ | ✅ | ❌ |
 | **Reportes avanzados** | ❌ | ✅ | ✅ | ❌ | ❌ |
-| **Dark mode** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Dark mode** | ❌ Eliminado | ❌ | ❌ | ❌ | ✅ |
 | **Onboarding/Tutorial** | ❌ | ✅ | ✅ | ❌ | ❌ |
 
 ---
@@ -83,7 +83,7 @@
 ### Sprint 4: Experiencia de Usuario (UX Polish) — COMPLETADO ✅
 | # | Feature | Esfuerzo | Impacto |
 |---|---------|----------|---------|
-| 4.1 | **Dark mode toggle** (CSS variables + persistencia) | ✅ | Alto |
+| 4.1 | **Dark mode toggle** (CSS variables + persistencia) | ❌ Eliminado | Alto |
 | 4.2 | **Onboarding wizard** (Tips contextuales) | ✅ | Crítico |
 | 4.3 | **Toast de bienvenida + tips contextuales** | ✅ | Medio |
 | 4.4 | **Empty states mejorados** con CTAs claros | ✅ | Medio |
@@ -150,7 +150,7 @@
 - [x] **Sprint 4: UX Polish** (Completado ✅)
     - Empty states con CTAs.
     - Sistema de tips contextuales.
-    - Modo oscuro integral (CSS Variables).
+    - ~~Modo oscuro integral (CSS Variables).~~ ❌ Eliminado en revisión técnica.
 - [x] **Sprint 5: Imágenes + Reportes** (Completado ✅)
     - Galería de radiografías/fotos (Supabase Storage).
     - Dashboard con gráficos de rendimiento.

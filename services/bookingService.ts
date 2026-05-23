@@ -4,6 +4,9 @@ import { DoctorAvailability, AppointmentRequest, PublicBookingSettings, Appointm
 import { formatAppDate } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
+import { generateAvailableSlots } from './bookingUtils';
+import * as persistence from './bookingPersistence';
+import { createAppointmentRequestsChannel } from './bookingRealtime';
 
 // ==========================================================
 // BookingService — In-Memory Cache + Supabase
@@ -23,45 +26,52 @@ export class BookingService {
   // --- Initialization ---
   async init(userId: string): Promise<void> {
     this.userId = userId;
+    try {
+      const { availabilityRow, settingsRow, requestRows } = await persistence.fetchDoctorInitData(userId);
 
-    const [availRes, settingsRes, reqRes] = await Promise.all([
-      supabase.from('doctor_availability').select('*').eq('doctor_id', userId).maybeSingle(),
-      supabase.from('booking_settings').select('*').eq('doctor_id', userId).maybeSingle(),
-      supabase.from('appointment_requests').select('*').eq('doctor_id', userId).order('created_at', { ascending: false }),
-    ]);
+      this.availability = availabilityRow ? dbToAvailability(availabilityRow) : this.getDefaultAvailability(userId);
+      this.settings = settingsRow ? dbToSettings(settingsRow) : null;
+      this.requests = (requestRows || []).map(dbToRequest);
+      this._ready = true;
 
-    this.availability = availRes.data ? dbToAvailability(availRes.data) : this.getDefaultAvailability(userId);
-    this.settings = settingsRes.data ? dbToSettings(settingsRes.data) : null;
-    this.requests = (reqRes.data || []).map(dbToRequest);
-    this._ready = true;
-
-    // Subscribe to realtime updates for this doctor
-    this.setupRealtime(userId);
+      // Subscribe to realtime updates for this doctor (best-effort)
+      try {
+        this.setupRealtime(userId);
+      } catch (e) {
+        console.error('[BookingService] setupRealtime failed:', e);
+      }
+    } catch (e) {
+      console.error('[BookingService] init failed:', e);
+      this.availability = this.getDefaultAvailability(userId);
+      this.settings = this.getDefaultBookingSettings();
+      this.requests = [];
+      this._ready = true;
+    }
   }
 
   private setupRealtime(userId: string) {
     if (this.realtimeChannel) {
+      try {
         supabase.removeChannel(this.realtimeChannel);
+      } catch (e) {
+        console.warn('[BookingService] failed to remove previous realtime channel:', e);
+      }
     }
 
-    this.realtimeChannel = supabase.channel(`public:appointment_requests:doctor_id=eq.${userId}`)
-        .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'appointment_requests', filter: `doctor_id=eq.${userId}` },
-            (payload) => {
-                const newReq = dbToRequest(payload.new);
-                // Avoid duplicates if we created it locally from the same browser
-                if (!this.requests.find(r => r.id === newReq.id)) {
-                    this.requests.unshift(newReq);
-                    window.dispatchEvent(new CustomEvent('newAppointmentRequest', { detail: newReq }));
-                    sileo.info({
-                        title: '¡Nueva solicitud de cita en línea!',
-                        description: `${newReq.patientName} ha pedido una cita el ${formatAppDate(newReq.requestedDate)} a las ${newReq.requestedTime}.`
-                    });
-                }
-            }
-        )
-        .subscribe();
+    // Use best-effort subscription; failures must not crash the app
+    // Use the encapsulated realtime helper. The helper returns a channel
+    // that can be unsubscribed later.
+    this.realtimeChannel = createAppointmentRequestsChannel(userId, (newRow) => {
+      const newReq = dbToRequest(newRow);
+      if (!this.requests.find(r => r.id === newReq.id)) {
+        this.requests.unshift(newReq);
+        window.dispatchEvent(new CustomEvent('newAppointmentRequest', { detail: newReq }));
+        sileo.info({
+          title: '¡Nueva solicitud de cita en línea!',
+          description: `${newReq.patientName} ha pedido una cita el ${formatAppDate(newReq.requestedDate)} a las ${newReq.requestedTime}.`,
+        });
+      }
+    });
   }
 
   reset() {
@@ -123,17 +133,16 @@ export class BookingService {
     availability.lastUpdated = new Date().toISOString();
     this.availability = availability;
 
-    const { error } = await supabase.from('doctor_availability').upsert({
-      doctor_id: doctorId,
-      weekly_schedule: availability.weeklySchedule,
-      slot_duration: availability.slotDuration,
-      buffer_time: availability.bufferTime,
-      advance_booking_days: availability.advanceBookingDays,
-      updated_at: availability.lastUpdated,
-    }, { onConflict: 'doctor_id' });
-
-    if (error) {
-      console.error('[Supabase] saveDoctorAvailability error:', error);
+    try {
+      await persistence.upsertDoctorAvailability(doctorId, {
+        weekly_schedule: availability.weeklySchedule,
+        slot_duration: availability.slotDuration,
+        buffer_time: availability.bufferTime,
+        advance_booking_days: availability.advanceBookingDays,
+        updated_at: availability.lastUpdated,
+      });
+    } catch (err) {
+      console.error('[BookingService] saveDoctorAvailability error:', err);
       sileo.error({ title: 'Error al guardar disponibilidad', description: 'Los cambios no se pudieron sincronizar.' });
     }
     window.dispatchEvent(new CustomEvent('availabilityUpdated', { detail: availability }));
@@ -162,20 +171,19 @@ export class BookingService {
     const doctorId = this.uid();
     this.settings = settings;
 
-    const { error } = await supabase.from('booking_settings').upsert({
-      doctor_id: doctorId,
-      doctor_name: settings.doctorName,
-      clinic_name: settings.clinicName,
-      description: settings.description,
-      available_types: settings.availableTypes,
-      require_phone: settings.requirePhone,
-      require_message: settings.requireMessage,
-      confirmation_message: settings.confirmationMessage,
-      is_active: settings.isActive,
-    }, { onConflict: 'doctor_id' });
-
-    if (error) {
-      console.error('[Supabase] saveBookingSettings error:', error);
+    try {
+      await persistence.upsertBookingSettings(doctorId, {
+        doctor_name: settings.doctorName,
+        clinic_name: settings.clinicName,
+        description: settings.description,
+        available_types: settings.availableTypes,
+        require_phone: settings.requirePhone,
+        require_message: settings.requireMessage,
+        confirmation_message: settings.confirmationMessage,
+        is_active: settings.isActive,
+      });
+    } catch (err) {
+      console.error('[BookingService] saveBookingSettings error:', err);
       sileo.error({ title: 'Error al guardar configuración', description: 'Verifica tu conexión e intenta de nuevo.' });
     }
   }
@@ -193,17 +201,12 @@ export class BookingService {
   /** Re-fetch requests from Supabase to pick up requests created by the public page */
   async refreshRequests(): Promise<void> {
     const userId = this.uid();
-    const { data, error } = await supabase
-      .from('appointment_requests')
-      .select('*')
-      .eq('doctor_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('[Supabase] refreshRequests error:', error);
-      return;
+    try {
+      const data = await persistence.fetchAppointmentRequests(userId);
+      this.requests = (data || []).map(dbToRequest);
+    } catch (err) {
+      console.error('[BookingService] refreshRequests error:', err);
     }
-    this.requests = (data || []).map(dbToRequest);
   }
 
   async approveRequest(requestId: string): Promise<AppointmentRequest | null> {
@@ -213,10 +216,11 @@ export class BookingService {
     request.status = 'approved';
     request.respondedAt = new Date().toISOString();
 
-    await supabase.from('appointment_requests').update({
-      status: 'approved',
-      responded_at: request.respondedAt,
-    }).eq('id', requestId);
+    try {
+      await persistence.updateAppointmentRequestStatus(requestId, 'approved', request.respondedAt);
+    } catch (err) {
+      console.error('[BookingService] approveRequest error:', err);
+    }
 
     return request;
   }
@@ -228,10 +232,11 @@ export class BookingService {
     request.status = 'rejected';
     request.respondedAt = new Date().toISOString();
 
-    await supabase.from('appointment_requests').update({
-      status: 'rejected',
-      responded_at: request.respondedAt,
-    }).eq('id', requestId);
+    try {
+      await persistence.updateAppointmentRequestStatus(requestId, 'rejected', request.respondedAt);
+    } catch (err) {
+      console.error('[BookingService] rejectRequest error:', err);
+    }
 
     return request;
   }
@@ -244,13 +249,10 @@ export class BookingService {
     request.status = newStatus;
     request.respondedAt = newStatus === 'pending' ? undefined : new Date().toISOString();
 
-    const { error } = await supabase.from('appointment_requests').update({
-      status: newStatus,
-      responded_at: request.respondedAt || null,
-    }).eq('id', requestId);
-
-    if (error) {
-      console.error('[Supabase] updateRequestStatus error:', error);
+    try {
+      await persistence.updateAppointmentRequestStatus(requestId, newStatus, request.respondedAt || null);
+    } catch (err) {
+      console.error('[BookingService] updateRequestStatus error:', err);
       sileo.error({ title: 'Error al actualizar solicitud', description: 'No se pudo cambiar el estado de la solicitud.' });
     }
     return request;
@@ -260,9 +262,10 @@ export class BookingService {
   async deleteRequest(requestId: string): Promise<void> {
     this.requests = this.requests.filter(r => r.id !== requestId);
 
-    const { error } = await supabase.from('appointment_requests').delete().eq('id', requestId);
-    if (error) {
-      console.error('[Supabase] deleteRequest error:', error);
+    try {
+      await persistence.deleteAppointmentRequest(requestId);
+    } catch (err) {
+      console.error('[BookingService] deleteRequest error:', err);
       sileo.error({ title: 'Error al eliminar solicitud', description: 'No se pudo eliminar la solicitud.' });
     }
   }
@@ -271,96 +274,75 @@ export class BookingService {
 
    async getPublicBookingSettings(doctorId: string): Promise<PublicBookingSettings> {
      // Use RPC function (bypasses RLS via SECURITY DEFINER)
-     const { data, error } = await supabase
-       .rpc('get_public_booking_settings', { p_doctor_id: doctorId });
-
-     if (error) {
-       console.error('[Supabase] getPublicBookingSettings RPC error:', error);
-       throw error;
-     }
-
-     if (!data || data.length === 0) {
-       // Return default active settings if no configuration exists
-       return this.getDefaultBookingSettings();
-     }
-
-     return dbToSettings(data[0]);
+    try {
+      const { data, error } = await persistence.rpcGetPublicBookingSettings(doctorId);
+      if (error) {
+        console.error('[BookingService] getPublicBookingSettings RPC error:', error);
+        throw error;
+      }
+      if (!data || data.length === 0) return this.getDefaultBookingSettings();
+      return dbToSettings(data[0]);
+    } catch (err) {
+      console.error('[BookingService] getPublicBookingSettings error:', err);
+      return this.getDefaultBookingSettings();
+    }
    }
 
    async getPublicDoctorAvailability(doctorId: string): Promise<DoctorAvailability> {
      // Use RPC function (bypasses RLS via SECURITY DEFINER)
-     const { data, error } = await supabase
-       .rpc('get_public_doctor_availability', { p_doctor_id: doctorId });
-
-     if (error) {
-       console.error('[Supabase] getPublicDoctorAvailability RPC error:', error);
-       throw error;
-     }
-
-     if (!data || data.length === 0) {
-       // Return default availability if no configuration exists
-       return this.getDefaultAvailability(doctorId);
-     }
-
-     return dbToAvailability(data[0]);
+    try {
+      const { data, error } = await persistence.rpcGetPublicDoctorAvailability(doctorId);
+      if (error) {
+        console.error('[BookingService] getPublicDoctorAvailability RPC error:', error);
+        throw error;
+      }
+      if (!data || data.length === 0) return this.getDefaultAvailability(doctorId);
+      return dbToAvailability(data[0]);
+    } catch (err) {
+      console.error('[BookingService] getPublicDoctorAvailability error:', err);
+      return this.getDefaultAvailability(doctorId);
+    }
    }
 
    async getPublicAppointmentRequests(doctorId: string): Promise<AppointmentRequest[]> {
      // Try RPC function (bypasses RLS)
-     const { data: rpcData, error: rpcError } = await supabase
-       .rpc('get_public_appointment_requests', { p_doctor_id: doctorId });
-
-     let data = rpcData;
-
-     if (rpcError) {
-       console.error('[Supabase] getPublicAppointmentRequests RPC error:', rpcError);
-       // Fallback to direct query
-       const fallback = await supabase
-         .from('appointment_requests')
-         .select('id, requested_date, requested_time, appointment_type, status, doctor_id')
-         .eq('doctor_id', doctorId)
-         .neq('status', 'rejected'); // We only care about pending or approved
-         
-       if (fallback.error) {
-         console.error('[Supabase] getPublicAppointmentRequests direct query failed:', fallback.error);
-         return []; // Return empty so it doesn't crash the page
-       }
-       data = fallback.data;
-     }
-
-     // Map response to AppointmentRequest array
-     return (data || []).map((d: any) => ({
-       id: d.id,
-       patientName: '',
-       patientEmail: '',
-       patientPhone: '',
-       requestedDate: d.requested_date,
-       requestedTime: d.requested_time,
-       appointmentType: d.appointment_type,
-       status: d.status,
-       createdAt: '',
-       doctorId,
-     }));
+      try {
+        const { data, error } = await persistence.rpcGetPublicAppointmentRequests(doctorId);
+        if (error) {
+          console.error('[BookingService] getPublicAppointmentRequests RPC error:', error);
+          return [];
+        }
+        return (data || []).map((d: any) => ({
+          id: d.id,
+          patientName: '',
+          patientEmail: '',
+          patientPhone: '',
+          requestedDate: d.requested_date,
+          requestedTime: d.requested_time,
+          appointmentType: d.appointment_type,
+          status: d.status,
+          createdAt: '',
+          doctorId,
+        }));
+      } catch (err) {
+        console.error('[BookingService] getPublicAppointmentRequests error:', err);
+        return [];
+      }
    }
 
   /** Fetch confirmed appointments from the appointments table (for public slot checking) */
   async getPublicAppointments(doctorId: string): Promise<{ date: string; time: string }[]> {
     // Try RPC function first (bypasses RLS)
-    const { data: rpcData, error: rpcError } = await supabase
-      .rpc('get_public_appointments', { p_doctor_id: doctorId });
-
-    if (!rpcError && rpcData) {
-      return rpcData.map((a: any) => ({ date: a.date, time: a.time }));
+    try {
+      const { data, error } = await persistence.rpcGetPublicAppointments(doctorId);
+      if (!error && data) return data.map((a: any) => ({ date: a.date, time: a.time }));
+      // fallback to fetchConfirmedAppointments
+      const appts = await persistence.fetchConfirmedAppointments(doctorId);
+      return (appts || []).map((a: any) => ({ date: a.date, time: a.time }));
+    } catch (err) {
+      console.error('[BookingService] getPublicAppointments error:', err);
+      return [];
     }
-
-    // Fallback to direct query
-    const { data } = await supabase
-      .from('appointments')
-      .select('date, time')
-      .eq('doctor_id', doctorId)
-      .in('status', ['Programada', 'Completada']);
-
-    return (data || []).map(a => ({ date: a.date, time: a.time }));
   }
 
   async createAppointmentRequest(
@@ -392,22 +374,22 @@ export class BookingService {
     };
 
     // Insert into Supabase
-    const { error: insertError } = await supabase.from('appointment_requests').insert({
-      id,
-      doctor_id: did,
-      patient_name: request.patientName,
-      patient_email: request.patientEmail,
-      patient_phone: request.patientPhone,
-      requested_date: requestedDate,
-      requested_time: requestedTime,
-      appointment_type: appointmentType,
-      message: request.message || null,
-      status: 'pending',
-      created_at: now,
-    });
-
-    if (insertError) {
-      console.error('[Supabase] createAppointmentRequest error:', insertError);
+    try {
+      await persistence.insertAppointmentRequest({
+        id,
+        doctor_id: did,
+        patient_name: request.patientName,
+        patient_email: request.patientEmail,
+        patient_phone: request.patientPhone,
+        requested_date: requestedDate,
+        requested_time: requestedTime,
+        appointment_type: appointmentType,
+        message: request.message || null,
+        status: 'pending',
+        created_at: now,
+      });
+    } catch (err) {
+      console.error('[BookingService] createAppointmentRequest error:', err);
       throw new Error('No se pudo guardar la solicitud de cita');
     }
 
@@ -423,33 +405,12 @@ export class BookingService {
   // ===================== TIME SLOT GENERATION =====================
 
   generateAvailableSlots(date: string, availability: DoctorAvailability): string[] {
-    const targetDate = new Date(date);
-    // Parse targetDate properly from YYYY-MM-DD
-    const [y, m, d] = date.split('-').map(Number);
-    const localTargetDate = new Date(y, m - 1, d);
-    const dayOfWeek = localTargetDate.getDay();
-    const dayConfig = availability.weeklySchedule.find(d => d.dayOfWeek === dayOfWeek);
-    if (!dayConfig || !dayConfig.enabled) return [];
-
-    const slots: string[] = [];
-    
-    // Calculate current time in minutes to filter out past slots if the date is today
-    const nowLocal = new Date();
-    const isToday = nowLocal.getFullYear() === y && nowLocal.getMonth() === m - 1 && nowLocal.getDate() === d;
-    const currentMinutes = nowLocal.getHours() * 60 + nowLocal.getMinutes();
-    // Add a 30-minute buffer so they can't book for "right now"
-    const minimumMinutes = isToday ? currentMinutes + 30 : 0;
-
-    for (const ts of dayConfig.timeSlots) {
-      const start = timeToMinutes(ts.start);
-      const end = timeToMinutes(ts.end);
-      for (let t = start; t < end; t += availability.slotDuration) {
-        if (t >= minimumMinutes) {
-          slots.push(minutesToTime(t));
-        }
-      }
+    try {
+      return generateAvailableSlots(date, availability as any);
+    } catch (e) {
+      console.error('[BookingService] generateAvailableSlots error:', e);
+      return [];
     }
-    return slots;
   }
 
   async getAvailableSlotsForDate(date: string, doctorId?: string): Promise<string[]> {
@@ -573,15 +534,6 @@ function dbToRequest(d: any): AppointmentRequest {
     respondedAt: d.responded_at,
     doctorId: d.doctor_id,
   };
-}
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(m: number): string {
-  return `${Math.floor(m / 60).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`;
 }
 
 export const bookingService = new BookingService();
