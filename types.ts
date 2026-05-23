@@ -1,7 +1,18 @@
 
 import React from 'react';
+import { 
+  ReminderStatus as ReminderStatusType,
+  AppointmentType as AppointmentTypeType,
+  AppointmentStatus as AppointmentStatusType,
+  PaymentMethod as PaymentMethodType,
+  BudgetItemStatus as BudgetItemStatusType,
+  RequestStatus as RequestStatusType,
+  ToothSurface as ToothSurfaceType,
+  ClinicalCondition as ClinicalConditionType,
+  EventType as EventTypeType
+} from './lib/constants';
 
-export type ReminderStatus = 'not_sent' | 'sending' | 'sent' | 'error';
+export type ReminderStatus = ReminderStatusType;
 export type UserRole = 'admin' | 'assistant' | 'receptionist';
 
 export interface TeamInvitation {

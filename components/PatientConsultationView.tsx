@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Clock, AlertTriangle, FileText, CheckCircle, Activity, LayoutGrid, Save, Loader2, Pill, Plus, Trash2, User, Play
 } from 'lucide-react';
-import { usePatients, usePatientMutations } from '../hooks/usePatients';
+import { usePatient, usePatientMutations } from '../hooks/usePatients';
 import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
 import { PatientRecord, EvolutionNote, ClinicalEvent, Prescription } from '../types';
 import { sileo } from 'sileo';
@@ -18,7 +18,7 @@ const PatientConsultationView: React.FC = () => {
   const patientId = searchParams.get('patientId');
   const appointmentId = searchParams.get('appointmentId');
   
-  const { data: allPatients = [] } = usePatients();
+  const { patient: fullPatient, isLoading: isLoadingPatient } = usePatient(patientId || undefined);
   const { data: allAppointments = [] } = useAppointments();
   const { savePatient } = usePatientMutations();
   const { updateAppointment } = useAppointmentMutations();
@@ -43,9 +43,8 @@ const PatientConsultationView: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    if (patientId) {
-      const p = allPatients.find(x => x.id === patientId);
-      if (p) setPatient(p);
+    if (fullPatient) {
+      setPatient(fullPatient);
     }
     if (appointmentId) {
       const a = allAppointments.find(x => x.id === appointmentId);
@@ -56,7 +55,7 @@ const PatientConsultationView: React.FC = () => {
         }
       }
     }
-  }, [patientId, appointmentId, allPatients, allAppointments]);
+  }, [fullPatient, appointmentId, allAppointments]);
 
   // Tecla ESC para navegación fluida
   useEffect(() => {
@@ -168,7 +167,7 @@ const PatientConsultationView: React.FC = () => {
     }
   };
 
-  if (!patientId || allPatients.length === 0) {
+  if (!patientId || isLoadingPatient) {
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-slate-50">
         <Loader2 size={32} className="animate-spin text-blue-600" />

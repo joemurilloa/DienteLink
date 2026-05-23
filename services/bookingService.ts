@@ -269,94 +269,79 @@ export class BookingService {
 
   // ===================== PUBLIC METHODS (no auth required) =====================
 
-  async getPublicBookingSettings(doctorId: string): Promise<PublicBookingSettings> {
-    // Try RPC function first (bypasses RLS via SECURITY DEFINER)
-    const { data: rpcData, error: rpcError } = await supabase
-      .rpc('get_public_booking_settings', { p_doctor_id: doctorId });
+   async getPublicBookingSettings(doctorId: string): Promise<PublicBookingSettings> {
+     // Use RPC function (bypasses RLS via SECURITY DEFINER)
+     const { data, error } = await supabase
+       .rpc('get_public_booking_settings', { p_doctor_id: doctorId });
 
-    if (!rpcError && rpcData && rpcData.length > 0) {
-      return dbToSettings(rpcData[0]);
-    }
+     if (error) {
+       console.error('[Supabase] getPublicBookingSettings RPC error:', error);
+       throw error;
+     }
 
-    // Fallback to direct query (works if RLS policies allow anon access)
-    const { data, error } = await supabase
-      .from('booking_settings')
-      .select('*')
-      .eq('doctor_id', doctorId)
-      .maybeSingle();
+     if (!data || data.length === 0) {
+       // Return default active settings if no configuration exists
+       return this.getDefaultBookingSettings();
+     }
 
-    if (!error && data) {
-      return dbToSettings(data);
-    }
+     return dbToSettings(data[0]);
+   }
 
-    // Ultimate fallback: if row doesn't exist in DB, return default active settings
-    return this.getDefaultBookingSettings();
-  }
+   async getPublicDoctorAvailability(doctorId: string): Promise<DoctorAvailability> {
+     // Use RPC function (bypasses RLS via SECURITY DEFINER)
+     const { data, error } = await supabase
+       .rpc('get_public_doctor_availability', { p_doctor_id: doctorId });
 
-  async getPublicDoctorAvailability(doctorId: string): Promise<DoctorAvailability> {
-    // Try RPC function first (bypasses RLS via SECURITY DEFINER)
-    const { data: rpcData, error: rpcError } = await supabase
-      .rpc('get_public_doctor_availability', { p_doctor_id: doctorId });
+     if (error) {
+       console.error('[Supabase] getPublicDoctorAvailability RPC error:', error);
+       throw error;
+     }
 
-    if (!rpcError && rpcData && rpcData.length > 0) {
-      return dbToAvailability(rpcData[0]);
-    }
+     if (!data || data.length === 0) {
+       // Return default availability if no configuration exists
+       return this.getDefaultAvailability(doctorId);
+     }
 
-    // Fallback to direct query (works if RLS policies allow anon access)
-    const { data, error } = await supabase
-      .from('doctor_availability')
-      .select('*')
-      .eq('doctor_id', doctorId)
-      .maybeSingle();
+     return dbToAvailability(data[0]);
+   }
 
-    if (!error && data) {
-      return dbToAvailability(data);
-    }
+   async getPublicAppointmentRequests(doctorId: string): Promise<AppointmentRequest[]> {
+     // Try RPC function (bypasses RLS)
+     const { data: rpcData, error: rpcError } = await supabase
+       .rpc('get_public_appointment_requests', { p_doctor_id: doctorId });
 
-    // Ultimate fallback: if row doesn't exist in DB, return default mon-fri schedule
-    return this.getDefaultAvailability(doctorId);
-  }
+     let data = rpcData;
 
-  async getPublicAppointmentRequests(doctorId: string): Promise<AppointmentRequest[]> {
-    // Try RPC function first (bypasses RLS)
-    const { data: rpcData, error: rpcError } = await supabase
-      .rpc('get_public_appointment_requests', { p_doctor_id: doctorId });
+     if (rpcError) {
+       console.error('[Supabase] getPublicAppointmentRequests RPC error:', rpcError);
+       // Fallback to direct query
+       const fallback = await supabase
+         .from('appointment_requests')
+         .select('id, requested_date, requested_time, appointment_type, status, doctor_id')
+         .eq('doctor_id', doctorId)
+         .neq('status', 'rejected'); // We only care about pending or approved
+         
+       if (fallback.error) {
+         console.error('[Supabase] getPublicAppointmentRequests direct query failed:', fallback.error);
+         return []; // Return empty so it doesn't crash the page
+       }
+       data = fallback.data;
+     }
 
-    if (!rpcError && rpcData) {
-      return rpcData.map((d: any) => ({
-        id: d.id,
-        patientName: '',
-        patientEmail: '',
-        patientPhone: '',
-        requestedDate: d.requested_date,
-        requestedTime: d.requested_time,
-        appointmentType: d.appointment_type,
-        status: d.status,
-        createdAt: '',
-        doctorId,
-      }));
-    }
-
-    // Fallback to direct query
-    const { data } = await supabase
-      .from('appointment_requests')
-      .select('id, requested_date, requested_time, status, appointment_type')
-      .eq('doctor_id', doctorId)
-      .in('status', ['pending', 'approved']);
-
-    return (data || []).map(d => ({
-      id: d.id,
-      patientName: '',
-      patientEmail: '',
-      patientPhone: '',
-      requestedDate: d.requested_date,
-      requestedTime: d.requested_time,
-      appointmentType: d.appointment_type,
-      status: d.status,
-      createdAt: '',
-      doctorId,
-    }));
-  }
+     // Map response to AppointmentRequest array
+     return (data || []).map((d: any) => ({
+       id: d.id,
+       patientName: '',
+       patientEmail: '',
+       patientPhone: '',
+       requestedDate: d.requested_date,
+       requestedTime: d.requested_time,
+       appointmentType: d.appointment_type,
+       status: d.status,
+       createdAt: '',
+       doctorId,
+     }));
+   }
 
   /** Fetch confirmed appointments from the appointments table (for public slot checking) */
   async getPublicAppointments(doctorId: string): Promise<{ date: string; time: string }[]> {
@@ -435,7 +420,7 @@ export class BookingService {
     return request;
   }
 
-  // ===================== TIME SLOT GENERATION (pure logic, no DB) =====================
+  // ===================== TIME SLOT GENERATION =====================
 
   generateAvailableSlots(date: string, availability: DoctorAvailability): string[] {
     const targetDate = new Date(date);
@@ -467,21 +452,20 @@ export class BookingService {
     return slots;
   }
 
-  async isSlotAvailable(date: string, time: string, doctorId?: string): Promise<boolean> {
+  async getAvailableSlotsForDate(date: string, doctorId?: string): Promise<string[]> {
     const did = doctorId || this.uid();
     const availability = this.availability || await this.getPublicDoctorAvailability(did);
-    if (!availability) return false;
+    if (!availability) return [];
 
-    const availableSlots = this.generateAvailableSlots(date, availability);
-    if (!availableSlots.includes(time)) return false;
+    const allSlots = this.generateAvailableSlots(date, availability);
+    if (allSlots.length === 0) return [];
 
-    // Check conflicts against BOTH appointment_requests AND appointments tables
+    // Query both tables from Supabase ONLY ONCE for the entire day
     let requests: AppointmentRequest[];
     let confirmedAppointments: { date: string; time: string }[] = [];
 
     if (this.userId === did) {
       requests = this.requests;
-      // Query confirmed appointments directly from Supabase (persistenceService was decommissioned)
       const { data: apptData } = await supabase
         .from('appointments')
         .select('date, time')
@@ -489,7 +473,6 @@ export class BookingService {
         .in('status', ['Programada', 'Completada']);
       confirmedAppointments = (apptData || []).map(a => ({ date: a.date, time: a.time }));
     } else {
-      // Public page: query both tables from Supabase
       const [reqs, appts] = await Promise.all([
         this.getPublicAppointmentRequests(did),
         this.getPublicAppointments(did),
@@ -498,21 +481,26 @@ export class BookingService {
       confirmedAppointments = appts;
     }
 
-    // Block if any pending/approved request occupies this slot
-    const requestConflict = requests.some(r =>
-      r.requestedDate === date &&
-      r.requestedTime === time &&
-      r.status !== 'rejected'
-    );
-    if (requestConflict) return false;
+    return allSlots.filter(time => {
+      const requestConflict = requests.some(r =>
+        r.requestedDate === date &&
+        r.requestedTime === time &&
+        r.status !== 'rejected'
+      );
+      if (requestConflict) return false;
 
-    // Block if any confirmed appointment occupies this slot
-    const appointmentConflict = confirmedAppointments.some(a =>
-      a.date === date && a.time === time
-    );
-    if (appointmentConflict) return false;
+      const appointmentConflict = confirmedAppointments.some(a =>
+        a.date === date && a.time === time
+      );
+      if (appointmentConflict) return false;
 
-    return true;
+      return true;
+    });
+  }
+
+  async isSlotAvailable(date: string, time: string, doctorId?: string): Promise<boolean> {
+    const availableSlots = await this.getAvailableSlotsForDate(date, doctorId);
+    return availableSlots.includes(time);
   }
 
   getAvailableDates(daysAhead: number = 30, externalAvailability?: DoctorAvailability): string[] {

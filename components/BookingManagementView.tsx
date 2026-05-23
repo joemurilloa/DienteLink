@@ -467,7 +467,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                <div className="h-px bg-slate-100" />
 
                {/* Sección 3 */}
-               <section pb-12>
+               <section className="pb-12">
                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-6">Portal de Reservas</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-5">

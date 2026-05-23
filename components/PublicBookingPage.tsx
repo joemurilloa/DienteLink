@@ -97,13 +97,7 @@ const PublicBookingPage: React.FC = () => {
       const loadSlots = async (showLoader = true) => {
         if (showLoader) setLoadingSlots(true);
         try {
-          const times = bookingService.generateAvailableSlots(selectedDate, availability);
-          const available: string[] = [];
-          for (const time of times) {
-            if (cancelled) return;
-            const ok = await bookingService.isSlotAvailable(selectedDate, time, doctorId);
-            if (ok) available.push(time);
-          }
+          const available = await bookingService.getAvailableSlotsForDate(selectedDate, doctorId);
           if (!cancelled) setAvailableTimes(available);
         } finally {
           if (!cancelled) setLoadingSlots(false);
@@ -354,7 +348,11 @@ const PublicBookingPage: React.FC = () => {
 
                 {/* Calendar Navigation */}
                 <div className="flex items-center justify-between mb-4">
-                  <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500">
+                  <button 
+                    disabled={calendarMonth.getFullYear() === new Date().getFullYear() && calendarMonth.getMonth() === new Date().getMonth()}
+                    onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} 
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                  >
                     <ArrowLeft size={18} />
                   </button>
                   <span className="text-sm font-bold text-slate-900">{monthNames[calendarDays.month]} {calendarDays.year}</span>
@@ -375,6 +373,7 @@ const PublicBookingPage: React.FC = () => {
                     const isAvailable = availableDateSet.has(dateStr);
                     const isSelected = selectedDate === dateStr;
                     const isToday = getLocalISODate(new Date()) === dateStr;
+                    const isPast = dateStr < getLocalISODate(new Date());
 
                     return (
                       <button
@@ -385,7 +384,7 @@ const PublicBookingPage: React.FC = () => {
                           'aspect-square rounded-xl text-sm font-medium transition-all flex items-center justify-center',
                           isSelected ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                             : isAvailable ? 'hover:bg-blue-50 text-slate-900 hover:text-blue-600 cursor-pointer'
-                            : 'text-slate-200 cursor-not-allowed',
+                            : 'text-slate-400 cursor-not-allowed opacity-40 line-through',
                           isToday && !isSelected && 'ring-2 ring-blue-200'
                         )}
                       >

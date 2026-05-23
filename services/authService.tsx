@@ -28,6 +28,7 @@ export interface DoctorProfile {
   phone: string | null;
   currency: string;
   locale: string;
+  theme_color?: string;
   has_completed_onboarding?: boolean;
 }
 
@@ -58,8 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...data as DoctorProfile,
         currency: data.currency || 'HNL',
         locale: data.locale || 'es-HN',
+        theme_color: data.theme_color || 'blue',
         has_completed_onboarding: data.has_completed_onboarding || false,
       };
+
+      document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
 
       // Auto-redeem invitation if no clinic_id is set
       if (!prof.clinic_id && email) {
@@ -82,21 +86,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session.
+    // IMPORTANT: setLoading(false) is called AFTER fetchProfile resolves so that
+    // clinicId (derived from profile) is fully settled before the app renders.
+    // This prevents team members from briefly seeing their own profile.id as clinicId
+    // while redeemInvitation is still running.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email);
+        fetchProfile(session.user.id, session.user.email).finally(() => {
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes (sign-in / sign-out / token refresh).
+    // On sign-in: fetchProfile resolves clinic_id before components can query data.
+    // On sign-out: clear cache and profile immediately.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        // Re-fetch profile on every auth change (e.g. Google OAuth redirect).
+        // Do NOT block loading state here — initial load already covers this.
         fetchProfile(session.user.id, session.user.email);
       } else {
         queryClient.clear();
@@ -148,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(updated);
     if (updated) {
       setCurrencyConfig(updated.currency, updated.locale);
+      document.documentElement.setAttribute('data-theme', updated.theme_color || 'blue');
     }
   };
 
@@ -176,6 +192,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  // clinicId resolution:
+  // - Team members: profile.clinic_id is set by redeemInvitation before this runs (loading covers it).
+  // - Solo doctors (owners): profile.clinic_id is null, so we use profile.id as the clinic namespace.
+  // - Unauthenticated: profile is null → clinicId is null → queries are disabled via `enabled: !!clinicId`.
   const clinicId = profile?.clinic_id || profile?.id || null;
 
   return (

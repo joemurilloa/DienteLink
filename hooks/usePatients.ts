@@ -97,37 +97,84 @@ export function usePatients() {
         queryFn: async () => {
             if (!clinicId) return [];
 
-            const [patientsRes, notesRes, eventsRes, budgetRes, paymentsRes, consentsRes, prescriptionsRes] = await Promise.all([
-                supabase.from('patients').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
-                supabase.from('evolution_notes').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
-                supabase.from('clinical_events').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
-                supabase.from('budget_items').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
-                supabase.from('payments').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
-                supabase.from('consent_forms').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
-                supabase.from('prescriptions').select('*').eq('doctor_id', clinicId).order('created_at', { ascending: false }),
-            ]);
+            // Lightweight query for the list view (Lazy Loading strategy)
+            // We only fetch basic info + budgets and payments to calculate debt on the dashboard.
+            // Explicitly selecting columns to avoid fetching heavy JSONB fields like odontogram.
+            const { data, error } = await supabase
+                .from('patients')
+                .select(`
+                    id, full_name, birth_date, gender, address, phone, email, occupation, 
+                    allergies, medications, previous_diseases, family_history, motive_of_consult, consent_signed, 
+                    created_at, updated_at,
+                    budget_items (id, unit_cost, quantity, status),
+                    payments (id, amount, method, date)
+                `)
+                .eq('doctor_id', clinicId)
+                .order('created_at', { ascending: false });
 
-            const notesByPatient = groupBy(notesRes.data || [], 'patient_id');
-            const eventsByPatient = groupBy(eventsRes.data || [], 'patient_id');
-            const budgetByPatient = groupBy(budgetRes.data || [], 'patient_id');
-            const paymentsByPatient = groupBy(paymentsRes.data || [], 'patient_id');
-            const consentsByPatient = groupBy(consentsRes.data || [], 'patient_id');
-            const prescriptionsByPatient = groupBy(prescriptionsRes.data || [], 'patient_id');
+            if (error) {
+                console.error("Error fetching patients list:", error);
+                return [];
+            }
 
-            return (patientsRes.data || []).map(p =>
-                dbToPatient(p, notesByPatient[p.id] || [], eventsByPatient[p.id] || [], budgetByPatient[p.id] || [], paymentsByPatient[p.id] || [], consentsByPatient[p.id] || [], prescriptionsByPatient[p.id] || [])
+            return (data || []).map(p => 
+                dbToPatient(
+                    p, 
+                    [], // evolution_notes empty in list view
+                    [], // clinical_events empty in list view
+                    p.budget_items || [], 
+                    p.payments || [], 
+                    [], // consent_forms empty in list view
+                    []  // prescriptions empty in list view
+                )
             );
         },
         enabled: !!clinicId,
     });
 }
 
-// Optional hook to get a single patient from cache (doesn't trigger network request if the list is already loaded)
 export function usePatient(patientId?: string) {
-    const { user } = useAuth();
-    const { data: patients, ...rest } = usePatients();
+    const { clinicId } = useAuth();
+    
+    const { data: patient, ...rest } = useQuery({
+        queryKey: ['patient', patientId, clinicId],
+        queryFn: async () => {
+            if (!patientId || !clinicId) return undefined;
+            
+            // Full details query with PostgREST embeds (Joins)
+            const { data, error } = await supabase
+                .from('patients')
+                .select(`
+                    *,
+                    evolution_notes (*),
+                    clinical_events (*),
+                    budget_items (*),
+                    payments (*),
+                    consent_forms (*),
+                    prescriptions (*)
+                `)
+                .eq('id', patientId)
+                .eq('doctor_id', clinicId)
+                .single();
 
-    const patient = patientId ? patients?.find(p => p.id === patientId) : undefined;
+            if (error) {
+                console.error(`Error fetching full details for patient ${patientId}:`, error);
+                return undefined;
+            }
+
+            // Map the nested data to PatientRecord
+            return dbToPatient(
+                data,
+                data.evolution_notes || [],
+                data.clinical_events || [],
+                data.budget_items || [],
+                data.payments || [],
+                data.consent_forms || [],
+                data.prescriptions || []
+            );
+        },
+        enabled: !!patientId && !!clinicId,
+    });
 
     return { patient, ...rest };
 }
@@ -257,9 +304,10 @@ export function usePatientMutations() {
             }
             sileo.error({ title: 'Error al sincronizar datos', description: 'Los cambios fueron revertidos. Verifica tu conexión.' });
         },
-        onSettled: () => {
+        onSettled: (data, error, variables) => {
             // Keep it fresh without annoying the user
             queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
+            queryClient.invalidateQueries({ queryKey: ['patient', variables.id, clinicId] });
         }
     });
 
@@ -282,8 +330,9 @@ export function usePatientMutations() {
             if (context?.previous) queryClient.setQueryData(['patients', clinicId], context.previous);
             sileo.error({ title: 'Error', description: 'No se pudo eliminar el paciente.' });
         },
-        onSettled: () => {
+        onSettled: (_, __, variables) => {
             queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
+            queryClient.invalidateQueries({ queryKey: ['patient', variables, clinicId] });
             // Deleting a patient deletes their appointments via CASCADE, so invalidate appointments too
             queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] });
         }

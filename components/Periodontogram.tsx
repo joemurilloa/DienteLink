@@ -92,9 +92,12 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
-  const depthPct = Math.min(currentDepth / MAX_MM, 1);
+  const [dragDepth, setDragDepth] = useState<number | null>(null);
+  const activeDepth = dragDepth !== null ? dragDepth : currentDepth;
+
+  const depthPct = Math.min(activeDepth / MAX_MM, 1);
   const probeY = depthPct * PROBE_ZONE_H;
-  const color = getDepthColor(currentDepth);
+  const color = getDepthColor(activeDepth);
   const hasAnyBleeding = [...toothData.buccal, ...toothData.lingual].some(s => s.bleeding);
 
   const handlePointerEvent = useCallback((clientY: number) => {
@@ -104,8 +107,8 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
     const clamped = Math.max(0, Math.min(PROBE_ZONE_H, relY));
     // Calculate mm with 0.5 precision
     const mm = Math.round((clamped / PROBE_ZONE_H) * MAX_MM * 2) / 2;
-    onUpdateDepth(mm);
-  }, [onUpdateDepth]);
+    setDragDepth(mm);
+  }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -124,7 +127,11 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
 
   const handlePointerUp = useCallback(() => {
     isDragging.current = false;
-  }, []);
+    if (dragDepth !== null) {
+      onUpdateDepth(dragDepth);
+      setDragDepth(null);
+    }
+  }, [dragDepth, onUpdateDepth]);
 
   return (
     <div
@@ -143,7 +150,7 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
         <svg viewBox="0 0 100 140" className="w-full h-full drop-shadow-sm">
           <path
             d={outlinePath}
-            fill={currentDepth > 0 ? (currentDepth <= 3 ? '#F0FDF4' : currentDepth <= 5 ? '#FFFBEB' : '#FEF2F2') : 'white'}
+            fill={activeDepth > 0 ? (activeDepth <= 3 ? '#F0FDF4' : activeDepth <= 5 ? '#FFFBEB' : '#FEF2F2') : 'white'}
             stroke={isSelected ? '#3B82F6' : '#E2E8F0'}
             strokeWidth={isSelected ? 4 : 2.5}
             className="transition-all"
@@ -218,13 +225,14 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
         {/* Mm label */}
         <div className="absolute bottom-1.5 left-0 right-0 text-center pointer-events-none">
           <span
-            className="text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-md"
+            className="text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-md transition-all"
             style={{
-              color: currentDepth > 0 ? color : '#94A3B8',
-              backgroundColor: currentDepth > 5 ? '#FEF2F2' : 'transparent',
+              color: activeDepth > 0 ? color : '#94A3B8',
+              backgroundColor: activeDepth > 5 ? '#FEF2F2' : 'transparent',
+              transform: dragDepth !== null ? 'scale(1.1)' : 'scale(1)',
             }}
           >
-            {currentDepth > 0 ? `${currentDepth}mm` : '–'}
+            {activeDepth > 0 ? `${activeDepth}mm` : '–'}
           </span>
         </div>
       </div>

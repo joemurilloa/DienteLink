@@ -7,6 +7,10 @@
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'HNL';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS locale TEXT DEFAULT 'es-HN';
 
+-- Agregar soporte para equipos (Team Invitations)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS clinic_id UUID;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'owner';
+
 -- =============================================================
 -- Enable RLS on all tables
 -- =============================================================
@@ -25,12 +29,16 @@ ALTER TABLE booking_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointment_requests ENABLE ROW LEVEL SECURITY;
 
 -- =============================================================
--- profiles: Users can only read/update their own profile
+-- profiles: Users can read/update their own profile, 
+-- or owners can view profiles of their clinic_id (Team Settings)
 -- =============================================================
 
-CREATE POLICY "Users can view own profile"
+CREATE POLICY "Users can view relevant profiles"
   ON profiles FOR SELECT
-  USING (auth.uid() = id);
+  USING (
+    auth.uid() = id OR 
+    clinic_id = auth.uid() -- Allows owner to see team members
+  );
 
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
@@ -42,238 +50,232 @@ CREATE POLICY "Users can insert own profile"
   WITH CHECK (auth.uid() = id);
 
 -- =============================================================
--- patients: Doctors can only manage their own patients
+-- Funciones Auxiliares para Políticas RLS
+-- =============================================================
+-- Para evitar código duplicado y mejorar la eficiencia, en lugar
+-- de usar auth.uid() = doctor_id, validamos si es el dueño O 
+-- si pertenece al clinic_id del dueño.
+
+-- =============================================================
+-- patients: Clinic staff can manage patients
 -- =============================================================
 
-CREATE POLICY "Doctors can view own patients"
+CREATE POLICY "Clinic staff can view patients"
   ON patients FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own patients"
+CREATE POLICY "Clinic staff can insert patients"
   ON patients FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own patients"
+CREATE POLICY "Clinic staff can update patients"
   ON patients FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own patients"
+CREATE POLICY "Clinic staff can delete patients"
   ON patients FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- appointments
 -- =============================================================
 
-CREATE POLICY "Doctors can view own appointments"
+CREATE POLICY "Clinic staff can view appointments"
   ON appointments FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own appointments"
+CREATE POLICY "Clinic staff can insert appointments"
   ON appointments FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own appointments"
+CREATE POLICY "Clinic staff can update appointments"
   ON appointments FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own appointments"
+CREATE POLICY "Clinic staff can delete appointments"
   ON appointments FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- evolution_notes
 -- =============================================================
 
-CREATE POLICY "Doctors can view own evolution_notes"
+CREATE POLICY "Clinic staff can view evolution_notes"
   ON evolution_notes FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own evolution_notes"
+CREATE POLICY "Clinic staff can insert evolution_notes"
   ON evolution_notes FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own evolution_notes"
+CREATE POLICY "Clinic staff can update evolution_notes"
   ON evolution_notes FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own evolution_notes"
+CREATE POLICY "Clinic staff can delete evolution_notes"
   ON evolution_notes FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- clinical_events
 -- =============================================================
 
-CREATE POLICY "Doctors can view own clinical_events"
+CREATE POLICY "Clinic staff can view clinical_events"
   ON clinical_events FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own clinical_events"
+CREATE POLICY "Clinic staff can insert clinical_events"
   ON clinical_events FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own clinical_events"
+CREATE POLICY "Clinic staff can update clinical_events"
   ON clinical_events FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own clinical_events"
+CREATE POLICY "Clinic staff can delete clinical_events"
   ON clinical_events FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- budget_items
 -- =============================================================
 
-CREATE POLICY "Doctors can view own budget_items"
+CREATE POLICY "Clinic staff can view budget_items"
   ON budget_items FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own budget_items"
+CREATE POLICY "Clinic staff can insert budget_items"
   ON budget_items FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own budget_items"
+CREATE POLICY "Clinic staff can update budget_items"
   ON budget_items FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own budget_items"
+CREATE POLICY "Clinic staff can delete budget_items"
   ON budget_items FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- payments
 -- =============================================================
 
-CREATE POLICY "Doctors can view own payments"
+CREATE POLICY "Clinic staff can view payments"
   ON payments FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own payments"
+CREATE POLICY "Clinic staff can insert payments"
   ON payments FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own payments"
+CREATE POLICY "Clinic staff can update payments"
   ON payments FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own payments"
+CREATE POLICY "Clinic staff can delete payments"
   ON payments FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- consent_forms
 -- =============================================================
 
-CREATE POLICY "Doctors can view own consent_forms"
+CREATE POLICY "Clinic staff can view consent_forms"
   ON consent_forms FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own consent_forms"
+CREATE POLICY "Clinic staff can insert consent_forms"
   ON consent_forms FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own consent_forms"
+CREATE POLICY "Clinic staff can update consent_forms"
   ON consent_forms FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own consent_forms"
+CREATE POLICY "Clinic staff can delete consent_forms"
   ON consent_forms FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- prescriptions
 -- =============================================================
 
-CREATE POLICY "Doctors can view own prescriptions"
+CREATE POLICY "Clinic staff can view prescriptions"
   ON prescriptions FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own prescriptions"
+CREATE POLICY "Clinic staff can insert prescriptions"
   ON prescriptions FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own prescriptions"
+CREATE POLICY "Clinic staff can update prescriptions"
   ON prescriptions FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own prescriptions"
+CREATE POLICY "Clinic staff can delete prescriptions"
   ON prescriptions FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- =============================================================
 -- doctor_availability
 -- =============================================================
 
-CREATE POLICY "Doctors can view own availability"
+CREATE POLICY "Clinic staff can view availability"
   ON doctor_availability FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can insert own availability"
+CREATE POLICY "Clinic staff can insert availability"
   ON doctor_availability FOR INSERT
-  WITH CHECK (auth.uid() = doctor_id);
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own availability"
+CREATE POLICY "Clinic staff can update availability"
   ON doctor_availability FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own availability"
+CREATE POLICY "Clinic staff can delete availability"
   ON doctor_availability FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
--- Public: anyone can read a doctor's availability (for booking page)
--- NOTE: This uses USING(true) which allows any SELECT. This is intentional
--- because the public booking page needs to read availability for any doctor.
--- The data exposed (weekly schedule, slot duration) is not sensitive.
--- For multi-tenant isolation, a Supabase Edge Function with RPC is preferred.
-CREATE POLICY "Public can view doctor availability"
-  ON doctor_availability FOR SELECT
-  USING (true);
-
--- ⚠️ SECURITY NOTE: The above policy means authenticated doctors CAN see
--- other doctors' schedules. If this is undesirable in the future, replace with:
---   CREATE FUNCTION public.get_doctor_availability(p_doctor_id UUID)
---   and restrict the direct SELECT policy to owner-only.
+-- NOTE: Public access to doctor_availability has been removed to prevent data leakage.
+-- Public booking page now uses the get_public_doctor_availability() RPC function.
 
 -- =============================================================
 -- booking_settings
 -- =============================================================
 
-CREATE POLICY "Doctors can manage own booking_settings"
+CREATE POLICY "Clinic staff can manage booking_settings"
   ON booking_settings FOR ALL
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
--- Public: anyone can read booking settings (for public booking page)
-CREATE POLICY "Public can view booking_settings"
-  ON booking_settings FOR SELECT
-  USING (true);
+-- NOTE: Public access to booking_settings has been removed.
+-- Public booking page now uses the get_public_booking_settings() RPC function.
 
 -- =============================================================
 -- appointment_requests
 -- =============================================================
 
-CREATE POLICY "Doctors can view own requests"
+CREATE POLICY "Clinic staff can view requests"
   ON appointment_requests FOR SELECT
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can update own requests"
+CREATE POLICY "Clinic staff can update requests"
   ON appointment_requests FOR UPDATE
-  USING (auth.uid() = doctor_id)
-  WITH CHECK (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
-CREATE POLICY "Doctors can delete own requests"
+CREATE POLICY "Clinic staff can delete requests"
   ON appointment_requests FOR DELETE
-  USING (auth.uid() = doctor_id);
+  USING (doctor_id = auth.uid() OR doctor_id = (SELECT clinic_id FROM profiles WHERE id = auth.uid()));
 
 -- Public: anyone can INSERT a request (public booking page, anon users)
 CREATE POLICY "Public can submit appointment requests"
@@ -281,8 +283,6 @@ CREATE POLICY "Public can submit appointment requests"
   WITH CHECK (true);
 
 -- =============================================================
--- Done! All tables are now protected with RLS.
--- Each doctor can only access their own data.
--- Public booking page can still read availability/settings
--- and submit appointment requests.
+-- Done! All tables are now protected with Multi-Tenant RLS.
+-- Clinic owners and their staff can securely access their data.
 -- =============================================================

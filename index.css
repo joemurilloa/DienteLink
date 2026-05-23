@@ -359,9 +359,35 @@ select:focus-visible {
       background-position: 200% 0;
     }
   }
+
+  /* Override Tailwind's default blue to map to our dynamic theme variables */
+  --color-blue-50: var(--theme-50);
+  --color-blue-100: var(--theme-100);
+  --color-blue-200: var(--theme-200);
+  --color-blue-300: var(--theme-300);
+  --color-blue-400: var(--theme-400);
+  --color-blue-500: var(--theme-500);
+  --color-blue-600: var(--theme-600);
+  --color-blue-700: var(--theme-700);
+  --color-blue-800: var(--theme-800);
+  --color-blue-900: var(--theme-900);
+  --color-blue-950: var(--theme-950);
 }
 
 :root {
+  /* Default Blue Theme */
+  --theme-50: #eff6ff;
+  --theme-100: #dbeafe;
+  --theme-200: #bfdbfe;
+  --theme-300: #93c5fd;
+  --theme-400: #60a5fa;
+  --theme-500: #3b82f6;
+  --theme-600: #2563eb;
+  --theme-700: #1d4ed8;
+  --theme-800: #1e40af;
+  --theme-900: #1e3a8a;
+  --theme-950: #172554;
+  
   --background: #F8FAFC;
   --bg-primary: #F8FAFC;
   --bg-secondary: #f1f5f9;
@@ -386,6 +412,60 @@ select:focus-visible {
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
   --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.06), 0 12px 28px rgba(0, 0, 0, 0.04);
   --depth-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.08);
+}
+
+/* Rose Gold Theme */
+[data-theme="rosegold"] {
+  --theme-50: #fff1f2;
+  --theme-100: #ffe4e6;
+  --theme-200: #fecdd3;
+  --theme-300: #fda4af;
+  --theme-400: #fb7185;
+  --theme-500: #f43f5e;
+  --theme-600: #e11d48;
+  --theme-700: #be123c;
+  --theme-800: #9f1239;
+  --theme-900: #881337;
+  --theme-950: #4c0519;
+  --primary: var(--theme-600);
+  --primary-light: var(--theme-500);
+  --primary-dark: var(--theme-700);
+}
+
+/* Lila Theme */
+[data-theme="lila"] {
+  --theme-50: #faf5ff;
+  --theme-100: #f3e8ff;
+  --theme-200: #e9d5ff;
+  --theme-300: #d8b4fe;
+  --theme-400: #c084fc;
+  --theme-500: #a855f7;
+  --theme-600: #9333ea;
+  --theme-700: #7e22ce;
+  --theme-800: #6b21a8;
+  --theme-900: #581c87;
+  --theme-950: #3b0764;
+  --primary: var(--theme-600);
+  --primary-light: var(--theme-500);
+  --primary-dark: var(--theme-700);
+}
+
+/* Mint Theme */
+[data-theme="mint"] {
+  --theme-50: #ecfdf5;
+  --theme-100: #d1fae5;
+  --theme-200: #a7f3d0;
+  --theme-300: #6ee7b7;
+  --theme-400: #34d399;
+  --theme-500: #10b981;
+  --theme-600: #059669;
+  --theme-700: #047857;
+  --theme-800: #065f46;
+  --theme-900: #064e3b;
+  --theme-950: #022c22;
+  --primary: var(--theme-600);
+  --primary-light: var(--theme-500);
+  --primary-dark: var(--theme-700);
 }
 
 body, input, textarea, button, select {
@@ -426,13 +506,15 @@ body, input, textarea, button, select {
   transform: translate3d(0, -2px, 0);
 }
 
-/* ===== Glass Panel (lighter blur for performance) ===== */
+/* ===== Liquid Glass Panel (iOS 26 / VisionOS style) ===== */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.03);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 8px 32px rgba(31, 38, 135, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 /* ===== Mesh Background ===== */

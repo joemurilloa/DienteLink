@@ -57,11 +57,10 @@ const Layout: React.FC = () => {
     const refresh = () => setPendingCount(bookingService.getPendingRequests().length);
     window.addEventListener('bookingRequestsUpdated', refresh);
     window.addEventListener('newAppointmentRequest', refresh);
-    const interval = setInterval(refresh, 5000);
+    
     return () => {
       window.removeEventListener('bookingRequestsUpdated', refresh);
       window.removeEventListener('newAppointmentRequest', refresh);
-      clearInterval(interval);
     };
   }, [servicesReady]);
 

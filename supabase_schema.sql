@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   phone         TEXT,
   currency      TEXT    NOT NULL DEFAULT 'HNL',
   locale        TEXT    NOT NULL DEFAULT 'es-HN',
+  theme_color   TEXT    NOT NULL DEFAULT 'blue',
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
