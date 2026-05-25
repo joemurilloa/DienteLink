@@ -6,9 +6,9 @@ import { cn } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import {
-  Save, Clock, ChevronDown, ChevronUp,
+  Clock, ChevronDown, ChevronUp,
   AlertTriangle, Zap, Shield, Eye, Crosshair,
-  Circle, Square, Hexagon, Diamond, Star, Target,
+  Square, Hexagon, Diamond, Star, Target,
   X as XIcon, Check, Copy, ArrowLeftRight, Info
 } from 'lucide-react';
 
@@ -169,7 +169,6 @@ interface OdontogramProps {
   teeth: ToothData[];
   onUpdate: (teeth: ToothData[]) => void;
   snapshots?: OdontogramSnapshot[];
-  onSaveSnapshot?: () => void;
 }
 
 /* ================================================================
@@ -375,10 +374,10 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
                 <g key={surface}>
                   <path
                     d={MINI_SURFACE_PATHS[pathKey]}
-                    fill={fill}
-                    stroke={isActive ? fill : '#D1D5DB'}
-                    strokeWidth="0.6"
-                    className={cn("transition-colors duration-150", !readOnly && "cursor-pointer")}
+                    fill={isHovered && !readOnly ? (isActive ? fill : '#BFDBFE') : fill}
+                    stroke={isActive ? fill : (isHovered && !readOnly ? '#93C5FD' : '#D1D5DB')}
+                    strokeWidth={isHovered && !readOnly ? '0.9' : '0.6'}
+                    style={{ cursor: readOnly ? 'default' : 'pointer', transition: 'fill 0.12s ease, stroke 0.12s ease' }}
                     onClick={(e) => { e.stopPropagation(); handleClick(surface); }}
                     onContextMenu={(e) => handleContextMenu(e, surface)}
                     onPointerDown={() => handlePointerDown(surface)}
@@ -387,9 +386,6 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
                     onMouseEnter={() => setHoveredSurface(surface)}
                     onMouseLeave={() => setHoveredSurface(null)}
                   />
-                  {isHovered && (
-                    <path d={MINI_SURFACE_PATHS[pathKey]} fill="#3B82F6" opacity={0.25} style={{ pointerEvents: 'none' }} />
-                  )}
                 </g>
               );
             })}
@@ -784,7 +780,6 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
 interface SnapshotHistoryProps {
   snapshots: OdontogramSnapshot[];
   currentTeeth: ToothData[];
-  onSave: () => void;
   compareMode: boolean;
   onToggleCompare: () => void;
   compareA: string;
@@ -797,7 +792,7 @@ interface SnapshotHistoryProps {
 }
 
 const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
-  snapshots, currentTeeth, onSave,
+  snapshots, currentTeeth,
   compareMode, onToggleCompare, compareA, compareB, onSetCompareA, onSetCompareB, changedTeeth,
   viewingSnapshotId, onViewSnapshot,
 }) => {
@@ -842,13 +837,6 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
               Comparar
             </button>
           )}
-          <button
-            onClick={onSave}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[1px] hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-          >
-            <Save size={12} />
-            Guardar
-          </button>
           {snapshots.length > 0 && (
             <button
               onClick={() => setListExpanded(!listExpanded)}
@@ -1021,7 +1009,7 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
 /* ================================================================
    MAIN ODONTOGRAM COMPONENT
    ================================================================ */
-const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, snapshots = [], onSaveSnapshot }) => {
+const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, snapshots = [] }) => {
   const [selectedCondition, setSelectedCondition] = useState<ClinicalCondition>('caries');
   const [viewingSnapshotId, setViewingSnapshotId] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
@@ -1117,15 +1105,6 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
     onUpdate(updatedTeeth);
   }, [teeth, onUpdate, patientId]);
 
-  /* --- Save snapshot --- */
-  const handleSaveSnapshot = useCallback(async () => {
-    sileo.info({ title: 'Guardando instantánea del odontograma...', description: 'Creando respaldo del estado actual' });
-    
-    onSaveSnapshot?.();
-    
-    sileo.success({ title: '¡Instantánea guardada exitosamente! 📸', description: 'Puedes comparar con versiones anteriores' });
-  }, [onSaveSnapshot]);
-
   const handleToggleCompare = useCallback(() => {
     setCompareMode(prev => {
       if (!prev && snapshots.length > 0) {
@@ -1152,16 +1131,15 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
   return (
     <div className="bg-white p-4 lg:p-6 rounded-2xl select-none border border-slate-200 shadow-sm transition-all duration-500">
       {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-semibold">Módulo Clínico</span>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight leading-tight mb-1">
+            Odontograma
+          </h3>
+          <p className="text-slate-400 text-sm max-w-md leading-relaxed">
+            Registra hallazgos por superficie. Los cambios se guardan automáticamente.
+          </p>
         </div>
-        <h3 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight leading-tight mb-1">
-          Odontograma
-        </h3>
-        <p className="text-slate-400 text-sm max-w-md leading-relaxed">
-          Registre hallazgos clínicos por superficie dental.
-        </p>
       </div>
 
       {/* Read-only banner when viewing snapshot */}
@@ -1282,33 +1260,21 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
           <ClinicalSummaryPanel teeth={displayTeeth} />
 
           {/* Snapshot History */}
-          <SnapshotHistory
-            snapshots={snapshots}
-            currentTeeth={teeth}
-            onSave={handleSaveSnapshot}
-            compareMode={compareMode}
-            onToggleCompare={handleToggleCompare}
-            compareA={compareA}
-            compareB={compareB}
-            onSetCompareA={setCompareA}
-            onSetCompareB={setCompareB}
-            changedTeeth={changedTeeth}
-            viewingSnapshotId={viewingSnapshotId}
-            onViewSnapshot={setViewingSnapshotId}
-          />
-
-          {/* Condition Legend */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Leyenda de Condiciones</p>
-            <div className="flex flex-wrap gap-2">
-              {(Object.entries(conditionThemes) as [ClinicalCondition, ConditionTheme][]).map(([cond, theme]) => (
-                <div key={cond} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded-lg">
-                  <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: theme.color }} />
-                  <span className="text-[9px] font-bold text-slate-500">{theme.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {snapshots.length > 0 && (
+            <SnapshotHistory
+              snapshots={snapshots}
+              currentTeeth={teeth}
+              compareMode={compareMode}
+              onToggleCompare={handleToggleCompare}
+              compareA={compareA}
+              compareB={compareB}
+              onSetCompareA={setCompareA}
+              onSetCompareB={setCompareB}
+              changedTeeth={changedTeeth}
+              viewingSnapshotId={viewingSnapshotId}
+              onViewSnapshot={setViewingSnapshotId}
+            />
+          )}
         </div>
       </div>
     </div>

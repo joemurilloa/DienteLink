@@ -23,7 +23,7 @@ class EmailReminderService {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
+        console.warn('Edge function error (posiblemente no desplegada en Supabase):', error.message || error);
         return { success: false, error: error.message };
       }
 

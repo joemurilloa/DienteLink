@@ -40,7 +40,7 @@ interface Props {
     onUpdate: (updatedPatient: PatientRecordType) => void;
 }
 
-type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'consent' | 'prescriptions' | 'citas' | 'history' | 'budget';
+type TabId = 'id' | 'odontogram' | 'periodontogram' | 'history' | 'documents' | 'citas' | 'budget';
 
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
@@ -52,9 +52,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const { canViewClinical, canViewFinancial } = useRoleAccess();
-
-    const [snapshotRefresh, setSnapshotRefresh] = useState(0);
-    const handleSnapshotSaved = () => setSnapshotRefresh(n => n + 1);
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -73,16 +70,13 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     }, [isFocusMode]);
 
     const tabs = [
-        { id: 'id', label: 'Ficha', icon: User, allowed: true },
-        { id: 'citas', label: 'Agenda', icon: Calendar, allowed: true },
-        { id: 'budget', label: 'Finanzas', icon: DollarSign, allowed: canViewFinancial },
+        { id: 'id', label: 'Ficha y Anamnesis', icon: User, allowed: true },
         { id: 'odontogram', label: 'Odontograma', icon: LayoutGrid, allowed: canViewClinical },
         { id: 'periodontogram', label: 'Periodonto', icon: BarChart3, allowed: canViewClinical },
-        { id: 'anamnesis', label: 'Anamnesis', icon: History, allowed: canViewClinical },
-        { id: 'notes', label: 'Evolución', icon: ClipboardList, allowed: canViewClinical },
-        { id: 'consent', label: 'Consentimiento', icon: FileCheck, allowed: true },
-        { id: 'prescriptions', label: 'Recetas', icon: Pill, allowed: true },
-        { id: 'history', label: 'Historial', icon: Activity, allowed: canViewClinical },
+        { id: 'history', label: 'Historial y Evolución', icon: Activity, allowed: canViewClinical },
+        { id: 'citas', label: 'Agenda', icon: Calendar, allowed: true },
+        { id: 'documents', label: 'Documentos', icon: FileCheck, allowed: true },
+        { id: 'budget', label: 'Finanzas', icon: DollarSign, allowed: canViewFinancial },
     ].filter(t => t.allowed);
 
     const handleExportPDF = async () => {
@@ -109,7 +103,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                     teeth={patient.odontogram || []}
                     onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })}
                     snapshots={patient.odontogramHistory || []}
-                    onSaveSnapshot={handleSnapshotSaved}
                 />
             );
             case 'periodontogram': return (
@@ -125,35 +118,45 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const renderTabContent = () => {
         switch (activeTab) {
             case 'id':
-                return <PatientIdTab patient={patient} onUpdate={onUpdate} onExportPDF={handleExportPDF} isExporting={isExporting} />;
-            case 'anamnesis':
-                return <AnamnesisTab patient={patient} onUpdate={onUpdate} />;
+                return (
+                    <div className="space-y-8">
+                        <PatientIdTab patient={patient} onUpdate={onUpdate} onExportPDF={handleExportPDF} isExporting={isExporting} />
+                        <hr className="border-slate-100" />
+                        <AnamnesisTab patient={patient} onUpdate={onUpdate} />
+                    </div>
+                );
             case 'odontogram':
                 return (
-                    <div className="space-y-6 animate-in-up duration-500 min-h-[600px]">
-
-                        <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} onSaveSnapshot={handleSnapshotSaved} />
+                    <div className="space-y-0 animate-in-up duration-500 min-h-[600px] h-full flex flex-col">
+                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} />
                     </div>
                 );
             case 'periodontogram':
                 return (
-                    <div className="space-y-6 animate-in-up duration-500 min-h-[600px]">
-
+                    <div className="space-y-0 animate-in-up duration-500 min-h-[600px] h-full flex flex-col">
                         <Periodontogram data={ensurePeriodontogramData(patient.periodontogram)} onUpdate={(periodontogram) => onUpdate({ ...patient, periodontogram })} />
                     </div>
                 );
-            case 'notes':
-                return <EvolutionTab patient={patient} onUpdate={onUpdate} />;
-            case 'consent':
-                return <ConsentManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />;
-            case 'prescriptions':
-                return <PrescriptionManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />;
+            case 'history':
+                return (
+                    <div className="space-y-12 animate-in-up duration-500">
+                        <HistoryTab patient={patient} onUpdate={onUpdate} />
+                        <hr className="border-slate-100" />
+                        <EvolutionTab patient={patient} onUpdate={onUpdate} />
+                    </div>
+                );
+            case 'documents':
+                return (
+                    <div className="space-y-12 animate-in-up duration-500">
+                        <ConsentManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />
+                        <hr className="border-slate-100" />
+                        <PrescriptionManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />
+                    </div>
+                );
             case 'citas':
                 return <AppointmentsTab patient={patient} />;
             case 'budget':
                 return <BudgetTab patient={patient} onUpdate={onUpdate} />;
-            case 'history':
-                return <HistoryTab patient={patient} onUpdate={onUpdate} />;
             default:
                 return null;
         }
@@ -219,8 +222,14 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm">
-                <div className="flex-1 overflow-y-auto hide-scrollbar p-5 lg:p-8">
+            <div className={cn(
+                "flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm",
+                isClinicalTab ? "border-transparent shadow-none" : ""
+            )}>
+                <div className={cn(
+                    "flex-1 overflow-y-auto hide-scrollbar transition-all duration-300",
+                    isClinicalTab ? "p-0" : "p-5 lg:p-8"
+                )}>
                     {isClinicalTab && (
                         <button
                             onClick={() => setIsFocusMode(true)}

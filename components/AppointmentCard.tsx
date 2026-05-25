@@ -39,7 +39,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const [isDeleting, setIsDeleting] = useState(false);
   const { profile } = useAuth();
   const { patient } = usePatient(appointment.patientId);
-  const { updateAppointment } = useAppointmentMutations();
+  const { updateAppointment, deleteAppointment } = useAppointmentMutations();
   const navigate = useNavigate();
   
   const isToday = appointment.date === new Date().toISOString().split('T')[0];
@@ -301,7 +301,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                   <>
                     <button
                       onClick={() => { 
-                        updateAppointment.mutate({ ...appointment, status: 'Eliminada' });
+                        deleteAppointment.mutate(appointment.id);
                         setShowDetail(false); 
                       }}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-100"

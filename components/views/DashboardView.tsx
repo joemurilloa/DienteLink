@@ -140,98 +140,59 @@ const Dashboard: React.FC = () => {
   const todayDateStr = new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 md:pb-8 page-transition mesh-bg relative">
-      <div className="max-w-[1400px] mx-auto p-6 lg:p-10 space-y-8">
+    <div className="flex-1 h-full overflow-y-auto md:overflow-hidden hide-scrollbar pb-32 md:pb-6 page-transition mesh-bg relative flex flex-col">
+      <div className="max-w-[1400px] w-full mx-auto p-6 lg:p-8 flex flex-col h-auto md:h-full gap-6 lg:gap-8">
         
         {/* ===== Header ===== */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-in-up stagger-delay-1">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-in-up stagger-delay-1 shrink-0">
           <div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight leading-tight mb-1">
-              {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{doctorName.replace(/^Dr\.?\s*/i, '')}</span>.
+            <p className="text-slate-500 text-[15px] font-medium capitalize mb-2">{todayDateStr}</p>
+            <h1 className="text-[40px] md:text-[48px] font-semibold text-slate-900 tracking-tight leading-none">
+              {getGreeting()}, <br className="hidden md:block" />
+              <span className="text-slate-900">{doctorName.replace(/^Dr\.?\s*/i, '')}</span>.
             </h1>
-            <p className="text-slate-500 font-medium capitalize mt-1">{todayDateStr}</p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full md:w-auto">
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="glass-panel flex items-center gap-3 px-5 py-3.5 hover:bg-white/80 rounded-[20px] transition-all group flex-1 md:flex-none md:w-72 active:scale-95 cursor-text"
+              className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex items-center gap-3 px-6 py-4 rounded-full transition-all duration-300 hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] hover:bg-white flex-1 md:flex-none md:w-80 active:scale-95 cursor-text group"
             >
-              <Search size={18} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
-              <span className="text-sm font-semibold text-slate-400 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
+              <Search size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+              <span className="text-[15px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
             </button>
           </div>
         </header>
 
-        {/* ===== BENTO GRID ===== */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* ===== MAIN CONTENT ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 flex-1 min-h-0">
           
-          {/* Bento Box 1: Citas Hoy */}
-          <div className="glass-panel rounded-[28px] p-6 animate-in-up stagger-delay-2 flex flex-col justify-between">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
-              <CalendarIcon size={24} />
-            </div>
-            <div>
-              <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pacientes Hoy</p>
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-black text-slate-900">{pulseMetrics.totalToday}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bento Box 2: Solicitudes Web */}
-          <div className="glass-panel rounded-[28px] p-6 animate-in-up stagger-delay-2 flex flex-col justify-between cursor-pointer hover:bg-white/80 transition-all active:scale-95" onClick={() => navigate('/booking/manage')}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center">
-                <Clock size={24} />
-              </div>
-              <ArrowUpRight size={20} className="text-slate-300" />
-            </div>
-            <div>
-              <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-1">Buzón Web</p>
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-black text-slate-900">{pendingRequests.length}</span>
-                <span className="text-sm font-bold text-amber-500 mb-1 animate-pulse">Pendientes</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bento Box 3: Ingresos */}
-          <div className="glass-panel rounded-[28px] p-6 animate-in-up stagger-delay-2 flex flex-col justify-between">
-            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
-              <TrendingUp size={24} />
-            </div>
-            <div>
-              <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-1">Por Cobrar</p>
-              <div className="flex items-end gap-3">
-                <span className="text-2xl font-black text-slate-900 truncate">{formatCurrency(pulseMetrics.totalDebt)}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Agenda */}
-          <div className="md:col-span-2 glass-panel rounded-[32px] p-8 animate-in-up stagger-delay-3 flex flex-col h-[560px]">
-            <div className="flex items-center justify-between mb-6 shrink-0">
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Tu Agenda</h2>
-              <button onClick={() => navigate('/calendar')} className="text-[13px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50/80 px-4 py-2 rounded-xl active:scale-95">Ver Todo</button>
+          <div className="lg:col-span-2 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 sm:p-8 lg:p-10 animate-in-up stagger-delay-2 flex flex-col h-[500px] md:h-full transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+            <div className="flex items-center justify-between mb-6 lg:mb-8 shrink-0">
+              <div>
+                <h2 className="text-[24px] lg:text-[28px] font-semibold text-slate-900 tracking-tight leading-tight">Tu Agenda</h2>
+                <p className="text-slate-500 text-[14px] lg:text-[15px] mt-1 font-medium">Próximos pacientes</p>
+              </div>
+              <button onClick={() => navigate('/calendar')} className="text-[13px] lg:text-[14px] font-semibold text-slate-900 bg-slate-100/80 hover:bg-slate-200/80 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full transition-colors active:scale-95">Ver calendario</button>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 lg:pr-3">
               {groupedAppointments.length === 0 ? (
-                 <div className="h-full flex flex-col items-center justify-center">
-                    <div className="w-24 h-24 bg-white/50 backdrop-blur-md rounded-[32px] flex items-center justify-center mb-6 shadow-sm ring-1 ring-white">
-                      <CalendarIcon size={40} className="text-slate-300" />
+                 <div className="h-full flex flex-col items-center justify-center text-center">
+                    <div className="w-20 h-20 lg:w-24 lg:h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 ring-1 ring-slate-100">
+                      <CalendarIcon size={32} className="text-slate-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">Todo despejado</h3>
-                    <p className="text-slate-500 text-sm font-medium">No tienes citas programadas hoy. ¡Disfruta tu día!</p>
+                    <h3 className="text-[20px] lg:text-[22px] font-semibold text-slate-900 mb-2 tracking-tight">Todo despejado</h3>
+                    <p className="text-slate-500 text-[14px] lg:text-[15px] max-w-[250px]">No tienes citas programadas hoy. ¡Disfruta tu día!</p>
                  </div>
               ) : (
-                <div className="space-y-8">
-                  {/* Limit to showing only the first 3 groups to keep Bento clean */}
+                <div className="space-y-8 lg:space-y-10">
+                  {/* Limit to showing only the first 3 groups */}
                   {groupedAppointments.slice(0, 3).map(group => (
-                    <div key={group.label} className="space-y-3">
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 pl-2 sticky top-0 bg-white/60 backdrop-blur-md py-2 z-10 rounded-xl">{group.label}</h3>
-                      <div className="grid grid-cols-1 gap-3">
+                    <div key={group.label} className="space-y-3 lg:space-y-4">
+                      <h3 className="text-[12px] lg:text-[13px] font-semibold uppercase tracking-widest text-slate-400 pl-1 sticky top-0 bg-white/80 backdrop-blur-xl py-2 z-10">{group.label}</h3>
+                      <div className="grid grid-cols-1 gap-3 lg:gap-4">
                         {group.items.map(apt => (
                           <AppointmentCard
                             key={apt.id}
@@ -251,31 +212,31 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="space-y-6 animate-in-up stagger-delay-4 flex flex-col">
+          {/* Quick Actions Stack */}
+          <div className="space-y-4 lg:space-y-6 animate-in-up stagger-delay-3 flex flex-col h-auto md:h-full">
              <button
                 onClick={() => navigate('/patients?new=true')}
-                className="flex-1 glass-panel rounded-[32px] p-8 flex flex-col items-center justify-center gap-4 hover:bg-white/80 transition-all active:scale-95 border border-white/80 group text-center"
+                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px] md:min-h-0"
               >
-                <div className="w-16 h-16 rounded-[24px] bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/20 group-hover:scale-110 transition-transform">
-                  <UserPlus size={32} />
+                <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                  <UserPlus size={28} className="lg:w-8 lg:h-8" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Nuevo Paciente</h3>
-                  <p className="text-[13px] font-medium text-slate-500 mt-1">Crear ficha clínica</p>
+                  <h3 className="text-[18px] lg:text-[20px] font-semibold text-slate-900 tracking-tight">Nuevo Paciente</h3>
+                  <p className="text-[13px] lg:text-[14px] text-slate-500 mt-1">Crear ficha clínica</p>
                 </div>
               </button>
 
               <button
                 onClick={() => navigate('/calendar?new=true')}
-                className="flex-1 glass-panel rounded-[32px] p-8 flex flex-col items-center justify-center gap-4 hover:bg-indigo-50/50 transition-all active:scale-95 border border-white/80 group text-center"
+                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px] md:min-h-0"
               >
-                <div className="w-16 h-16 rounded-[24px] bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform">
-                  <Plus size={32} />
+                <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                  <Plus size={28} className="lg:w-8 lg:h-8" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Agendar Cita</h3>
-                  <p className="text-[13px] font-medium text-slate-500 mt-1">Bloquear horario</p>
+                  <h3 className="text-[18px] lg:text-[20px] font-semibold text-slate-900 tracking-tight">Agendar Cita</h3>
+                  <p className="text-[13px] lg:text-[14px] text-slate-500 mt-1">Bloquear horario</p>
                 </div>
               </button>
           </div>

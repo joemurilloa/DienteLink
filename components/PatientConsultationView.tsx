@@ -97,7 +97,7 @@ const PatientConsultationView: React.FC = () => {
     return `${last.description} (${last.date})`;
   };
 
-  const handleFinish = async () => {
+  const handleFinish = async (isDraft: boolean = false) => {
     if (!patient) return;
     if (!formData.procedimiento.trim() && !formData.notas.trim() && !formData.diagnostico.trim()) {
       sileo.warning({ title: 'Consulta vacía', description: 'Por favor agrega algún procedimiento o nota para guardar la sesión.' });
@@ -153,11 +153,11 @@ const PatientConsultationView: React.FC = () => {
         await savePatient.mutateAsync(newPatient);
       }
 
-      if (appointment) {
+      if (appointment && !isDraft) {
         await updateAppointment.mutateAsync({ ...appointment, status: 'Completada' });
       }
 
-      sileo.success({ title: 'Consulta Finalizada', description: 'El expediente ha sido actualizado automáticamente.' });
+      sileo.success({ title: isDraft ? 'Borrador Guardado' : 'Consulta Finalizada', description: isDraft ? 'Se ha guardado en el expediente para continuar después.' : 'El expediente ha sido actualizado automáticamente.' });
       navigate('/');
     } catch (error) {
       console.error(error);
@@ -197,18 +197,28 @@ const PatientConsultationView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+        <div className="flex items-center gap-3 sm:gap-6">
+          <div className="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
             <Clock size={14} className="text-slate-500" />
             <span className="text-sm font-mono font-bold text-slate-700">{formatTime(timer)}</span>
           </div>
+          
+          <button 
+            onClick={() => handleFinish(true)} 
+            disabled={isSaving}
+            className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl flex items-center gap-2 transition-all active:scale-95"
+          >
+            <Save size={16} />
+            <span className="hidden sm:inline">Guardar Borrador</span>
+          </button>
+
           <button 
             onClick={() => setShowConfirm(true)} 
             disabled={isSaving}
-            className="h-9 px-5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all"
+            className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all active:scale-95"
           >
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-            Finalizar Consulta
+            <span className="hidden sm:inline">Finalizar Consulta</span>
           </button>
         </div>
       </header>
@@ -278,24 +288,24 @@ const PatientConsultationView: React.FC = () => {
             </div>
 
             {/* Quick Nav (Inline toggle) */}
-            <div className="pt-4 space-y-2">
+            <div className="pt-4 space-y-3">
               <button 
                 onClick={() => {
                   setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'odontogram' });
                   setViewMode('expediente');
                 }}
-                className="w-full h-10 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition-colors"
+                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-100 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-blue-200 transition-all active:scale-95 shadow-sm"
               >
-                <LayoutGrid size={14} /> Ver Odontograma
+                <LayoutGrid size={18} className="text-blue-500" /> Ver Odontograma
               </button>
               <button 
                 onClick={() => {
                   setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'id' });
                   setViewMode('expediente');
                 }}
-                className="w-full h-10 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition-colors"
+                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-100 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-indigo-200 transition-all active:scale-95 shadow-sm"
               >
-                <User size={14} /> Expediente Completo
+                <User size={18} className="text-indigo-500" /> Expediente Completo
               </button>
             </div>
 
@@ -310,55 +320,55 @@ const PatientConsultationView: React.FC = () => {
               
               {/* Motivo */}
               <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Motivo de Consulta</label>
+                <label className="text-[13px] font-bold uppercase tracking-widest text-slate-600">Motivo de Consulta</label>
                 <input 
                   type="text"
                   placeholder="Ej. Evaluación de caries, Dolor de muela..."
                   value={formData.motivo}
                   onChange={e => setFormData(p => ({ ...p, motivo: e.target.value }))}
-                  className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
+                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
                 />
               </div>
 
               {/* Diagnóstico */}
               <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Diagnóstico (Opcional)</label>
+                <label className="text-[13px] font-bold uppercase tracking-widest text-slate-600">Diagnóstico (Opcional)</label>
                 <input 
                   type="text"
                   placeholder="Ej. Pulpitis irreversible en pieza 46"
                   value={formData.diagnostico}
                   onChange={e => setFormData(p => ({ ...p, diagnostico: e.target.value }))}
-                  className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
+                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
                 />
               </div>
 
               {/* Procedimiento Realizado */}
               <div className="space-y-3">
-                <label className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-600">
+                <label className="flex items-center justify-between text-[13px] font-bold uppercase tracking-widest text-slate-600">
                   <span>Procedimiento Realizado <span className="text-red-400">*</span></span>
-                  <span className="text-[10px] text-slate-400 capitalize normal-case font-medium">Se añadirá al historial de tratamientos</span>
+                  <span className="text-[11px] text-slate-400 capitalize normal-case font-medium">Se añadirá al historial de tratamientos</span>
                 </label>
                 <input 
                   type="text"
                   placeholder="Ej. Limpieza ultrasónica, Extracción, Resina"
                   value={formData.procedimiento}
                   onChange={e => setFormData(p => ({ ...p, procedimiento: e.target.value }))}
-                  className="w-full px-5 py-4 bg-blue-50/30 rounded-2xl outline-none text-blue-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-blue-100 transition-all placeholder:text-blue-300"
+                  className="w-full px-5 py-5 text-base sm:text-lg bg-blue-50/30 rounded-[20px] outline-none text-blue-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-blue-100 transition-all placeholder:text-blue-300"
                 />
               </div>
 
               {/* Notas de Evolución */}
               <div className="space-y-3">
-                <label className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-600">
+                <label className="flex items-center justify-between text-[13px] font-bold uppercase tracking-widest text-slate-600">
                   <span>Notas de Evolución</span>
-                  <span className="text-[10px] text-slate-400 capitalize normal-case font-medium">Observaciones generales de la atención</span>
+                  <span className="text-[11px] text-slate-400 capitalize normal-case font-medium">Observaciones generales de la atención</span>
                 </label>
                 <textarea 
                   rows={4}
                   placeholder="Describe la evolución, anestesia aplicada, complicaciones o indicaciones..."
                   value={formData.notas}
                   onChange={e => setFormData(p => ({ ...p, notas: e.target.value }))}
-                  className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-medium focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all resize-none"
+                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-medium focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all resize-none"
                 />
               </div>
 
@@ -451,13 +461,13 @@ const PatientConsultationView: React.FC = () => {
             </div>
 
             {/* Bottom Footer Action Area */}
-            <div className="pt-8 pb-12 flex items-center justify-end">
+            <div className="pt-4 pb-12 flex items-center justify-end">
               <button 
                 onClick={() => setShowConfirm(true)} 
                 disabled={isSaving}
-                className="px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white text-base font-bold rounded-2xl shadow-xl shadow-slate-900/20 flex items-center gap-2 transition-all active:scale-95"
+                className="px-8 py-5 bg-slate-900 hover:bg-slate-800 text-white text-lg font-bold rounded-[20px] shadow-xl shadow-slate-900/20 flex items-center gap-3 transition-all active:scale-95"
               >
-                {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
                 {isSaving ? 'Guardando Expediente...' : 'Finalizar y Guardar Consulta'}
               </button>
             </div>

@@ -7,6 +7,7 @@ import {
     Calendar,
     Plus,
     Zap,
+    X,
 } from 'lucide-react';
 import { sileo } from 'sileo';
 
@@ -17,6 +18,7 @@ interface Props {
 
 const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
     const [newEvent, setNewEvent] = useState({ description: '', type: 'treatment' as ClinicalEvent['type'] });
+    const [selectedEvent, setSelectedEvent] = useState<ClinicalEvent | null>(null);
 
     const handleAddEvent = () => {
         if (!newEvent.description.trim()) {
@@ -83,7 +85,12 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     </div>
                 ) : (
                     patient.history.map((event, index) => (
-                        <div key={event.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-100 transition-all group animate-in-up" style={{ animationDelay: `${index * 40}ms` }}>
+                        <div 
+                            key={event.id} 
+                            onClick={() => setSelectedEvent(event)}
+                            className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-200 transition-all group animate-in-up cursor-pointer" 
+                            style={{ animationDelay: `${index * 40}ms` }}
+                        >
                             <div className="flex items-center gap-4">
                                 <div className={cn(
                                     "w-11 h-11 rounded-xl flex items-center justify-center",
@@ -105,6 +112,63 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     ))
                 )}
             </div>
+
+            {/* Event Details Modal */}
+            {selectedEvent && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedEvent(null)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <h3 className="text-lg font-bold text-slate-900">Detalles de la Consulta</h3>
+                            <button onClick={() => setSelectedEvent(null)} className="w-8 h-8 flex items-center justify-center bg-slate-200 rounded-full text-slate-600 hover:bg-slate-300 transition-colors">
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                            <div className="flex items-center gap-4">
+                                <div className={cn(
+                                    "w-12 h-12 rounded-xl flex items-center justify-center",
+                                    selectedEvent.type === 'treatment' ? "bg-blue-50 text-blue-600" :
+                                        selectedEvent.type === 'extraction' ? "bg-red-50 text-red-600" :
+                                            selectedEvent.type === 'cleaning' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                                )}>
+                                    <Activity size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-base font-bold text-slate-900">{selectedEvent.description}</p>
+                                    <p className="text-sm font-medium text-slate-500 mt-0.5">{selectedEvent.date}</p>
+                                </div>
+                            </div>
+                            
+                            {/* Notas de evolución asociadas */}
+                            {(() => {
+                                const notes = patient.evolutionNotes?.filter(n => n.date === selectedEvent.date);
+                                if (notes && notes.length > 0) {
+                                    return (
+                                        <div className="mt-6 pt-6 border-t border-slate-100">
+                                            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                                Notas de Evolución
+                                            </h4>
+                                            <div className="space-y-4">
+                                                {notes.map(n => (
+                                                    <div key={n.id} className="bg-blue-50/30 border border-blue-100 p-4 rounded-2xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed shadow-sm">
+                                                        {n.content}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div className="mt-6 pt-6 border-t border-slate-100">
+                                        <p className="text-sm text-slate-500 italic bg-slate-50 p-4 rounded-xl text-center">No hay notas de evolución detalladas para esta fecha.</p>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

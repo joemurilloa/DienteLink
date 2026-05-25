@@ -54,7 +54,7 @@ export function useAppointmentMutations() {
     mutationFn: async (appointment: Appointment) => {
       if (!clinicId) throw new Error('No doctor/clinic mapped');
       
-      const { data, error } = await supabase.from('appointments').upsert({
+      const { data, error } = await supabase.from('appointments').insert({
         id: appointment.id,
         doctor_id: clinicId,
         patient_id: appointment.patientId || null,
@@ -66,10 +66,10 @@ export function useAppointmentMutations() {
         status: appointment.status,
         reminder_status: appointment.reminderStatus,
         deleted_at: appointment.deletedAt || null,
-      }, { onConflict: 'id' }).select().single();
+      }).select().single();
 
       if (error) {
-        console.error('[Supabase Upsert Error - CREATE]:', error);
+        console.error('[Supabase Error - CREATE]:', error);
         throw error;
       }
 
@@ -164,8 +164,7 @@ export function useAppointmentMutations() {
   const updateMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
       if (!clinicId) throw new Error('No doctor/clinic mapped');
-      const { data, error } = await supabase.from('appointments').upsert({
-        id: appointment.id,
+      const { data, error } = await supabase.from('appointments').update({
         doctor_id: clinicId,
         patient_id: appointment.patientId || null,
         patient_name: appointment.patientName,
@@ -176,9 +175,9 @@ export function useAppointmentMutations() {
         status: appointment.status,
         reminder_status: appointment.reminderStatus,
         deleted_at: appointment.deletedAt || null,
-      }, { onConflict: 'id' }).select().single();
+      }).eq('id', appointment.id).select().single();
       if (error) {
-        console.error('[Supabase Upsert Error - UPDATE]:', error);
+        console.error('[Supabase Error - UPDATE]:', error);
         throw error;
       }
 
