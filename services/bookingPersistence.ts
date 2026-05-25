@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { getCache, setCache } from '../lib/simpleCache';
+import { getCache, setCache, delCache } from '../lib/simpleCache';
 
 // Persistence helpers for BookingService. These wrap Supabase queries / RPCs
 // and centralize error handling for DB access.
@@ -21,11 +21,13 @@ export async function fetchDoctorInitData(doctorId: string) {
 export async function upsertDoctorAvailability(doctorId: string, payload: any) {
   const { error } = await supabase.from('doctor_availability').upsert({ doctor_id: doctorId, ...payload }, { onConflict: 'doctor_id' });
   if (error) throw error;
+  try { delCache(`public_availability:${doctorId}`); } catch (e) {}
 }
 
 export async function upsertBookingSettings(doctorId: string, payload: any) {
   const { error } = await supabase.from('booking_settings').upsert({ doctor_id: doctorId, ...payload }, { onConflict: 'doctor_id' });
   if (error) throw error;
+  try { delCache(`public_booking_settings:${doctorId}`); } catch (e) {}
 }
 
 export async function fetchAppointmentRequests(doctorId: string) {
@@ -39,18 +41,43 @@ export async function fetchAppointmentRequests(doctorId: string) {
 }
 
 export async function updateAppointmentRequestStatus(requestId: string, newStatus: string, respondedAt: string | null) {
-  const { error } = await supabase.from('appointment_requests').update({ status: newStatus, responded_at: respondedAt }).eq('id', requestId);
+  const { error, data } = await supabase.from('appointment_requests').update({ status: newStatus, responded_at: respondedAt }).eq('id', requestId).select('doctor_id');
   if (error) throw error;
+  try {
+    const did = data?.[0]?.doctor_id;
+    if (did) {
+      delCache(`public_requests:${did}`);
+      delCache(`public_appts:${did}`);
+      delCache(`confirmed_appts:${did}`);
+    }
+  } catch (e) {}
 }
 
 export async function deleteAppointmentRequest(requestId: string) {
-  const { error } = await supabase.from('appointment_requests').delete().eq('id', requestId);
+  const { error, data } = await supabase.from('appointment_requests').delete().eq('id', requestId).select('doctor_id');
   if (error) throw error;
+  try {
+    const did = data?.[0]?.doctor_id;
+    if (did) {
+      delCache(`public_requests:${did}`);
+      delCache(`public_appts:${did}`);
+      delCache(`confirmed_appts:${did}`);
+    }
+  } catch (e) {}
 }
 
 export async function insertAppointmentRequest(row: any) {
   const { error } = await supabase.from('appointment_requests').insert(row);
   if (error) throw error;
+  // Invalidate related public caches so public pages pick up the new request quickly
+  try {
+    const did = row?.doctor_id;
+    if (did) {
+      delCache(`public_requests:${did}`);
+      delCache(`public_appts:${did}`);
+      delCache(`confirmed_appts:${did}`);
+    }
+  } catch (e) {}
 }
 
 // RPC wrappers for public pages

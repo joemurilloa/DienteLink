@@ -51,7 +51,8 @@ async function execTransaction(
   token: string,
   amount: number,
   description: string,
-  customParam: string
+  customParam: string,
+  appUrl: string
 ): Promise<string> {
   const params = new URLSearchParams();
   params.append("operation", OP_EXEC);
@@ -61,9 +62,10 @@ async function execTransaction(
   params.append("currency", "USD");
   params.append("format_return", "json");
   params.append("allow_pending_payments", "false");
-  // Enviar explícitamente la URL de retorno hacia la versión en producción,
-  // ya que Pagadito bloquea redirecciones a localhost por seguridad (403 Forbidden).
-  params.append("return_url", "https://dientelink.vercel.app/#/payment-success");
+  // Utilizamos la URL dinámica enviada desde el frontend, o el fallback de producción real
+  // Importante: Conservamos el enrutamiento con hash (#) para React Router
+  const returnUrl = appUrl.endsWith('/') ? `${appUrl}#/payment-success` : `${appUrl}/#/payment-success`;
+  params.append("return_url", returnUrl);
 
   const details = [{
     quantity: 1,
@@ -108,14 +110,16 @@ serve(async (req: Request) => {
       return json({ error: "Pagadito credentials not configured" }, 500);
     }
 
-    const { clinicId, amount = 15.00, description = "Suscripcion mensual DienteLink" } = await req.json();
+    const { clinicId, amount = 15.00, description = "Suscripcion mensual DienteLink", appUrl } = await req.json();
 
     if (!clinicId) {
       return json({ error: "clinicId is required" }, 400);
     }
 
+    const safeAppUrl = appUrl || "https://diente-link.vercel.app";
+
     const token = await connectToPagadito();
-    const paymentUrl = await execTransaction(token, amount, description, clinicId);
+    const paymentUrl = await execTransaction(token, amount, description, clinicId, safeAppUrl);
 
     // Extract the transaction token from the returned URL
     let tokenTrans = token;

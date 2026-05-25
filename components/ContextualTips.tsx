@@ -51,23 +51,23 @@ export function useContextualTip(
 export function useDashboardTip() {
   useContextualTip(
     'tip_dashboard',
-    '💡 Atajo rápido',
-    'Presiona Ctrl+K para buscar pacientes desde cualquier pantalla.'
+    'Panel del día',
+    'Revisa tus citas, solicitudes web y saldos pendientes desde el inicio.'
   );
 }
 
 export function usePatientsTip() {
   useContextualTip(
     'tip_patients',
-    '💡 Nuevo paciente',
-    'Presiona Ctrl+N para crear un expediente rápidamente.'
+    'Nuevo paciente',
+    'Crea una ficha clínica completa desde el botón de nuevo expediente.'
   );
 }
 
 export function useCalendarTip() {
   useContextualTip(
     'tip_calendar',
-    '💡 Agenda rápida',
+    'Agenda rápida',
     'Haz clic en cualquier bloque horario para agendar una cita al instante.'
   );
 }
@@ -75,7 +75,7 @@ export function useCalendarTip() {
 export function useSettingsTip() {
   useContextualTip(
     'tip_settings',
-    '💡 Moneda personalizada',
+    'Moneda personalizada',
     'Configura tu moneda local para que presupuestos y pagos se muestren correctamente.'
   );
 }

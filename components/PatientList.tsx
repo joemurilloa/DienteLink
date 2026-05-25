@@ -95,7 +95,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                     <button
                         onClick={onAdd}
                         data-new-patient
-                        title="Nuevo Paciente (Ctrl+N)"
+                        title="Nuevo Paciente"
                         className="bg-blue-600 text-white h-12 px-5 rounded-[14px] flex items-center justify-center gap-2 font-bold text-[15px] shadow-[0_4px_12px_rgba(37,99,235,0.2)] hover:bg-blue-700 transition-all active:scale-95 flex-shrink-0"
                     >
                         <Plus size={18} />

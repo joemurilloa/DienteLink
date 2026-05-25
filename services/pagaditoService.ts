@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 
 // ---------- Types ----------
 
@@ -24,6 +24,7 @@ export interface CheckoutResult {
 // ---------- Helpers ----------
 
 function edgeFunctionUrl(name: string): string {
+  if (!SUPABASE_URL) throw new Error('Missing SUPABASE_URL env for Pagadito edge functions');
   return `${SUPABASE_URL}/functions/v1/${name}`;
 }
 
@@ -31,13 +32,15 @@ async function callEdgeFunction<T>(name: string, body: object): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (SUPABASE_ANON_KEY) headers['apikey'] = SUPABASE_ANON_KEY;
+
   const res = await fetch(edgeFunctionUrl(name), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token ?? SUPABASE_ANON_KEY}`,
-      'apikey': SUPABASE_ANON_KEY,
-    },
+    headers,
     body: JSON.stringify(body),
   });
 

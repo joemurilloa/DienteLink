@@ -12,7 +12,6 @@ Sistema completo de gestión para clínicas dentales con odontograma clínico, r
 - **Gestión de Pacientes**: Expedientes completos con historial clínico
 - **Agenda de Citas**: Programación y seguimiento de citas
 - **Periodontograma**: Registro de profundidades de sondaje
-- **Radiografías**: Visualizador de imágenes radiográficas
 
 ## Ejecutar Localmente
 
@@ -29,12 +28,3 @@ Sistema completo de gestión para clínicas dentales con odontograma clínico, r
 npm run build
 ```
 
-## Desarrollo Mobile
-
-Para compilar la aplicación móvil con Capacitor:
-
-```bash
-npm run build
-npx cap sync
-npx cap open android
-```

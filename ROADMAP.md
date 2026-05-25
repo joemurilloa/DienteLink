@@ -25,7 +25,6 @@
 | **Performance** | Debounce, virtualización, lazy loading | ✅ Completo |
 | **Tests** | 33 tests Vitest (utils + types) | ✅ Completo |
 | **SQL Docs** | Schema 12 tablas + RLS policies | ✅ Completo |
-| **Android** | Capacitor configurado (shell) | ⚠️ No compilado |
 
 ---
 
@@ -39,11 +38,9 @@
 | Dashboard métricas | ✅ Básico | ✅ Full | ✅ Full | ✅ Básico | ❌ |
 | Firma digital | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Recordatorios auto | ⚠️ Manual | ✅ Auto | ✅ Auto | ❌ | ❌ |
-| **Radiografías/imágenes** | ❌ | ✅ | ❌ | ✅ | ✅ AI |
-| **Multi-usuario/roles** | ❌ | ✅ | ✅ | ❌ | ❌ |
+| **Multi-usuario/roles** | Futuro | ✅ | ✅ | ❌ | ❌ |
 | **Facturación formal** | ❌ | ✅ | ❌ | ✅ | ❌ |
 | **Reportes avanzados** | ❌ | ✅ | ✅ | ❌ | ❌ |
-| **Dark mode** | ❌ Eliminado | ❌ | ❌ | ❌ | ✅ |
 | **Onboarding/Tutorial** | ❌ | ✅ | ✅ | ❌ | ❌ |
 
 ---
@@ -53,12 +50,9 @@
 ### 🔴 BLOQUEANTES (sin esto no se puede cobrar $15)
 
 1. **Sin onboarding / tutorial interactivo** — Los usuarios abandonan si no entienden el producto en <2 min
-2. **Sin dark mode** — Diferenciador visual que todo SaaS moderno tiene
-3. **Sin radiografías/imágenes clínicas** — Los dentistas NECESITAN adjuntar fotos/X-rays
-4. **Sin reportes gráficos** — Solo métricas numéricas, no hay charts de tendencia
-5. **Sin facturación/recibos formales** — El PDF actual es una ficha clínica, no una factura
-6. **Sin recordatorios automáticos** — Actualmente es manual (botón por botón)
-7. **Sin landing page / pricing page** — No hay forma de vender el producto
+2. **Sin facturación/recibos formales** — El PDF actual es una ficha clínica, no una factura
+3. **Sin recordatorios automáticos** — Actualmente es manual (botón por botón)
+4. **Sin landing page / pricing page** — No hay forma de vender el producto
 
 ### 🟡 IMPORTANTES (diferenciadores para justificar $15)
 
@@ -83,7 +77,6 @@
 ### Sprint 4: Experiencia de Usuario (UX Polish) — COMPLETADO ✅
 | # | Feature | Esfuerzo | Impacto |
 |---|---------|----------|---------|
-| 4.1 | **Dark mode toggle** (CSS variables + persistencia) | ❌ Eliminado | Alto |
 | 4.2 | **Onboarding wizard** (Tips contextuales) | ✅ | Crítico |
 | 4.3 | **Toast de bienvenida + tips contextuales** | ✅ | Medio |
 | 4.4 | **Empty states mejorados** con CTAs claros | ✅ | Medio |
@@ -92,9 +85,7 @@
 | # | Feature | Esfuerzo | Impacto |
 |---|---------|----------|---------|
 | 5.1 | **Subida de radiografías/fotos** (Supabase Storage) | ✅ | Crítico |
-| 5.2 | **Galería de imágenes** por paciente con visor lightbox | ✅ | Alto |
-| 5.3 | **Dashboard con gráficos** (recharts: ingresos, citas) | ✅ | Alto |
-| 5.4 | **Reporte PDF mensual** (resumen financiero + actividad) | ✅ | Alto |
+| 5.2 | **Resumen de actividad** (citas, saldos y solicitudes) | ✅ | Alto |
 
 ### Sprint 6: Automatización + Facturación — COMPLETADO ✅
 | # | Feature | Esfuerzo | Impacto |
@@ -122,7 +113,6 @@
 ### Sprint 9: Mobile + Avanzado
 | # | Feature | Esfuerzo | Impacto |
 |---|---------|----------|---------|
-| 9.1 | **Build Android APK** (Capacitor ya configurado) | Medio | Alto |
 | 9.2 | **Push notifications** (Firebase Cloud Messaging) | Alto | Medio |
 | 9.3 | **Custom branding** (logo en PDFs y booking page) | Bajo | Medio |
 | 9.4 | **Google Calendar sync** (OAuth + API) | Alto | Medio |
@@ -134,13 +124,13 @@
 | Plan | Precio | Límites | Features |
 |------|--------|---------|----------|
 | **Gratis** | $0 | 10 pacientes, 1 usuario | Core: odontograma, citas, notas |
-| **Pro** | $15/mes | Ilimitado, 1 usuario | + Reservas públicas, reportes, recibos, imágenes, recordatorios auto |
+| **Pro** | $15/mes | Ilimitado, 1 usuario | + Reservas públicas, resumen de actividad, recibos, recordatorios auto |
 | **Clínica** | $39/mes | Ilimitado, 5 usuarios | + Multi-usuario, roles, branding, soporte prioritario |
 
 **Justificación $15/mes:**
 - Doctocol (competidor directo LATAM) cobra $15 con MENOS features
 - DienteLink tiene periodontograma + reservas públicas + firma digital que Doctocol no tiene
-- Con los Sprints 4-6 completados (dark mode, imágenes, reportes, facturas, recordatorios auto), el producto vale fácilmente $15-25/mes
+- Con facturación, reservas públicas y recordatorios bien cerrados, el producto puede sostener $15-25/mes
 
 ---
 
@@ -152,9 +142,7 @@
     - Sistema de tips contextuales.
     - ~~Modo oscuro integral (CSS Variables).~~ ❌ Eliminado en revisión técnica.
 - [x] **Sprint 5: Imágenes + Reportes** (Completado ✅)
-    - Galería de radiografías/fotos (Supabase Storage).
-    - Dashboard con gráficos de rendimiento.
-    - Reporte PDF mensual de desempeño.
+    - Resumen simple de actividad.
 
 SEMANA 5-6: Sprint 6 (Automatización + Facturación)
            → Justifica el cobro mensual

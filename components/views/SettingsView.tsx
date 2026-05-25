@@ -6,21 +6,12 @@ import { useAppointments } from '../../hooks/useAppointments';
 import { usePatients } from '../../hooks/usePatients';
 import { bookingService } from '../../services/bookingService';
 import ConfirmModal from '../ConfirmModal';
-import { formatCurrency, exportPatientsCSV, exportAppointmentsCSV } from '../../lib/utils';
-import { Download, Calendar as CalendarIcon, Users, Trash2, RotateCcw, Archive } from 'lucide-react';
+import { exportPatientsCSV, exportAppointmentsCSV } from '../../lib/utils';
+import { Download, Calendar as CalendarIcon, Users, Trash2 } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useSettingsTip } from '../ContextualTips';
 import { generateMonthlyReportPDF } from '../../lib/reportsGenerator';
-import { FileText, Palette, Check } from 'lucide-react';
-
-import TeamSettings from './Settings/TeamSettings';
-
-const THEMES = [
-  { id: 'blue', label: 'Azul Clásico', bg: 'bg-blue-600', ring: 'ring-blue-500' },
-  { id: 'rosegold', label: 'Rose Gold', bg: 'bg-rose-500', ring: 'ring-rose-400' },
-  { id: 'lila', label: 'Lila', bg: 'bg-purple-500', ring: 'ring-purple-400' },
-  { id: 'mint', label: 'Mint', bg: 'bg-emerald-500', ring: 'ring-emerald-400' }
-];
+import { FileText } from 'lucide-react';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -65,12 +56,11 @@ const SettingsView: React.FC = () => {
     phone: profile?.phone || '',
     currency: profile?.currency || 'HNL',
     locale: profile?.locale || 'es-HN',
-    theme_color: profile?.theme_color || 'blue',
   });
 
   // Sync form when profile loads
   React.useEffect(() => {
-    if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN', theme_color: profile.theme_color || 'blue' });
+    if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' });
   }, [profile]);
 
   const doctorName = profile?.full_name || 'Doctor';
@@ -142,7 +132,7 @@ const SettingsView: React.FC = () => {
               <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-blue-100 transition-all border border-blue-100">Editar</button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN', theme_color: profile.theme_color || 'blue' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
+                <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
                 <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center gap-1.5">
                   {saving && <span className="animate-spin">⏳</span>}
                   Guardar
@@ -212,47 +202,6 @@ const SettingsView: React.FC = () => {
               </button>
             </div>
           )}
-        </div>
-
-        {/* Appearance Settings */}
-        <div className="card-premium p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Palette size={18} className="text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Apariencia y Tema</h3>
-              <p className="text-xs text-slate-400">Personaliza el color principal de tu clínica en DienteLink.</p>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-4 mt-6">
-            {THEMES.map(theme => (
-              <button
-                key={theme.id}
-                onClick={async () => {
-                  setForm(f => ({ ...f, theme_color: theme.id }));
-                  setSaving(true);
-                  try {
-                    await updateProfile({ theme_color: theme.id });
-                    sileo.success({ title: 'Tema actualizado' });
-                  } catch {
-                    sileo.error({ title: 'Error al cambiar el tema' });
-                  }
-                  setSaving(false);
-                }}
-                disabled={saving}
-                className={cn(
-                  "relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 shadow-sm",
-                  theme.bg,
-                  form.theme_color === theme.id ? `ring-4 ring-offset-2 ${theme.ring} scale-110 shadow-lg` : "ring-1 ring-black/5 opacity-80 hover:opacity-100"
-                )}
-                title={theme.label}
-              >
-                {form.theme_color === theme.id && <Check size={24} className="text-white animate-in-up" strokeWidth={3} />}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="card-premium p-6">
@@ -348,9 +297,6 @@ const SettingsView: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {/* Team Settings */}
-        <TeamSettings />
 
         <div className="card-premium p-6 border-red-100">
           <h3 className="text-base font-bold text-red-600 mb-3">Zona de Peligro</h3>

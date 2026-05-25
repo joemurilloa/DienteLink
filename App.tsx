@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { bookingService } from './services/bookingService';
 import { AuthProvider, useAuth } from './services/authService';
-import { useKeyboardShortcuts, useFocusManagement } from './lib/KeyboardShortcuts';
+import { useFocusManagement } from './lib/KeyboardShortcuts';
 import GlobalSearch from './components/GlobalSearch';
 import OnboardingWizard from './components/OnboardingWizard';
 import { sileo, Toaster } from 'sileo';
@@ -64,8 +64,6 @@ const Layout: React.FC = () => {
     };
   }, [servicesReady]);
 
-  // Enhanced keyboard shortcuts
-  useKeyboardShortcuts();
   useFocusManagement();
 
   // Ensure app always starts on dashboard for first load
@@ -77,18 +75,6 @@ const Layout: React.FC = () => {
         }
       }, 100);
     }
-  }, []);
-
-  // Ctrl+K keyboard shortcut for global search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const getActivePath = () => {

@@ -9,7 +9,7 @@ import { usePatients } from '../../hooks/usePatients';
 import { useAuth } from '../../services/authService';
 import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
 import { cn, formatCurrency, getInitials, getLocalISODate } from '../../lib/utils';
-import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, User, UserPlus, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, UserPlus, TrendingUp, Clock } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
 
@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
   const doctorName = profile?.full_name || 'Doctor';
   const doctorInitials = getInitials(doctorName, 'DR');
 
-  const { data: allAppointments = [], isLoading: isLoadingAppointments } = useAppointments();
+  const { data: allAppointments = [] } = useAppointments();
   const { updateAppointment } = useAppointmentMutations();
   const { data: allPatients = [] } = usePatients();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -42,17 +42,13 @@ const Dashboard: React.FC = () => {
   const pulseMetrics = useMemo(() => {
     const todayApts = allAppointments.filter(a => a.date === today);
     const totalToday = todayApts.length;
-    const completedToday = todayApts.filter(a => a.status === 'Completada').length;
-    const canceledToday = todayApts.filter(a => a.status === 'Eliminada').length;
-    const remainingToday = Math.max(0, totalToday - completedToday - canceledToday);
-
     const totalDebt = allPatients.reduce((totalAcc, p) => {
         const totalBudget = p.budget?.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
         const totalPaid = (p.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
         return totalAcc + Math.max(0, totalBudget - totalPaid);
     }, 0);
 
-    return { totalToday, completedToday, remainingToday, canceledToday, totalDebt };
+    return { totalToday, totalDebt };
   }, [allAppointments, allPatients, today]);
 
   const { groupedAppointments, isShowingUpcoming } = useMemo(() => {
@@ -163,13 +159,12 @@ const Dashboard: React.FC = () => {
             >
               <Search size={18} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
               <span className="text-sm font-semibold text-slate-400 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
-              <kbd className="hidden lg:flex items-center gap-1 px-2 py-1 bg-slate-100 rounded text-[10px] font-bold text-slate-400 ml-auto">⌘K</kbd>
             </button>
           </div>
         </header>
 
         {/* ===== BENTO GRID ===== */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Bento Box 1: Citas Hoy */}
           <div className="glass-panel rounded-[28px] p-6 animate-in-up stagger-delay-2 flex flex-col justify-between">
@@ -184,21 +179,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Bento Box 2: Completadas */}
-          <div className="glass-panel rounded-[28px] p-6 animate-in-up stagger-delay-2 flex flex-col justify-between">
-            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mb-4">
-              <CheckCircle size={24} />
-            </div>
-            <div>
-              <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-1">Completadas</p>
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-black text-slate-900">{pulseMetrics.completedToday}</span>
-                <span className="text-sm font-bold text-slate-400 mb-1">/ {pulseMetrics.totalToday}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bento Box 3: Solicitudes Web */}
+          {/* Bento Box 2: Solicitudes Web */}
           <div className="glass-panel rounded-[28px] p-6 animate-in-up stagger-delay-2 flex flex-col justify-between cursor-pointer hover:bg-white/80 transition-all active:scale-95" onClick={() => navigate('/booking/manage')}>
             <div className="flex justify-between items-start mb-4">
               <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center">
@@ -215,7 +196,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Bento Box 4: Ingresos */}
+          {/* Bento Box 3: Ingresos */}
           <div className="glass-panel rounded-[28px] p-6 animate-in-up stagger-delay-2 flex flex-col justify-between">
             <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
               <TrendingUp size={24} />
@@ -228,8 +209,8 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Bento Box 5: Agenda (Large) */}
-          <div className="lg:col-span-3 lg:row-span-2 glass-panel rounded-[32px] p-8 animate-in-up stagger-delay-3 flex flex-col h-[600px]">
+          {/* Agenda */}
+          <div className="md:col-span-2 glass-panel rounded-[32px] p-8 animate-in-up stagger-delay-3 flex flex-col h-[560px]">
             <div className="flex items-center justify-between mb-6 shrink-0">
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Tu Agenda</h2>
               <button onClick={() => navigate('/calendar')} className="text-[13px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50/80 px-4 py-2 rounded-xl active:scale-95">Ver Todo</button>
@@ -270,8 +251,8 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Bento Box 6: Quick Actions (Vertical) */}
-          <div className="lg:col-span-1 lg:row-span-2 space-y-6 animate-in-up stagger-delay-4 flex flex-col">
+          {/* Quick Actions */}
+          <div className="space-y-6 animate-in-up stagger-delay-4 flex flex-col">
              <button
                 onClick={() => navigate('/patients?new=true')}
                 className="flex-1 glass-panel rounded-[32px] p-8 flex flex-col items-center justify-center gap-4 hover:bg-white/80 transition-all active:scale-95 border border-white/80 group text-center"

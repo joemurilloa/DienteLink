@@ -302,8 +302,7 @@ const BillingView: React.FC = () => {
               <FeatureRow label="Calendario de citas" />
               <FeatureRow label="Recordatorios WhatsApp" />
               <FeatureRow label="Reservas online (link público)" />
-              <FeatureRow label="Radiografías digitales" />
-              <FeatureRow label="Reportes y estadísticas" />
+              <FeatureRow label="Resumen de actividad" />
             </div>
           </div>
         </div>

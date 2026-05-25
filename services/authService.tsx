@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
 import { queryClient } from '../lib/queryClient';
-import { teamService } from './teamService';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -65,21 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
 
-      // Auto-redeem invitation if no clinic_id is set
-      if (!prof.clinic_id && email) {
-        try {
-          await teamService.redeemInvitation(prof.id, email);
-          // Refetch to get updated profile after redeem
-          const { data: updatedData } = await supabase.from('profiles').select('*').eq('id', userId).single();
-          if (updatedData) {
-            prof.clinic_id = updatedData.clinic_id;
-            prof.role = updatedData.role;
-          }
-        } catch (e) {
-          console.error("Error redeeming invitation", e);
-        }
-      }
-
       setProfile(prof);
       setCurrencyConfig(prof.currency, prof.locale);
     }
@@ -104,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Listen for auth changes (sign-in / sign-out / token refresh).
-    // On sign-in: fetchProfile resolves clinic_id before components can query data.
+    // On sign-in: fetchProfile resolves before components can query data.
     // On sign-out: clear cache and profile immediately.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -192,11 +176,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // clinicId resolution:
-  // - Team members: profile.clinic_id is set by redeemInvitation before this runs (loading covers it).
-  // - Solo doctors (owners): profile.clinic_id is null, so we use profile.id as the clinic namespace.
-  // - Unauthenticated: profile is null → clinicId is null → queries are disabled via `enabled: !!clinicId`.
-  const clinicId = profile?.clinic_id || profile?.id || null;
+  // Single-user clinic namespace.
+  const clinicId = profile?.id || null;
 
   return (
     <AuthContext.Provider value={{ user, session, profile, clinicId, loading, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>

@@ -19,8 +19,7 @@ import {
     Calendar,
     DollarSign,
     FileCheck,
-    Pill,
-    Image as ImageIcon
+    Pill
 } from 'lucide-react';
 import Odontogram from './Odontogram';
 import Periodontogram from './Periodontogram';
@@ -34,7 +33,6 @@ import AnamnesisTab from './patient-record/AnamnesisTab';
 import EvolutionTab from './patient-record/EvolutionTab';
 import HistoryTab from './patient-record/HistoryTab';
 import AppointmentsTab from './patient-record/AppointmentsTab';
-import XraysTab from './patient-record/XraysTab';
 import BudgetTab from './patient-record/BudgetTab';
 
 interface Props {
@@ -42,7 +40,7 @@ interface Props {
     onUpdate: (updatedPatient: PatientRecordType) => void;
 }
 
-type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'consent' | 'prescriptions' | 'citas' | 'history' | 'xrays' | 'budget';
+type TabId = 'id' | 'anamnesis' | 'odontogram' | 'periodontogram' | 'notes' | 'consent' | 'prescriptions' | 'citas' | 'history' | 'budget';
 
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
@@ -85,7 +83,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         { id: 'consent', label: 'Consentimiento', icon: FileCheck, allowed: true },
         { id: 'prescriptions', label: 'Recetas', icon: Pill, allowed: true },
         { id: 'history', label: 'Historial', icon: Activity, allowed: canViewClinical },
-        { id: 'xrays', label: 'Imágenes', icon: ImageIcon, allowed: canViewClinical },
     ].filter(t => t.allowed);
 
     const handleExportPDF = async () => {
@@ -157,8 +154,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 return <BudgetTab patient={patient} onUpdate={onUpdate} />;
             case 'history':
                 return <HistoryTab patient={patient} onUpdate={onUpdate} />;
-            case 'xrays':
-                return <XraysTab patient={patient} onUpdate={onUpdate} />;
             default:
                 return null;
         }

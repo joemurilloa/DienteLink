@@ -24,26 +24,16 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles, fa
 
 // Hooks for more granular logic
 export function useRoleAccess() {
-  const { profile } = useAuth();
-  // Map roles to standard system roles. If unknown or not set, default to admin (the clinic owner).
-  const rawRole = (profile?.role || '').toLowerCase();
-  
-  let userRole: UserRole = 'admin';
-  if (rawRole.includes('receptionist') || rawRole.includes('recep') || rawRole.includes('secretaria')) {
-    userRole = 'receptionist';
-  } else if (rawRole.includes('assistant') || rawRole.includes('asistente')) {
-    userRole = 'assistant';
-  }
-  // All other roles (Odontólogo, Doctor, Admin, etc.) default to 'admin' for full access.
+  const userRole: UserRole = 'admin';
 
   return {
     role: userRole,
-    isAdmin: userRole === 'admin',
-    isReceptionist: userRole === 'receptionist',
-    isAssistant: userRole === 'assistant',
-    canViewClinical: ['admin', 'assistant'].includes(userRole),
-    canEditClinical: ['admin', 'assistant'].includes(userRole),
-    canViewFinancial: ['admin', 'receptionist'].includes(userRole),
-    canManageAppointments: ['admin', 'receptionist', 'assistant'].includes(userRole),
+    isAdmin: true,
+    isReceptionist: false,
+    isAssistant: false,
+    canViewClinical: true,
+    canEditClinical: true,
+    canViewFinancial: true,
+    canManageAppointments: true,
   };
 }
