@@ -93,8 +93,13 @@ serve(async (req: Request) => {
     const paymentData = await getPaymentState(sessionToken, token);
 
     // PG1003 = COMPLETED, PG1004 = PENDING, PG1005 = CANCELLED
-    const isCompleted = paymentData.code === "PG1003";
-    const isPending   = paymentData.code === "PG1004";
+    // Para extrema seguridad, verificamos también el estado interno en 'value'
+    const pgCode = paymentData.code;
+    const innerStatus = paymentData?.value?.status?.toUpperCase();
+
+    // En Pagadito, el estatus real de pago exitoso es COMPLETED (y a veces PG1003 como código general)
+    const isCompleted = pgCode === "PG1003" && (!innerStatus || innerStatus === "COMPLETED");
+    const isPending   = pgCode === "PG1004" || innerStatus === "REGISTERED" || innerStatus === "VERIFYING";
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
       return json({ error: "Supabase not configured" }, 500);

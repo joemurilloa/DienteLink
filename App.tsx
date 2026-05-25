@@ -68,6 +68,18 @@ const Layout: React.FC = () => {
 
   // Ensure app always starts on dashboard for first load
   React.useEffect(() => {
+    // Interceptar redirecciones de Pagadito que ponen los parámetros antes del '#'
+    // Ejemplo: https://diente-link.vercel.app/?token=XYZ&ern=ABC#/payment-success
+    const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get('token');
+    
+    if (token) {
+      // Limpiar la URL del navegador para no dejar el token expuesto y evitar ciclos
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+      navigate(`/payment-success?token=${token}`, { replace: true });
+      return;
+    }
+
     if (location.pathname === '/#/' || location.pathname === '/') {
       setTimeout(() => {
         if (location.pathname !== '/') {
