@@ -817,3 +817,8 @@ body, input, textarea, button, select {
     max-width: 100%;
   }
 }
+
+/* Fix Sileo toast overlap with iPhone notch */
+[data-sileo-viewport] {
+  padding-top: env(safe-area-inset-top, 50px) !important;
+}

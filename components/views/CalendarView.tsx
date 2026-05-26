@@ -26,7 +26,9 @@ const CalendarView: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>(() => {
+    return window.innerWidth < 768 ? 'day' : 'month';
+  });
 
   const patientNameFromParams = searchParams.get('patient') || '';
   const patientIdFromParams = searchParams.get('id') || '';
@@ -159,7 +161,7 @@ const CalendarView: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white page-transition overflow-hidden">
-      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 lg:p-6 lg:pb-6 gap-4 overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 pt-10 lg:p-6 lg:pb-6 gap-4 overflow-hidden">
         
         {/* Superior Minimalist Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 flex-shrink-0">

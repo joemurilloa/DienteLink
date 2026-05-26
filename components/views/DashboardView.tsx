@@ -150,22 +150,29 @@ const Dashboard: React.FC = () => {
             </h1>
           </div>
           
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex items-center gap-3 px-6 py-4 rounded-full transition-all duration-300 hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] hover:bg-white flex-1 md:flex-none md:w-80 active:scale-95 cursor-text group"
+              className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex items-center gap-3 px-6 py-4 rounded-full transition-all duration-300 hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] hover:bg-white w-full md:w-80 active:scale-95 cursor-text group"
             >
               <Search size={18} className="text-slate-500 group-hover:text-slate-600 transition-colors" />
               <span className="text-[15px] font-medium text-slate-500 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
+            </button>
+            <button
+              onClick={() => navigate('/calendar?new=true')}
+              className="bg-blue-600 border border-blue-500 text-white shadow-[0_4px_20px_rgba(37,99,235,0.2)] flex items-center justify-center gap-2 px-6 py-4 rounded-full transition-all duration-300 hover:bg-blue-700 hover:shadow-[0_4px_25px_rgba(37,99,235,0.3)] w-full md:w-auto active:scale-95 font-bold"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              <span className="text-[15px]">Nueva Cita</span>
             </button>
           </div>
         </header>
 
         {/* ===== MAIN CONTENT ===== */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 flex-1">
+        <div className="flex-1 flex flex-col">
           
           {/* Agenda */}
-          <div className="lg:col-span-2 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 sm:p-8 lg:p-10 animate-in-up stagger-delay-2 flex flex-col h-auto transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+          <div className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 sm:p-8 lg:p-10 animate-in-up stagger-delay-2 flex flex-col h-auto transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
             <div className="flex items-center justify-between mb-6 lg:mb-8 shrink-0">
               <div>
                 <h2 className="text-[24px] lg:text-[28px] font-semibold text-slate-900 tracking-tight leading-tight">Tu Agenda</h2>
@@ -207,40 +214,8 @@ const Dashboard: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* Quick Actions Stack */}
-          <div className="space-y-4 lg:space-y-6 animate-in-up stagger-delay-3 flex flex-col h-auto">
-             <button
-                onClick={() => navigate('/patients?new=true')}
-                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px]"
-              >
-                <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                  <UserPlus size={28} className="lg:w-8 lg:h-8" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-[18px] lg:text-[20px] font-semibold text-slate-900 tracking-tight">Nuevo Paciente</h3>
-                  <p className="text-[13px] lg:text-[14px] text-slate-500 mt-1">Crear ficha clínica</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate('/calendar?new=true')}
-                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px]"
-              >
-                <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-                  <Plus size={28} className="lg:w-8 lg:h-8" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-[18px] lg:text-[20px] font-semibold text-slate-900 tracking-tight">Agendar Cita</h3>
-                  <p className="text-[13px] lg:text-[14px] text-slate-500 mt-1">Bloquear horario</p>
-                </div>
-              </button>
-          </div>
-
         </div>
-
       </div>
-
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>
   );

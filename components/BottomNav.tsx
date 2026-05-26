@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { LayoutDashboard, Calendar, Users, Bell, Search } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Bell, Settings } from 'lucide-react';
 
 interface BottomNavProps {
   activePath: string;
@@ -12,12 +12,19 @@ interface BottomNavProps {
 
 const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOpen, pendingRequestsCount = 0 }) => {
   const navigate = useNavigate();
-  const items = [
+  const items: Array<{
+    id: string;
+    icon: React.ElementType;
+    label: string;
+    path?: string;
+    action?: () => void;
+    isCenter?: boolean;
+  }> = [
     { id: 'dashboard',   icon: LayoutDashboard, label: 'Inicio',      path: '/' },
     { id: 'patients',    icon: Users,           label: 'Pacientes',   path: '/patients' },
-    { id: 'search',      icon: Search,          label: 'Buscar',      action: () => onSearchOpen?.(), isCenter: true },
-    { id: 'calendar',    icon: Calendar,        label: 'Agenda',      path: '/calendar' },
+    { id: 'calendar',    icon: Calendar,        label: 'Agenda',      path: '/calendar', isCenter: true },
     { id: 'solicitudes', icon: Bell,            label: 'Solicitudes', path: '/booking/manage' },
+    { id: 'settings',    icon: Settings,        label: 'Config.',      path: '/settings' },
   ];
 
   return (
