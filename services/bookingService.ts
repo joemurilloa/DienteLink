@@ -204,6 +204,7 @@ export class BookingService {
     try {
       const data = await persistence.fetchAppointmentRequests(userId);
       this.requests = (data || []).map(dbToRequest);
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
     } catch (err) {
       console.error('[BookingService] refreshRequests error:', err);
     }
@@ -218,6 +219,7 @@ export class BookingService {
 
     try {
       await persistence.updateAppointmentRequestStatus(requestId, 'approved', request.respondedAt);
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
     } catch (err) {
       console.error('[BookingService] approveRequest error:', err);
     }
@@ -234,6 +236,7 @@ export class BookingService {
 
     try {
       await persistence.updateAppointmentRequestStatus(requestId, 'rejected', request.respondedAt);
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
     } catch (err) {
       console.error('[BookingService] rejectRequest error:', err);
     }
@@ -251,6 +254,7 @@ export class BookingService {
 
     try {
       await persistence.updateAppointmentRequestStatus(requestId, newStatus, request.respondedAt || null);
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
     } catch (err) {
       console.error('[BookingService] updateRequestStatus error:', err);
       sileo.error({ title: 'Error al actualizar solicitud', description: 'No se pudo cambiar el estado de la solicitud.' });
@@ -264,6 +268,7 @@ export class BookingService {
 
     try {
       await persistence.deleteAppointmentRequest(requestId);
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
     } catch (err) {
       console.error('[BookingService] deleteRequest error:', err);
       sileo.error({ title: 'Error al eliminar solicitud', description: 'No se pudo eliminar la solicitud.' });

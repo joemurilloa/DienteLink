@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { LayoutDashboard, Calendar, Users, Settings, Search, Bell } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Bell, Search } from 'lucide-react';
 
 interface BottomNavProps {
   activePath: string;
@@ -13,11 +13,11 @@ interface BottomNavProps {
 const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOpen, pendingRequestsCount = 0 }) => {
   const navigate = useNavigate();
   const items = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio', path: '/' },
-    { id: 'patients', icon: Users, label: 'Pacientes', path: '/patients' },
-    { id: 'search', icon: Search, label: 'Buscar', action: () => onSearchOpen?.(), isCenter: true },
-    { id: 'calendar', icon: Calendar, label: 'Agenda', path: '/calendar' },
-    { id: 'settings', icon: Settings, label: 'Más', path: '/settings' },
+    { id: 'dashboard',   icon: LayoutDashboard, label: 'Inicio',      path: '/' },
+    { id: 'patients',    icon: Users,           label: 'Pacientes',   path: '/patients' },
+    { id: 'search',      icon: Search,          label: 'Buscar',      action: () => onSearchOpen?.(), isCenter: true },
+    { id: 'calendar',    icon: Calendar,        label: 'Agenda',      path: '/calendar' },
+    { id: 'solicitudes', icon: Bell,            label: 'Solicitudes', path: '/booking/manage' },
   ];
 
   return (
@@ -33,7 +33,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
               className={cn(
                 "flex flex-col items-center justify-center transition-all flex-1 h-full tap-effect relative py-3",
                 item.isCenter ? "z-10" : "",
-                isActive ? "text-blue-600" : "text-slate-300"
+                isActive ? "text-blue-600" : "text-slate-500"
               )}
             >
               {item.isCenter ? (
@@ -45,7 +45,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
               ) : (
                 <div className="flex flex-col items-center group relative">
                   <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} className={cn("mb-1 transition-transform", isActive ? "scale-110" : "group-hover:scale-105")} />
-                  {item.id === 'settings' && pendingRequestsCount > 0 && (
+                  {item.id === 'solicitudes' && pendingRequestsCount > 0 && (
                     <span className="absolute -top-1 right-0.5 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                       {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
                     </span>

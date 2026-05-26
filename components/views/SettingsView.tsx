@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authService';
-import { queryClient } from '../../lib/queryClient';
 import { useAppointments } from '../../hooks/useAppointments';
 import { usePatients } from '../../hooks/usePatients';
-import { bookingService } from '../../services/bookingService';
-import ConfirmModal from '../ConfirmModal';
 import { exportPatientsCSV, exportAppointmentsCSV } from '../../lib/utils';
-import { Download, Calendar as CalendarIcon, Users, Trash2 } from 'lucide-react';
+import { Download, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useSettingsTip } from '../ContextualTips';
 import { generateMonthlyReportPDF } from '../../lib/reportsGenerator';
@@ -35,11 +31,9 @@ const CURRENCY_OPTIONS = [
 ];
 
 const SettingsView: React.FC = () => {
-  const navigate = useNavigate();
-  const { profile, updateProfile, signOut } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const { data: allAppointments = [] } = useAppointments();
   const { data: allPatients = [] } = usePatients();
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -77,17 +71,6 @@ const SettingsView: React.FC = () => {
     setSaving(false);
   };
 
-  const handleClearData = async () => {
-    queryClient.clear();
-    window.location.reload();
-  };
-
-  const handleSignOut = async () => {
-    queryClient.clear();
-    bookingService.reset();
-    await signOut();
-  };
-
 
 
   const SettingsInput = ({ label, value, field }: { label: string; value: string; field: keyof typeof form }) => (
@@ -107,16 +90,6 @@ const SettingsView: React.FC = () => {
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
-      <ConfirmModal
-        isOpen={showClearConfirm}
-        onClose={() => setShowClearConfirm(false)}
-        onConfirm={handleClearData}
-        title="Borrar Todos los Datos"
-        description="Esto eliminará pacientes, citas, presupuestos y toda la información almacenada. Esta acción no se puede deshacer."
-        confirmLabel="Sí, Borrar Todo"
-        variant="danger"
-        requireText="BORRAR"
-      />
       <header className="flex items-center gap-4 mb-8">
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ajustes</h2>
       </header>
@@ -204,23 +177,7 @@ const SettingsView: React.FC = () => {
           )}
         </div>
 
-        <div className="card-premium p-6">
-          <h3 className="text-base font-bold text-slate-900 mb-4">Información de la App</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-slate-50">
-              <span className="text-sm font-medium text-slate-400">Versión</span>
-              <span className="text-sm font-bold text-slate-900">1.0.0</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-slate-50">
-              <span className="text-sm font-medium text-slate-400">Pacientes Registrados</span>
-              <span className="text-sm font-bold text-slate-900">{allPatients.length}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm font-medium text-slate-400">Citas Totales</span>
-              <span className="text-sm font-bold text-slate-900">{allAppointments.length}</span>
-            </div>
-          </div>
-        </div>
+
 
         {/* Exportar Datos */}
         <div className="card-premium p-6">
@@ -298,28 +255,6 @@ const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="card-premium p-6 border-red-100">
-          <h3 className="text-base font-bold text-red-600 mb-3">Zona de Peligro</h3>
-          <p className="text-sm text-slate-400 mb-4">Borrar todos los datos almacenados localmente. Esta acción no se puede deshacer.</p>
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-all border border-red-100"
-          >
-            <Trash2 size={14} />
-            Borrar Todos los Datos
-          </button>
-        </div>
-
-        <div className="card-premium p-6">
-          <h3 className="text-base font-bold text-slate-900 mb-3">Sesión</h3>
-          <p className="text-sm text-slate-400 mb-4">Cerrar sesión de DienteLink. Tus datos se mantienen seguros en la nube.</p>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-200 transition-all border border-slate-200"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
       </div>
     </div>
   );

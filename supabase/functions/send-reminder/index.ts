@@ -77,11 +77,11 @@ serve(async (req: Request) => {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; padding: 40px 20px;">
   <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
     <div style="background: #2563eb; padding: 24px 32px; text-align: center;">
-      <h1 style="margin: 0; color: white; font-size: 20px; font-weight: 700;">🦷 Recordatorio de Cita</h1>
+      <h1 style="margin: 0; color: white; font-size: 20px; font-weight: 700;">✅ Cita Confirmada</h1>
     </div>
     <div style="padding: 32px;">
       <p style="margin: 0 0 20px; color: #334155; font-size: 15px; line-height: 1.6;">
-        Hola <strong>${payload.patientName}</strong>, le recordamos su próxima cita:
+        Hola <strong>${payload.patientName}</strong>, se ha agendado exitosamente su próxima cita:
       </p>
       <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
         <table style="width: 100%; border-collapse: collapse;">
@@ -125,7 +125,7 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         from: "DienteLink <onboarding@resend.dev>",
         to: [payload.patientEmail],
-        subject: `Recordatorio: Cita ${payload.appointmentType} - ${fmtDate(payload.appointmentDate)}`,
+        subject: `Nueva Cita Agendada: ${payload.appointmentType} - ${fmtDate(payload.appointmentDate)}`,
         html: htmlBody,
       }),
     });

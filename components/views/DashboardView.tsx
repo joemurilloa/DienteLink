@@ -100,10 +100,7 @@ const Dashboard: React.FC = () => {
     
     labelOrder.forEach(lbl => {
       if (groupedMap[lbl] && groupedMap[lbl].length > 0) {
-        // Limit total upcoming to avoid endless scroll, but keeping completed visible
-        if (groups.length < 5 || lbl === 'Completadas Hoy') {
-           groups.push({ label: lbl, items: groupedMap[lbl] });
-        }
+        groups.push({ label: lbl, items: groupedMap[lbl] });
       }
     });
 
@@ -140,8 +137,8 @@ const Dashboard: React.FC = () => {
   const todayDateStr = new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="flex-1 h-full overflow-y-auto md:overflow-hidden hide-scrollbar pb-32 md:pb-6 page-transition mesh-bg relative flex flex-col">
-      <div className="max-w-[1400px] w-full mx-auto p-6 lg:p-8 flex flex-col h-auto md:h-full gap-6 lg:gap-8">
+    <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 md:pb-6 page-transition mesh-bg relative flex flex-col">
+      <div className="max-w-[1400px] w-full mx-auto p-6 lg:p-8 flex flex-col h-auto gap-6 lg:gap-8">
         
         {/* ===== Header ===== */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-in-up stagger-delay-1 shrink-0">
@@ -158,17 +155,17 @@ const Dashboard: React.FC = () => {
               onClick={() => setIsSearchOpen(true)}
               className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex items-center gap-3 px-6 py-4 rounded-full transition-all duration-300 hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] hover:bg-white flex-1 md:flex-none md:w-80 active:scale-95 cursor-text group"
             >
-              <Search size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
-              <span className="text-[15px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
+              <Search size={18} className="text-slate-500 group-hover:text-slate-600 transition-colors" />
+              <span className="text-[15px] font-medium text-slate-500 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
             </button>
           </div>
         </header>
 
         {/* ===== MAIN CONTENT ===== */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 flex-1">
           
           {/* Agenda */}
-          <div className="lg:col-span-2 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 sm:p-8 lg:p-10 animate-in-up stagger-delay-2 flex flex-col h-[500px] md:h-full transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+          <div className="lg:col-span-2 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 sm:p-8 lg:p-10 animate-in-up stagger-delay-2 flex flex-col h-auto transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
             <div className="flex items-center justify-between mb-6 lg:mb-8 shrink-0">
               <div>
                 <h2 className="text-[24px] lg:text-[28px] font-semibold text-slate-900 tracking-tight leading-tight">Tu Agenda</h2>
@@ -177,21 +174,20 @@ const Dashboard: React.FC = () => {
               <button onClick={() => navigate('/calendar')} className="text-[13px] lg:text-[14px] font-semibold text-slate-900 bg-slate-100/80 hover:bg-slate-200/80 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full transition-colors active:scale-95">Ver calendario</button>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 lg:pr-3">
+            <div className="flex-1 pr-2 lg:pr-3">
               {groupedAppointments.length === 0 ? (
                  <div className="h-full flex flex-col items-center justify-center text-center">
                     <div className="w-20 h-20 lg:w-24 lg:h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 ring-1 ring-slate-100">
-                      <CalendarIcon size={32} className="text-slate-400" />
+                      <CalendarIcon size={32} className="text-slate-500" />
                     </div>
                     <h3 className="text-[20px] lg:text-[22px] font-semibold text-slate-900 mb-2 tracking-tight">Todo despejado</h3>
                     <p className="text-slate-500 text-[14px] lg:text-[15px] max-w-[250px]">No tienes citas programadas hoy. ¡Disfruta tu día!</p>
                  </div>
               ) : (
                 <div className="space-y-8 lg:space-y-10">
-                  {/* Limit to showing only the first 3 groups */}
-                  {groupedAppointments.slice(0, 3).map(group => (
+                  {groupedAppointments.map(group => (
                     <div key={group.label} className="space-y-3 lg:space-y-4">
-                      <h3 className="text-[12px] lg:text-[13px] font-semibold uppercase tracking-widest text-slate-400 pl-1 sticky top-0 bg-white/80 backdrop-blur-xl py-2 z-10">{group.label}</h3>
+                      <h3 className="text-[12px] lg:text-[13px] font-semibold uppercase tracking-widest text-slate-500 pl-1 sticky top-0 bg-white/80 backdrop-blur-xl py-2 z-10">{group.label}</h3>
                       <div className="grid grid-cols-1 gap-3 lg:gap-4">
                         {group.items.map(apt => (
                           <AppointmentCard
@@ -213,10 +209,10 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Quick Actions Stack */}
-          <div className="space-y-4 lg:space-y-6 animate-in-up stagger-delay-3 flex flex-col h-auto md:h-full">
+          <div className="space-y-4 lg:space-y-6 animate-in-up stagger-delay-3 flex flex-col h-auto">
              <button
                 onClick={() => navigate('/patients?new=true')}
-                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px] md:min-h-0"
+                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px]"
               >
                 <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                   <UserPlus size={28} className="lg:w-8 lg:h-8" strokeWidth={1.5} />
@@ -229,7 +225,7 @@ const Dashboard: React.FC = () => {
 
               <button
                 onClick={() => navigate('/calendar?new=true')}
-                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px] md:min-h-0"
+                className="flex-1 bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 lg:p-8 flex flex-col items-center justify-center gap-4 lg:gap-5 transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-95 group text-center min-h-[200px]"
               >
                 <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                   <Plus size={28} className="lg:w-8 lg:h-8" strokeWidth={1.5} />

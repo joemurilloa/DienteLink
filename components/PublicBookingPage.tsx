@@ -558,6 +558,12 @@ const PublicBookingPage: React.FC = () => {
                     <span className="text-slate-400">Tipo</span>
                     <span className="font-semibold text-slate-900">{formData.appointmentType}</span>
                   </div>
+                  {formData.message && (
+                    <div className="pt-2 border-t border-slate-200 mt-2">
+                      <span className="text-slate-400 text-xs block mb-1">Comentarios / Motivo</span>
+                      <span className="font-medium text-slate-800 text-sm">{formData.message}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">

@@ -255,7 +255,7 @@ const PatientConsultationView: React.FC = () => {
             
             {/* Patient Identity */}
             <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-2xl mb-4 shadow-sm">
+              <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-2xl mb-4 shadow-sm">
                 {getInitials(patient.identification.fullName)}
               </div>
               <h2 className="text-lg font-bold text-slate-900 leading-tight">{patient.identification.fullName}</h2>
@@ -346,7 +346,7 @@ const PatientConsultationView: React.FC = () => {
               <div className="space-y-3">
                 <label className="flex items-center justify-between text-[13px] font-bold uppercase tracking-widest text-slate-600">
                   <span>Procedimiento Realizado <span className="text-red-400">*</span></span>
-                  <span className="text-[11px] text-slate-400 capitalize normal-case font-medium">Se añadirá al historial de tratamientos</span>
+                  <span className="text-[11px] text-slate-500 capitalize normal-case font-medium">Se añadirá al historial de tratamientos</span>
                 </label>
                 <input 
                   type="text"
@@ -361,7 +361,7 @@ const PatientConsultationView: React.FC = () => {
               <div className="space-y-3">
                 <label className="flex items-center justify-between text-[13px] font-bold uppercase tracking-widest text-slate-600">
                   <span>Notas de Evolución</span>
-                  <span className="text-[11px] text-slate-400 capitalize normal-case font-medium">Observaciones generales de la atención</span>
+                  <span className="text-[11px] text-slate-500 capitalize normal-case font-medium">Observaciones generales de la atención</span>
                 </label>
                 <textarea 
                   rows={4}

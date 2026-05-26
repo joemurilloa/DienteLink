@@ -37,7 +37,7 @@ create policy "Clinics read own subscription"
 grant select on public.subscriptions to authenticated;
 
 -- Helper view: is the current clinic's subscription active?
-create or replace view public.subscription_status as
+create or replace view public.subscription_status with (security_invoker = true) as
   select
     clinic_id,
     status,

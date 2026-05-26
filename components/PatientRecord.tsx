@@ -191,7 +191,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
             )}>
                 <div className="relative group/tabs">
                     <div className="flex items-center justify-between mb-3 px-1">
-                        <span className="text-[11px] font-black uppercase tracking-[2px] text-slate-400">Expediente Clínico</span>
+                        <span className="text-[11px] font-black uppercase tracking-[2px] text-slate-500">Expediente Clínico</span>
                         <div className="flex gap-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse"></div>
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse delay-75"></div>

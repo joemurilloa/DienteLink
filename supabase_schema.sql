@@ -67,8 +67,9 @@ CREATE TABLE IF NOT EXISTS appointments (
   date             TEXT NOT NULL,           -- YYYY-MM-DD
   time             TEXT NOT NULL,           -- HH:MM
   type             TEXT NOT NULL,           -- Consulta | Seguimiento | Cirugía | Revisión
-  status           TEXT NOT NULL DEFAULT 'Programada',  -- Programada | Completada | Retrasada | Eliminada
+  status           TEXT NOT NULL DEFAULT 'pending',  -- pending | confirmed | completed | rejected | cancelled | delayed
   reminder_status  TEXT NOT NULL DEFAULT 'not_sent',    -- not_sent | sending | sent | error
+  rejection_reason TEXT,                    -- Optional reason when status is 'rejected'
   deleted_at       TIMESTAMPTZ,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
