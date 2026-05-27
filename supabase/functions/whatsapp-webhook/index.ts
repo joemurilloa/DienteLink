@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
         const buttonText = message.button?.text // Texto del botón presionado
 
         // Mapear el texto del botón al estado que guardaremos en la base de datos
-        let dbStatus = "confirmed"
+        let dbStatus = "confirmed" // Por defecto si presionan "Sí, iré"
         if (buttonText.includes("No podré")) dbStatus = "cancelled"
-        if (buttonText.includes("cambiar")) dbStatus = "reschedule"
+        if (buttonText.includes("Reprogramar")) dbStatus = "reschedule"
 
         // Actualizar la cita que coincida con el whatsapp_message_id entregado por Meta
         if (wamid) {
