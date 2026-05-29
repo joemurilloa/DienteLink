@@ -10,6 +10,11 @@ entrypoint = "./functions/process-reminders/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/process-reminders/*.html" ]
 
+[functions.whatsapp-reminder]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/whatsapp-reminder/index.ts"
+
 [functions.whatsapp-webhook]
 enabled = true
 verify_jwt = false
@@ -20,3 +25,4 @@ entrypoint = "./functions/whatsapp-webhook/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/whatsapp-webhook/*.html" ]
+

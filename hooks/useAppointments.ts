@@ -53,7 +53,18 @@ export function useAppointmentMutations() {
   const createMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
       if (!clinicId) throw new Error('No doctor/clinic mapped');
-      
+
+      // Calculate reminder_scheduled_at: 24 hours before the appointment
+      let reminderScheduledAt: string | null = null;
+      try {
+        const apptDateTime = new Date(`${appointment.date}T${appointment.time}:00`);
+        if (!isNaN(apptDateTime.getTime())) {
+          reminderScheduledAt = new Date(apptDateTime.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        }
+      } catch (e) {
+        console.warn('Could not calculate reminder_scheduled_at:', e);
+      }
+
       const { data, error } = await supabase.from('appointments').insert({
         id: appointment.id,
         doctor_id: clinicId,
@@ -65,6 +76,7 @@ export function useAppointmentMutations() {
         type: appointment.type,
         status: appointment.status,
         reminder_status: appointment.reminderStatus,
+        reminder_scheduled_at: reminderScheduledAt,
         deleted_at: appointment.deletedAt || null,
       }).select().single();
 
@@ -164,6 +176,18 @@ export function useAppointmentMutations() {
   const updateMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
       if (!clinicId) throw new Error('No doctor/clinic mapped');
+
+      // Recalculate reminder_scheduled_at when date/time change
+      let reminderScheduledAt: string | null = null;
+      try {
+        const apptDateTime = new Date(`${appointment.date}T${appointment.time}:00`);
+        if (!isNaN(apptDateTime.getTime())) {
+          reminderScheduledAt = new Date(apptDateTime.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        }
+      } catch (e) {
+        console.warn('Could not calculate reminder_scheduled_at:', e);
+      }
+
       const { data, error } = await supabase.from('appointments').update({
         doctor_id: clinicId,
         patient_id: appointment.patientId || null,
@@ -174,6 +198,7 @@ export function useAppointmentMutations() {
         type: appointment.type,
         status: appointment.status,
         reminder_status: appointment.reminderStatus,
+        reminder_scheduled_at: reminderScheduledAt,
         deleted_at: appointment.deletedAt || null,
       }).eq('id', appointment.id).select().single();
       if (error) {
