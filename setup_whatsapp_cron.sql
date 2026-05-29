@@ -27,7 +27,7 @@ SELECT cron.schedule(
   '*/5 * * * *',                    -- cada 5 minutos
   $$
   SELECT net.http_post(
-    url    := 'https://jrzydxpcyonrzhbpz1bc.supabase.co/functions/v1/whatsapp-reminder',
+    url    := 'https://jrzydxpcyonrzhbpzibc.supabase.co/functions/v1/whatsapp-reminder',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer sb_publishable_dmra7_LLEYmD5yYo2C7t_g_0GzD1hpf'

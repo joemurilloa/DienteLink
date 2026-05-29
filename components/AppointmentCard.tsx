@@ -297,28 +297,29 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
               </div>
               
               <div className="flex gap-2.5 mt-2 pt-2 border-t border-slate-100">
+                {appointment.status === 'Programada' && (
+                  <button
+                    onClick={() => { 
+                      deleteAppointment.mutate(appointment.id);
+                      setShowDetail(false); 
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-100"
+                    title="Cancelar esta cita"
+                  >
+                    <Ban size={16} /> Cancelar
+                  </button>
+                )}
+
                 {onNavigateToPatient && appointment.patientId && appointment.status === 'Programada' && (
-                  <>
-                    <button
-                      onClick={() => { 
-                        deleteAppointment.mutate(appointment.id);
-                        setShowDetail(false); 
-                      }}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-100"
-                      title="Marcar como No Asistió o Cancelada"
-                    >
-                      <Ban size={16} /> Cancelar
-                    </button>
-                    <button
-                      onClick={() => { 
-                        setShowDetail(false);
-                        navigate(`/consultation?patientId=${appointment.patientId}&appointmentId=${appointment.id}`);
-                      }}
-                      className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all"
-                    >
-                      <Play size={16} className="fill-white" /> Iniciar Consulta
-                    </button>
-                  </>
+                  <button
+                    onClick={() => { 
+                      setShowDetail(false);
+                      navigate(`/consultation?patientId=${appointment.patientId}&appointmentId=${appointment.id}`);
+                    }}
+                    className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all"
+                  >
+                    <Play size={16} className="fill-white" /> Iniciar Consulta
+                  </button>
                 )}
 
                 {onNavigateToPatient && appointment.patientId && appointment.status !== 'Programada' && (

@@ -149,7 +149,11 @@ export function useAppointmentMutations() {
         .update({ status: 'Eliminada', deleted_at: deletedAt })
         .eq('id', appointmentId)
         .eq('doctor_id', clinicId);
-      if (error) throw error;
+      
+      if (error) {
+        console.error('[Supabase Error - DELETE/UPDATE]:', error);
+        throw error;
+      }
       return appointmentId;
     },
     onMutate: async (appointmentId) => {
