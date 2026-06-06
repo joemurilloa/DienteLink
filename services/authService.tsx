@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
 import { queryClient } from '../lib/queryClient';
+import { bookingService } from './bookingService';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -127,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     queryClient.clear();
+    bookingService.reset();
     await supabase.auth.signOut();
     setProfile(null);
   };

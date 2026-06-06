@@ -9,7 +9,7 @@ import { usePatients } from '../../hooks/usePatients';
 import { useAuth } from '../../services/authService';
 import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
 import { cn, formatCurrency, getInitials, getLocalISODate } from '../../lib/utils';
-import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, UserPlus, TrendingUp, Clock } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, UserPlus, TrendingUp, Clock, Users, DollarSign, Bell } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
 
@@ -167,6 +167,50 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
         </header>
+
+        {/* ===== Pulse Metrics ===== */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4 animate-in-up stagger-delay-2 shrink-0">
+          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                <CalendarIcon size={15} className="text-blue-600" />
+              </div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hoy</span>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{pulseMetrics.totalToday}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">citas programadas</p>
+          </div>
+          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <Users size={15} className="text-emerald-600" />
+              </div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pacientes</span>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{allPatients.length}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">expedientes activos</p>
+          </div>
+          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                <DollarSign size={15} className="text-amber-600" />
+              </div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deuda</span>
+            </div>
+            <p className={cn("text-2xl font-bold", pulseMetrics.totalDebt > 0 ? "text-amber-600" : "text-slate-900")}>{formatCurrency(pulseMetrics.totalDebt)}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">saldo pendiente</p>
+          </div>
+          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+                <Bell size={15} className="text-violet-600" />
+              </div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Solicitudes</span>
+            </div>
+            <p className={cn("text-2xl font-bold", pendingRequests.length > 0 ? "text-violet-600" : "text-slate-900")}>{pendingRequests.length}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">reservas pendientes</p>
+          </div>
+        </div>
 
         {/* ===== MAIN CONTENT ===== */}
         <div className="flex-1 flex flex-col">

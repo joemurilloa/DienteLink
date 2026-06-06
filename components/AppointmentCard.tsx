@@ -8,8 +8,9 @@ import { emailReminderService } from '../services/emailReminderService';
 import { useAuth } from '../services/authService';
 import { usePatient } from '../hooks/usePatients';
 import { useAppointmentMutations } from '../hooks/useAppointments';
+import { useSubscription } from '../hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle, Play, Ban } from 'lucide-react';
+import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle, Play, Ban, Lock } from 'lucide-react';
 import { sileo } from 'sileo';
 
 interface AppointmentCardProps {
@@ -40,6 +41,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const { profile } = useAuth();
   const { patient } = usePatient(appointment.patientId);
   const { updateAppointment, deleteAppointment } = useAppointmentMutations();
+  const { canUseFeature, isTrial } = useSubscription();
+  const canSendEmail = canUseFeature('auto_email_reminders');
   const navigate = useNavigate();
   
   const isToday = appointment.date === new Date().toISOString().split('T')[0];
@@ -68,6 +71,16 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
     e.stopPropagation();
     if (emailStatus === 'sending' || emailStatus === 'sent') return;
 
+    // Block expired/free users — guide them to billing
+    if (!canSendEmail) {
+      sileo.warning({
+        title: 'Función Pro',
+        description: 'Los recordatorios por email automáticos requieren el Plan Pro.',
+      });
+      navigate('/billing');
+      return;
+    }
+
     // Look up patient email
     const email = patient?.identification?.email;
     if (!email) {
@@ -94,6 +107,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
       sileo.error({ title: 'Error al enviar email', description: result.error || 'Intente de nuevo' });
     }
   };
+
 
   const fmtTime = (t: string) => {
     if (!t) return '';
@@ -277,12 +291,15 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
               <button
                 onClick={(e) => handleSendEmail(e)}
                 disabled={emailStatus === 'sending' || emailStatus === 'sent'}
+                title={!canSendEmail ? 'Requiere Plan Pro' : 'Enviar recordatorio por email'}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                  "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all relative",
                   emailStatus === 'sent'
                     ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                     : emailStatus === 'sending'
                     ? "bg-slate-100 text-slate-400"
+                    : !canSendEmail
+                    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                     : "bg-violet-600 text-white hover:bg-violet-700 shadow-sm"
                 )}
               >
@@ -290,6 +307,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                   <><Loader2 size={14} className="animate-spin" /> Enviando...</>
                 ) : emailStatus === 'sent' ? (
                   <><CheckCircle2 size={14} /> Email enviado</>
+                ) : !canSendEmail ? (
+                  <><Lock size={13} /> Email <span className="px-1 py-0.5 bg-blue-100 text-blue-600 text-[9px] font-bold rounded uppercase">Pro</span></>
                 ) : (
                   <><Mail size={14} /> Email</>
                 )}

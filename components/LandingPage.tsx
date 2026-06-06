@@ -258,7 +258,7 @@ const LandingPage: React.FC = () => {
             <p className="text-slate-500 text-base mb-10 font-medium">Todo lo que tu clínica necesita para operar al máximo nivel, sin complicaciones.</p>
             
             <div className="flex items-baseline justify-center gap-2 mb-10">
-              <span className="text-6xl font-extrabold text-slate-900 tracking-tighter">$19.99</span>
+              <span className="text-6xl font-extrabold text-slate-900 tracking-tighter">$15</span>
               <span className="text-slate-500 font-bold text-lg">/ mes</span>
             </div>
 

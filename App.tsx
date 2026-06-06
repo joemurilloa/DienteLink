@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './services/authService';
 import { useFocusManagement } from './lib/KeyboardShortcuts';
 import GlobalSearch from './components/GlobalSearch';
 import OnboardingWizard from './components/OnboardingWizard';
+import UpgradeBanner from './components/UpgradeBanner';
 import { sileo, Toaster } from 'sileo';
 import 'sileo/styles.css';
 
@@ -127,6 +128,7 @@ const Layout: React.FC = () => {
             role="main"
             aria-label="Contenido principal"
           >
+            <UpgradeBanner />
             <Suspense fallback={
               <div className="flex items-center justify-center w-full h-full">
                 <div className="text-center">

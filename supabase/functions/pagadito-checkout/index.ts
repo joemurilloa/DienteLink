@@ -39,7 +39,23 @@ async function connectToPagadito(): Promise<string> {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString()
   });
-  const data = await res.json();
+
+  const text = await res.text();
+  
+  // Guard: Pagadito sandbox sometimes returns HTML 403 from IP blocking
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    if (text.includes("403") || text.includes("Forbidden")) {
+      throw new Error(
+        "Pagadito sandbox bloqueó la solicitud (403 Forbidden). " +
+        "Esto ocurre porque el sandbox de Pagadito bloquea IPs de servidores cloud. " +
+        "Verifica que tu IP esté habilitada en el panel de Pagadito sandbox."
+      );
+    }
+    throw new Error(`Pagadito connect: respuesta inválida — ${text.substring(0, 200)}`);
+  }
 
   if (data.code !== "PG1001") {
     throw new Error(`Pagadito connect failed: ${data.code} - ${data.message}`);

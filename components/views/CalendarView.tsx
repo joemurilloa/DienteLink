@@ -66,8 +66,8 @@ const CalendarView: React.FC = () => {
     if (isCreating) return;
     setIsCreating(true);
     setFormError('');
-    if (!newApt.patientName.trim()) { setFormError('El nombre del paciente es requerido'); return; }
-    if (newApt.patientName.trim().length < 3) { setFormError('El nombre es demasiado corto'); return; }
+    if (!newApt.patientName.trim()) { setFormError('El nombre del paciente es requerido'); setIsCreating(false); return; }
+    if (newApt.patientName.trim().length < 3) { setFormError('El nombre es demasiado corto'); setIsCreating(false); return; }
 
     const conflict = appointments.find(a => 
       a.date === newApt.date && 
@@ -236,7 +236,7 @@ const CalendarView: React.FC = () => {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isToday = todayStr === dateStr;
                 const isPast = dateStr < todayStr;
-                const dayApts = appointments.filter(a => a.date === dateStr);
+                const dayApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada');
                 const weekRow = Math.floor((skip + i) / 7);
                 const isEvenRow = weekRow % 2 === 0;
 
@@ -317,7 +317,7 @@ const CalendarView: React.FC = () => {
                         const dateStr = fmtDate(date);
                         const isToday = dateStr === todayStr;
                         const isPast = dateStr < todayStr;
-                        const hourApts = appointments.filter(a => a.date === dateStr && parseInt(a.time.split(':')[0] || '0', 10) === hour);
+                        const hourApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada' && parseInt(a.time.split(':')[0] || '0', 10) === hour);
                         
                         return (
                           <div 
@@ -365,7 +365,7 @@ const CalendarView: React.FC = () => {
               {HOURS.map(hour => {
                 const dateStr = fmtDate(currentDate);
                 const isNow = todayStr === dateStr && new Date().getHours() === hour;
-                const hourApts = appointments.filter(a => a.date === dateStr && parseInt(a.time.split(':')[0] || '0', 10) === hour);
+                const hourApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada' && parseInt(a.time.split(':')[0] || '0', 10) === hour);
 
                 return (
                   <div key={hour} className="flex min-h-[80px] group relative">

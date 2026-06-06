@@ -286,7 +286,7 @@ const BillingView: React.FC = () => {
 
             <div className="flex items-center gap-2 justify-center text-xs text-slate-400">
               <Shield size={12} />
-              <span>Pago seguro vía <strong className="text-slate-500">Pagadito</strong> · Sandbox</span>
+              <span>Pago seguro vía <strong className="text-slate-500">Pagadito</strong></span>
             </div>
           </div>
 
