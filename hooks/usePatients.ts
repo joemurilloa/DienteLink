@@ -15,7 +15,7 @@ function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
     }, {} as Record<string, T[]>);
 }
 
-function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = [], consents: any[] = [], prescriptions: any[] = []): PatientRecord {
+function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = [], consents: any[] = [], prescriptions: any[] = [], labWorks: any[] = []): PatientRecord {
     return {
         id: p.id,
         identification: {
@@ -67,6 +67,16 @@ function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [
             method: pay.method,
             note: pay.note || '',
             date: pay.date,
+        })),
+        labWorks: labWorks.map(l => ({
+            id: l.id,
+            description: l.description,
+            labName: l.lab_name,
+            sentDate: l.sent_date,
+            expectedDate: l.expected_date,
+            cost: l.cost,
+            status: l.status,
+            createdAt: l.created_at,
         })),
         balance: 0,
         consents: consents.map(c => ({
@@ -125,7 +135,8 @@ export function usePatients() {
                     p.budget_items || [], 
                     p.payments || [], 
                     [], // consent_forms empty in list view
-                    []  // prescriptions empty in list view
+                    [], // prescriptions empty in list view
+                    []  // lab_works empty in list view
                 )
             );
         },
@@ -151,7 +162,8 @@ export function usePatient(patientId?: string) {
                     budget_items (*),
                     payments (*),
                     consent_forms (*),
-                    prescriptions (*)
+                    prescriptions (*),
+                    lab_works (*)
                 `)
                 .eq('id', patientId)
                 .eq('doctor_id', clinicId)
@@ -170,7 +182,8 @@ export function usePatient(patientId?: string) {
                 data.budget_items || [],
                 data.payments || [],
                 data.consent_forms || [],
-                data.prescriptions || []
+                data.prescriptions || [],
+                data.lab_works || []
             );
         },
         enabled: !!patientId && !!clinicId,
@@ -276,6 +289,10 @@ export function usePatientMutations() {
 
             await syncSubTable('prescriptions', patient.prescriptions || [], rx => ({
                 id: rx.id, patient_id: patient.id, doctor_id: doctorId, date: rx.date, diagnosis: rx.diagnosis, medications: rx.medications, notes: rx.notes
+            }));
+
+            await syncSubTable('lab_works', patient.labWorks || [], l => ({
+                id: l.id, patient_id: patient.id, doctor_id: doctorId, description: l.description, lab_name: l.labName, sent_date: l.sentDate, expected_date: l.expectedDate || null, cost: l.cost, status: l.status, created_at: l.createdAt
             }));
 
             return patient;

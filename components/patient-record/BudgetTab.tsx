@@ -20,6 +20,18 @@ interface Props {
     onUpdate: (updatedPatient: PatientRecordType) => void;
 }
 
+const DEFAULT_CATALOG = [
+    { name: 'Consulta General', cost: 300 },
+    { name: 'Limpieza (Profilaxis)', cost: 600 },
+    { name: 'Resina Simple', cost: 800 },
+    { name: 'Resina Compuesta', cost: 1200 },
+    { name: 'Extracción Simple', cost: 1000 },
+    { name: 'Extracción Compleja', cost: 2500 },
+    { name: 'Endodoncia', cost: 3500 },
+    { name: 'Corona Metal/Porcelana', cost: 4000 },
+    { name: 'Blanqueamiento', cost: 3000 }
+];
+
 const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
     const doctorName = profile?.full_name || 'Doctor';
@@ -159,6 +171,24 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                         <button onClick={handleAddTreatment} className="w-full py-3 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 font-semibold text-sm active:scale-[0.98]">
                             <Plus size={16} /> Agregar
                         </button>
+                    </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">Catálogo Rápido (Toca para autocompletar)</p>
+                    <div className="flex flex-wrap gap-2">
+                        {DEFAULT_CATALOG.map(item => (
+                            <button
+                                key={item.name}
+                                onClick={() => {
+                                    setNewTreatment(p => ({ ...p, treatment: item.name, unitCost: item.cost.toString() }));
+                                    setBudgetError('');
+                                }}
+                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all hover:shadow-sm"
+                            >
+                                {item.name} <span className="text-slate-400 opacity-60 ml-1">({item.cost})</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>

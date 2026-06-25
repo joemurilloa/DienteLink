@@ -59,15 +59,15 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ feature, children, fallback, 
           <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Zap size={24} className="text-blue-600" />
           </div>
-          <h3 className="text-base font-bold text-slate-900 mb-2">Función Pro</h3>
+          <h3 className="text-base font-bold text-slate-900 mb-2">Disponible en el Plan Pro</h3>
           <p className="text-sm text-slate-500 mb-5 leading-relaxed">
-            Activa tu suscripción para desbloquear esta función y todas las demás.
+            Activa DienteLink por <strong className="text-slate-700">$15 al mes</strong> y desbloquea todo. Sin contratos. Sin complicaciones.
           </p>
           <button
             onClick={() => navigate('/billing')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/25 active:scale-95"
           >
-            Activar Plan Pro
+            Ver cómo activar
             <ArrowRight size={14} />
           </button>
         </div>

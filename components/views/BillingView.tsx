@@ -18,6 +18,9 @@ import {
   Shield,
   ArrowRight,
   Loader2,
+  Building,
+  Smartphone,
+  ExternalLink
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -136,8 +139,8 @@ const BillingView: React.FC = () => {
 
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Facturación y Suscripción</h1>
-          <p className="text-sm text-slate-500 mt-1">Gestiona tu plan mensual de DienteLink</p>
+          <h1 className="text-2xl font-bold text-slate-900">Tu Plan DienteLink</h1>
+          <p className="text-sm text-slate-500 mt-1">Aquí ves el estado de tu suscripción y cómo renovarla</p>
         </div>
 
         {/* Expiry warning banner */}
@@ -167,8 +170,8 @@ const BillingView: React.FC = () => {
           <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <Clock size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-bold text-blue-800">Pago en proceso</p>
-              <p className="text-xs text-blue-600 mt-0.5">Tu pago está siendo verificado. Esto puede tomar unos minutos.</p>
+              <p className="text-sm font-bold text-blue-800">Ya recibimos tu pago</p>
+              <p className="text-xs text-blue-600 mt-0.5">Lo estamos verificando. En unos minutos tu cuenta queda activa. ¡Gracias por confiar en nosotros!</p>
             </div>
           </div>
         )}
@@ -186,7 +189,7 @@ const BillingView: React.FC = () => {
           {/* ── Current Status Card ── */}
           <div className="md:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Estado actual</h2>
+              <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Tu suscripción</h2>
               <button
                 onClick={fetchStatus}
                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
@@ -199,7 +202,7 @@ const BillingView: React.FC = () => {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-extrabold text-slate-900">$15<span className="text-lg font-semibold text-slate-400">/mes</span></p>
-                <p className="text-xs text-slate-500 mt-1">Plan Profesional · USD</p>
+                <p className="text-xs text-slate-500 mt-1">Plan Profesional · Sin contratos</p>
               </div>
               <StatusBadge status={sub?.status ?? 'inactive'} />
             </div>
@@ -209,7 +212,7 @@ const BillingView: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <Calendar size={15} className="text-slate-400 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-slate-400 font-medium">Próximo vencimiento</p>
+                    <p className="text-xs text-slate-400 font-medium">Se renueva el</p>
                     <p className="text-sm font-semibold text-slate-700">{formatDate(sub.current_period_end)}</p>
                   </div>
                   {isActive && (
@@ -223,7 +226,7 @@ const BillingView: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <CreditCard size={15} className="text-slate-400 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-slate-400 font-medium">Último pago</p>
+                    <p className="text-xs text-slate-400 font-medium">Tu último pago fue el</p>
                     <p className="text-sm font-semibold text-slate-700">{formatDate(sub.last_payment_at)}</p>
                   </div>
                 </div>
@@ -264,35 +267,68 @@ const BillingView: React.FC = () => {
                 </button>
               )}
               
+              {/* Botón Pagadito deshabilitado temporalmente
               <button
-                onClick={handleCheckout}
-                disabled={paying}
-                className={`w-full flex items-center justify-center gap-2 ${sub?.status === 'pending' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25'} active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed font-bold text-sm py-3 px-5 rounded-xl transition-all`}
-              >
-                {paying ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Cargando...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={16} />
-                    {isActive ? 'Renovar suscripción' : (sub?.status === 'pending' ? 'Reintentar pago' : 'Activar suscripción')}
-                    <ArrowRight size={14} className="ml-auto" />
-                  </>
-                )}
+                onClick={handleCheckout} ...
               </button>
+              */}
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Elige cómo pagar</p>
+
+                {/* Option A: PayPal */}
+                <div className="mb-3 p-3.5 bg-white border border-slate-200 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">🅿️</span>
+                    <h3 className="text-sm font-bold text-slate-800">PayPal — Con tarjeta o saldo</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-3">Paga de inmediato con tu tarjeta de crédito, débito o saldo PayPal. Sin esperas.</p>
+                  <a
+                    href="https://www.paypal.com/paypalme/dientelink/15"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 bg-[#0070ba] hover:bg-[#005ea6] text-white font-bold text-sm py-2.5 px-4 rounded-xl transition-all"
+                  >
+                    <ExternalLink size={14} />
+                    Pagar $15 con PayPal
+                  </a>
+                </div>
+
+                {/* Option B: BAC Transfer */}
+                <div className="p-3.5 bg-white border border-slate-200 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building size={16} className="text-blue-600" />
+                    <h3 className="text-sm font-bold text-slate-800">Transferencia BAC Honduras</h3>
+                  </div>
+                  <div className="space-y-1 text-sm text-slate-600 mb-3">
+                    <p>Número de cuenta: <strong>747076151</strong></p>
+                    <p>Monto: <strong>$15.00</strong> (o equivalente en Lempiras)</p>
+                  </div>
+                  <a
+                    href="https://wa.me/50487943082?text=Hola,%20te%20mando%20el%20comprobante%20de%20mi%20pago%20de%20DienteLink%20%F0%9F%A6%B7"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm py-2.5 px-4 rounded-xl transition-all"
+                  >
+                    <Smartphone size={14} />
+                    Enviar comprobante por WhatsApp
+                  </a>
+                </div>
+
+                <p className="text-[10px] text-slate-400 text-center mt-3">Tu cuenta se activa en minutos una vez confirmemos tu pago. ¡Te avisamos!</p>
+              </div>
+
             </div>
 
             <div className="flex items-center gap-2 justify-center text-xs text-slate-400">
               <Shield size={12} />
-              <span>Pago seguro vía <strong className="text-slate-500">Pagadito</strong></span>
+              <span>Activación rápida — En minutos estarás listo para trabajar</span>
             </div>
           </div>
 
           {/* ── Plan Features ── */}
           <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Plan incluye</h2>
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">¿Qué incluye el plan? 🦷</h2>
             <div className="space-y-0.5">
               <FeatureRow label="Pacientes ilimitados" />
               <FeatureRow label="Odontograma clínico" />

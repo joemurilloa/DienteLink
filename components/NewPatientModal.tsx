@@ -89,25 +89,22 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-12 overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-4 lg:p-12 overflow-hidden">
             <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                <header className="p-6 lg:p-8 border-b border-slate-100 flex justify-between items-start">
+            <div className="relative bg-white w-full md:max-w-2xl rounded-t-3xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] md:max-h-[90vh]">
+                <header className="p-5 md:p-6 lg:p-8 border-b border-slate-100 flex justify-between items-center">
                     <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-semibold uppercase tracking-wider">Nuevo Paciente</span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Crear Expediente</h2>
-                        <p className="text-slate-400 text-sm mt-1">Complete los datos básicos del paciente</p>
+                        <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Nuevo Paciente</h2>
+                        <p className="text-slate-400 text-sm mt-0.5">Datos básicos del expediente</p>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-slate-100 active:scale-95">
                         <X size={18} />
                     </button>
                 </header>
 
-                <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6 overflow-y-auto hide-scrollbar flex-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <form onSubmit={handleSubmit} className="p-5 md:p-6 lg:p-8 space-y-4 md:space-y-6 overflow-y-auto hide-scrollbar flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                         <div className="md:col-span-2">
                             <InputField
                                 icon={User}
@@ -194,14 +191,14 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                     </div>
                 </form>
 
-                <footer className="p-6 lg:p-8 pt-0 bg-white">
+                <footer className="p-4 md:p-6 lg:p-8 pt-0 bg-white">
                     <button
                         type="submit"
                         onClick={handleSubmit}
-                        className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                        <Plus size={18} />
-                        Crear Expediente Clínico
+                        <Plus size={20} />
+                        Guardar Paciente
                     </button>
                 </footer>
             </div>
@@ -220,8 +217,8 @@ const InputField: React.FC<{
     required?: boolean;
     error?: string;
 }> = ({ icon: Icon, label, value, onChange, type = "text", name, placeholder, required, error }) => (
-    <div className="space-y-2 group">
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">
+    <div className="space-y-1.5 group">
+        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">
             {label} {required && <span className="text-red-400">*</span>}
         </label>
         <div className="relative">
@@ -235,7 +232,7 @@ const InputField: React.FC<{
                 onChange={e => onChange(e.target.value)}
                 placeholder={placeholder}
                 className={cn(
-                    "w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300",
+                    "w-full pl-11 pr-4 py-3.5 md:py-3 bg-slate-50 border rounded-xl text-base md:text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300",
                     error ? "border-red-300 bg-red-50/50" : "border-slate-200"
                 )}
             />

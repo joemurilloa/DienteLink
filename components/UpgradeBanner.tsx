@@ -1,10 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSubscription } from '../hooks/useSubscription';
-import { Zap, ArrowRight, Clock, X } from 'lucide-react';
+import { useSubscription, FREE_PATIENT_LIMIT } from '../hooks/useSubscription';
+import { usePatients } from '../hooks/usePatients';
+import { Zap, ArrowRight, Clock, X, Users } from 'lucide-react';
 
 const UpgradeBanner: React.FC = () => {
   const { isPro, isTrial, hasAccess, isExpired, daysLeft, status, loading } = useSubscription();
+  const { data: patients = [] } = usePatients();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = React.useState(false);
 
@@ -71,7 +73,7 @@ const UpgradeBanner: React.FC = () => {
     );
   }
 
-  // ─── Expired / Inactive ────────────────────────────────────────────────────
+  // ─── Expired / Inactive (was trial) ───────────────────────────────────────
   if (isExpired) {
     return (
       <div className="relative flex items-center gap-3 px-4 py-2.5 bg-red-50 border-b border-red-200 text-red-800 text-sm font-medium">
@@ -90,6 +92,63 @@ const UpgradeBanner: React.FC = () => {
           Activar Plan Pro
           <ArrowRight size={12} />
         </button>
+      </div>
+    );
+  }
+
+  // ─── Freemium (Inactive, never had trial) ──────────────────────────────────
+  if (!hasAccess && status === 'inactive') {
+    const used = patients.length;
+    const isAtLimit = used >= FREE_PATIENT_LIMIT;
+    const progressPercent = Math.min(100, (used / FREE_PATIENT_LIMIT) * 100);
+
+    return (
+      <div className={`relative flex items-center gap-3 px-4 py-2 text-sm font-medium border-b ${
+        isAtLimit
+          ? 'bg-red-50 border-red-200 text-red-800'
+          : 'bg-amber-50 border-amber-200 text-amber-800'
+      }`}>
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isAtLimit ? 'bg-red-100' : 'bg-amber-100'}`}>
+          <Users size={14} className={isAtLimit ? 'text-red-600' : 'text-amber-600'} />
+        </div>
+
+        <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+          <span className="truncate text-xs font-semibold">
+            {isAtLimit
+              ? `🔒 Límite de ${FREE_PATIENT_LIMIT} pacientes alcanzado`
+              : `Demo Gratuita · ${used}/${FREE_PATIENT_LIMIT} pacientes usados`
+            }
+          </span>
+          <div className="hidden sm:block w-20 h-1.5 bg-white/60 rounded-full overflow-hidden flex-shrink-0">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${isAtLimit ? 'bg-red-500' : 'bg-amber-400'}`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={() => navigate('/billing')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 shadow-sm ${
+            isAtLimit
+              ? 'bg-red-600 text-white hover:bg-red-700'
+              : 'bg-amber-600 text-white hover:bg-amber-700'
+          }`}
+        >
+          <Zap size={11} />
+          $15/mes — Sin límites
+          <ArrowRight size={11} />
+        </button>
+
+        {!isAtLimit && (
+          <button
+            onClick={() => setDismissed(true)}
+            className="p-1 rounded-md hover:bg-black/5 transition-colors flex-shrink-0"
+            aria-label="Cerrar"
+          >
+            <X size={14} className="opacity-50" />
+          </button>
+        )}
       </div>
     );
   }

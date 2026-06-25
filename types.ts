@@ -163,7 +163,7 @@ export interface Prescription {
   notes: string;
 }
 
-// --- Presupuestos y Pagos ---
+// --- Presupuestos, Pagos y Laboratorio ---
 
 export interface BudgetItem {
   id: string;
@@ -181,6 +181,19 @@ export interface Payment {
   method: 'cash' | 'card' | 'transfer' | 'other';
   note: string;
   date: string;
+}
+
+export type LabWorkStatus = 'pending' | 'sent' | 'received' | 'completed';
+
+export interface LabWork {
+  id: string;
+  description: string;
+  labName: string;
+  sentDate: string;
+  expectedDate?: string;
+  cost: number;
+  status: LabWorkStatus;
+  createdAt?: string;
 }
 
 // --- Imágenes y Radiografías ---
@@ -229,6 +242,7 @@ export interface PatientRecord {
   xrays: XRayImage[];
   budget: BudgetItem[];
   payments?: Payment[];
+  labWorks?: LabWork[];
   balance: number;
   consents: ConsentForm[];
   prescriptions: Prescription[];

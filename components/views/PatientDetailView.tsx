@@ -37,24 +37,27 @@ const PatientDetailView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 h-full overflow-hidden flex flex-col p-5 lg:p-8 pb-32 page-transition">
+    <div className="flex-1 h-full overflow-hidden flex flex-col p-4 md:p-5 lg:p-8 pb-24 md:pb-32 page-transition">
       <React.Suspense fallback={
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       }>
-        <header className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate('/patients')} className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all">←</button>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-1">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{patient.identification.fullName}</h2>
-            <p className="text-slate-400 font-medium text-xs mt-0.5">Expediente #{patient.id.slice(0, 8)}</p>
+        <header className="flex items-center gap-3 mb-4 md:mb-6">
+          <button
+            onClick={() => navigate('/patients')}
+            className="w-10 h-10 min-w-[40px] bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all text-lg"
+          >
+            ←
+          </button>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg md:text-2xl font-bold text-slate-900 tracking-tight truncate">{patient.identification.fullName}</h2>
+            <p className="text-slate-400 font-medium text-xs mt-0.5">{patient.identification.phone || 'Expediente clínico'}</p>
           </div>
+        </header>
+        <div className="flex-1 overflow-hidden">
+          <PatientRecord patient={patient} onUpdate={handleUpdate} />
         </div>
-      </header>
-      <div className="flex-1 overflow-hidden">
-        <PatientRecord patient={patient} onUpdate={handleUpdate} />
-      </div>
       </React.Suspense>
     </div>
   );

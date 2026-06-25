@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppointmentCard from '../AppointmentCard';
 import GlobalSearch from '../GlobalSearch';
+import { useRoleAccess } from '../RoleGuard';
 
 import { bookingService } from '../../services/bookingService';
 import { useAppointments, useAppointmentMutations } from '../../hooks/useAppointments';
@@ -30,6 +31,7 @@ const Dashboard: React.FC = () => {
   const { data: allPatients = [] } = usePatients();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
+  const { canViewFinancial, isAdmin } = useRoleAccess();
   const navigate = useNavigate();
 
   // Contextual tips (show once)
@@ -141,29 +143,28 @@ const Dashboard: React.FC = () => {
       <div className="max-w-[1400px] w-full mx-auto p-6 lg:p-8 flex flex-col h-auto gap-6 lg:gap-8">
         
         {/* ===== Header ===== */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-in-up stagger-delay-1 shrink-0">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 animate-in-up stagger-delay-1 shrink-0">
           <div>
-            <p className="text-slate-500 text-[15px] font-medium capitalize mb-2">{todayDateStr}</p>
-            <h1 className="text-[40px] md:text-[48px] font-semibold text-slate-900 tracking-tight leading-none">
-              {getGreeting()}, <br className="hidden md:block" />
-              <span className="text-slate-900">{doctorName.replace(/^Dr\.?\s*/i, '')}</span>.
+            <p className="text-slate-500 text-[13px] md:text-[15px] font-medium capitalize mb-1">{todayDateStr}</p>
+            <h1 className="text-[28px] md:text-[40px] lg:text-[48px] font-semibold text-slate-900 tracking-tight leading-tight">
+              {getGreeting()}, <span className="text-slate-900">{doctorName.replace(/^Dr\.?\s*/i, '')}</span>.
             </h1>
           </div>
           
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-row md:flex-col lg:flex-row items-stretch md:items-end gap-2 md:gap-3 w-full md:w-auto">
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex items-center gap-3 px-6 py-4 rounded-full transition-all duration-300 hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] hover:bg-white w-full md:w-80 active:scale-95 cursor-text group"
+              className="bg-white/60 backdrop-blur-xl border border-white shadow-sm flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 rounded-full transition-all hover:bg-white flex-1 md:w-80 active:scale-95 cursor-text group"
             >
-              <Search size={18} className="text-slate-500 group-hover:text-slate-600 transition-colors" />
-              <span className="text-[15px] font-medium text-slate-500 group-hover:text-slate-600 transition-colors">Buscar paciente...</span>
+              <Search size={16} className="text-slate-500 flex-shrink-0" />
+              <span className="text-[14px] font-medium text-slate-500 truncate">Buscar paciente...</span>
             </button>
             <button
               onClick={() => navigate('/calendar?new=true')}
-              className="bg-blue-600 border border-blue-500 text-white shadow-[0_4px_20px_rgba(37,99,235,0.2)] flex items-center justify-center gap-2 px-6 py-4 rounded-full transition-all duration-300 hover:bg-blue-700 hover:shadow-[0_4px_25px_rgba(37,99,235,0.3)] w-full md:w-auto active:scale-95 font-bold"
+              className="bg-blue-600 border border-blue-500 text-white shadow-sm flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 rounded-full transition-all hover:bg-blue-700 active:scale-95 font-bold whitespace-nowrap"
             >
-              <Plus size={18} strokeWidth={2.5} />
-              <span className="text-[15px]">Nueva Cita</span>
+              <Plus size={16} strokeWidth={2.5} />
+              <span className="text-[14px]">Nueva Cita</span>
             </button>
           </div>
         </header>
@@ -190,26 +191,30 @@ const Dashboard: React.FC = () => {
             <p className="text-2xl font-bold text-slate-900">{allPatients.length}</p>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">expedientes activos</p>
           </div>
-          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
-                <DollarSign size={15} className="text-amber-600" />
+          {canViewFinancial && (
+            <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <DollarSign size={15} className="text-amber-600" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deuda</span>
               </div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deuda</span>
+              <p className={cn("text-2xl font-bold", pulseMetrics.totalDebt > 0 ? "text-amber-600" : "text-slate-900")}>{formatCurrency(pulseMetrics.totalDebt)}</p>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">saldo pendiente</p>
             </div>
-            <p className={cn("text-2xl font-bold", pulseMetrics.totalDebt > 0 ? "text-amber-600" : "text-slate-900")}>{formatCurrency(pulseMetrics.totalDebt)}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">saldo pendiente</p>
-          </div>
-          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
-                <Bell size={15} className="text-violet-600" />
+          )}
+          {isAdmin && (
+            <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+                  <Bell size={15} className="text-violet-600" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Solicitudes</span>
               </div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Solicitudes</span>
+              <p className={cn("text-2xl font-bold", pendingRequests.length > 0 ? "text-violet-600" : "text-slate-900")}>{pendingRequests.length}</p>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">reservas pendientes</p>
             </div>
-            <p className={cn("text-2xl font-bold", pendingRequests.length > 0 ? "text-violet-600" : "text-slate-900")}>{pendingRequests.length}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">reservas pendientes</p>
-          </div>
+          )}
         </div>
 
         {/* ===== MAIN CONTENT ===== */}

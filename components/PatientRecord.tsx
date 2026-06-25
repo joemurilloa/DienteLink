@@ -19,7 +19,8 @@ import {
     Calendar,
     DollarSign,
     FileCheck,
-    Pill
+    Pill,
+    FlaskConical
 } from 'lucide-react';
 import Odontogram from './Odontogram';
 import Periodontogram from './Periodontogram';
@@ -34,14 +35,61 @@ import EvolutionTab from './patient-record/EvolutionTab';
 import HistoryTab from './patient-record/HistoryTab';
 import AppointmentsTab from './patient-record/AppointmentsTab';
 import BudgetTab from './patient-record/BudgetTab';
+import LabTab from './patient-record/LabTab';
 
 interface Props {
     patient: PatientRecordType;
     onUpdate: (updatedPatient: PatientRecordType) => void;
 }
 
-type TabId = 'id' | 'odontogram' | 'periodontogram' | 'history' | 'documents' | 'citas' | 'budget';
+type TabId = 'id' | 'odontogram' | 'periodontogram' | 'history' | 'documents' | 'citas' | 'budget' | 'lab';
 
+// ─── Wow Banner (shows on first open after patient creation) ──────────────────
+const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => void }> = ({ onNavigate, onDismiss }) => (
+    <div className="mb-6 p-5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-500/25 animate-in slide-in-from-top-4 duration-700">
+        <div className="flex items-start justify-between mb-3">
+            <div>
+                <h3 className="font-extrabold text-lg tracking-tight">¡Expediente creado! 🎉</h3>
+                <p className="text-blue-200 text-sm mt-0.5">¿Qué quieres hacer ahora con este paciente?</p>
+            </div>
+            <button onClick={onDismiss} className="p-1.5 rounded-lg hover:bg-white/20 transition-all text-blue-200 hover:text-white">
+                <X size={16} />
+            </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+                onClick={() => { onNavigate('odontogram'); onDismiss(); }}
+                className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
+            >
+                <span className="text-2xl">🦷</span>
+                <div>
+                    <p className="font-bold text-sm">Pintar Odontograma</p>
+                    <p className="text-[11px] text-blue-200">Marca las piezas que necesitan trabajo</p>
+                </div>
+            </button>
+            <button
+                onClick={() => { onNavigate('citas'); onDismiss(); }}
+                className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
+            >
+                <span className="text-2xl">📅</span>
+                <div>
+                    <p className="font-bold text-sm">Agendar Primera Cita</p>
+                    <p className="text-[11px] text-blue-200">Programa cuándo viene a consulta</p>
+                </div>
+            </button>
+            <button
+                onClick={() => { onNavigate('budget'); onDismiss(); }}
+                className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
+            >
+                <span className="text-2xl">💰</span>
+                <div>
+                    <p className="font-bold text-sm">Crear Presupuesto</p>
+                    <p className="text-[11px] text-blue-200">Cuánto cuesta el tratamiento</p>
+                </div>
+            </button>
+        </div>
+    </div>
+);
 const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
     const doctorName = profile?.full_name || 'Doctor';
@@ -53,6 +101,14 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [isExporting, setIsExporting] = useState(false);
     const { canViewClinical, canViewFinancial } = useRoleAccess();
 
+    // Show wow banner for brand-new patients (created less than 3 minutes ago)
+    const isNew = (() => {
+        try {
+            const created = new Date(patient.createdAt).getTime();
+            return Date.now() - created < 3 * 60 * 1000;
+        } catch { return false; }
+    })();
+    const [showWow, setShowWow] = useState(isNew);
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab) setActiveTab(tab as TabId);
@@ -70,13 +126,14 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     }, [isFocusMode]);
 
     const tabs = [
-        { id: 'id', label: 'Ficha y Anamnesis', icon: User, allowed: true },
-        { id: 'odontogram', label: 'Odontograma', icon: LayoutGrid, allowed: canViewClinical },
-        { id: 'periodontogram', label: 'Periodonto', icon: BarChart3, allowed: canViewClinical },
-        { id: 'history', label: 'Historial y Evolución', icon: Activity, allowed: canViewClinical },
-        { id: 'citas', label: 'Agenda', icon: Calendar, allowed: true },
-        { id: 'documents', label: 'Documentos', icon: FileCheck, allowed: true },
-        { id: 'budget', label: 'Finanzas', icon: DollarSign, allowed: canViewFinancial },
+        { id: 'id',             label: 'Ficha y Anamnesis',    labelShort: 'Ficha',       icon: User,        allowed: true },
+        { id: 'odontogram',     label: 'Odontograma',          labelShort: 'Odonto',      icon: LayoutGrid,  allowed: canViewClinical },
+        { id: 'periodontogram', label: 'Periodonto',            labelShort: 'Perio',       icon: BarChart3,   allowed: canViewClinical },
+        { id: 'history',        label: 'Historial y Evolución', labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
+        { id: 'citas',          label: 'Agenda',                labelShort: 'Agenda',      icon: Calendar,    allowed: true },
+        { id: 'documents',      label: 'Documentos',            labelShort: 'Docs',        icon: FileCheck,   allowed: true },
+        { id: 'lab',            label: 'Laboratorio',           labelShort: 'Lab',         icon: FlaskConical,allowed: canViewClinical },
+        { id: 'budget',         label: 'Finanzas',              labelShort: 'Finanzas',    icon: DollarSign,  allowed: canViewFinancial },
     ].filter(t => t.allowed);
 
     const handleExportPDF = async () => {
@@ -155,6 +212,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 );
             case 'citas':
                 return <AppointmentsTab patient={patient} />;
+            case 'lab':
+                return <LabTab patient={patient} onUpdate={onUpdate} />;
             case 'budget':
                 return <BudgetTab patient={patient} onUpdate={onUpdate} />;
             default:
@@ -204,15 +263,16 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as TabId)}
                                 className={cn(
-                                    "flex items-center gap-2.5 px-5 py-3 rounded-2xl text-[13px] font-bold transition-all min-w-max border-2",
+                                    "flex items-center gap-2 px-3 md:px-5 py-3 rounded-2xl text-[12px] md:text-[13px] font-bold transition-all min-w-max border-2",
                                     activeTab === tab.id
                                         ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20 scale-105 z-10"
                                         : "bg-white border-slate-100 text-slate-500 hover:border-slate-200 hover:text-slate-800 hover:bg-slate-50/50 shadow-sm"
                                 )}
                                 style={{ animationDelay: `${index * 40}ms` }}
                             >
-                                <tab.icon size={18} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
-                                {tab.label}
+                                <tab.icon size={16} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
+                                <span className="md:hidden">{tab.labelShort}</span>
+                                <span className="hidden md:inline">{tab.label}</span>
                             </button>
                         ))}
                     </nav>
@@ -238,6 +298,12 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         >
                             <Maximize2 size={18} />
                         </button>
+                    )}
+                    {showWow && !isClinicalTab && (
+                        <WowBanner
+                            onNavigate={(tab) => setActiveTab(tab)}
+                            onDismiss={() => setShowWow(false)}
+                        />
                     )}
                     {renderTabContent()}
                 </div>

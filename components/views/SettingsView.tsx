@@ -8,6 +8,7 @@ import { sileo } from 'sileo';
 import { useSettingsTip } from '../ContextualTips';
 import { generateMonthlyReportPDF } from '../../lib/reportsGenerator';
 import { FileText } from 'lucide-react';
+import TeamSettings from './Settings/TeamSettings';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -45,7 +46,6 @@ const SettingsView: React.FC = () => {
 
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
-    role: profile?.role || 'Odontólogo',
     clinic_name: profile?.clinic_name || '',
     phone: profile?.phone || '',
     currency: profile?.currency || 'HNL',
@@ -54,7 +54,7 @@ const SettingsView: React.FC = () => {
 
   // Sync form when profile loads
   React.useEffect(() => {
-    if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' });
+    if (profile) setForm({ full_name: profile.full_name, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' });
   }, [profile]);
 
   const doctorName = profile?.full_name || 'Doctor';
@@ -105,7 +105,7 @@ const SettingsView: React.FC = () => {
               <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-blue-100 transition-all border border-blue-100">Editar</button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, role: profile.role, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
+                <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
                 <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center gap-1.5">
                   {saving && <span className="animate-spin">⏳</span>}
                   Guardar
@@ -119,7 +119,10 @@ const SettingsView: React.FC = () => {
             </div>
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
               <SettingsInput label="Nombre completo" value={form.full_name} field="full_name" />
-              <SettingsInput label="Especialidad / Rol" value={form.role} field="role" />
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Rol en el sistema</label>
+                <p className="text-sm font-bold text-slate-900 py-2.5 capitalize">{profile?.role || 'Propietario'}</p>
+              </div>
               <SettingsInput label="Nombre de la clínica" value={form.clinic_name} field="clinic_name" />
               <SettingsInput label="Teléfono" value={form.phone} field="phone" />
             </div>
@@ -177,7 +180,8 @@ const SettingsView: React.FC = () => {
           )}
         </div>
 
-
+        {/* Team Settings */}
+        <TeamSettings />
 
         {/* Exportar Datos */}
         <div className="card-premium p-6">
@@ -251,6 +255,26 @@ const SettingsView: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">{isGeneratingReport ? 'Generando...' : 'Reporte Mensual'}</p>
                 <p className="text-[10px] text-slate-400">Resumen en PDF del mes actual</p>
               </div>
+            </button>
+          </div>
+        </div>
+
+        {/* DEV SIMULATOR */}
+        <div className="card-premium p-6 mt-8 border-dashed border-violet-300 bg-violet-50/50">
+          <h3 className="text-sm font-bold text-violet-900 mb-2">Modo de Prueba (Simulador)</h3>
+          <p className="text-xs text-violet-700 mb-4">Usa estos botones para ver cómo vería la aplicación tu secretaria u otro rol.</p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => { localStorage.removeItem('DEV_ROLE'); window.location.reload(); }}
+              className="px-4 py-2 bg-white text-violet-700 rounded-xl text-xs font-bold border border-violet-200 shadow-sm hover:bg-violet-50 transition-all"
+            >
+              👩‍⚕️ Volver a mi cuenta (Doctor/Admin)
+            </button>
+            <button
+              onClick={() => { localStorage.setItem('DEV_ROLE', 'receptionist'); window.location.reload(); }}
+              className="px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-violet-700 transition-all"
+            >
+              👩‍💻 Simular vista de Secretaria
             </button>
           </div>
         </div>

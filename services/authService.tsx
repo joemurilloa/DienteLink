@@ -178,8 +178,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // Single-user clinic namespace.
-  const clinicId = profile?.id || null;
+  // Single-user clinic namespace. If user is invited, use their clinic_id.
+  const clinicId = profile?.clinic_id || profile?.id || null;
 
   return (
     <AuthContext.Provider value={{ user, session, profile, clinicId, loading, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>

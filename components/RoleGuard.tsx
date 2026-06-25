@@ -24,16 +24,27 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles, fa
 
 // Hooks for more granular logic
 export function useRoleAccess() {
-  const userRole: UserRole = 'admin';
+  const { profile } = useAuth();
+  // Role string from DB: 'owner', 'admin', 'assistant', 'receptionist'
+  const devRole = localStorage.getItem('DEV_ROLE');
+  const userRole = (devRole as UserRole) || (profile?.role as UserRole) || 'owner';
+
+  const isAdmin = userRole === 'admin' || userRole === 'owner';
+  const isReceptionist = userRole === 'receptionist';
+  const isAssistant = userRole === 'assistant';
 
   return {
     role: userRole,
-    isAdmin: true,
-    isReceptionist: false,
-    isAssistant: false,
-    canViewClinical: true,
-    canEditClinical: true,
-    canViewFinancial: true,
+    isAdmin,
+    isReceptionist,
+    isAssistant,
+    // Receptionist shouldn't see clinical charts
+    canViewClinical: isAdmin || isAssistant,
+    // Receptionist shouldn't edit clinical charts
+    canEditClinical: isAdmin || isAssistant,
+    // Assistant shouldn't see money. Receptionist shouldn't see money either (only for scheduling).
+    canViewFinancial: isAdmin,
+    // Everyone can see and manage appointments
     canManageAppointments: true,
   };
 }

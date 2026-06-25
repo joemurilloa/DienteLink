@@ -4,7 +4,7 @@ import { useAuth } from '../services/authService';
 
 // ─── Plan Limits ──────────────────────────────────────────────────────────────
 
-export const FREE_PATIENT_LIMIT = 10;
+export const FREE_PATIENT_LIMIT = 5;
 export const TRIAL_DAILY_EMAIL_LIMIT = 5;
 
 // ─── Types ────────────────────────────────────────────────────────────────────

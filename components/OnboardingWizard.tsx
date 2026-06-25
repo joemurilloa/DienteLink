@@ -30,14 +30,9 @@ const OnboardingWizard: React.FC = () => {
             });
             sileo.success({ title: '¡Todo listo!', description: 'Bienvenido a DienteLink.' });
         } catch (error: any) {
-            // Check if it's the "column does not exist" error
-            const isColumnError = error.message?.includes('column "has_completed_onboarding" of relation "profiles" does not exist') || error.message?.includes('column "updated_at" of relation "profiles" does not exist');
-            
             sileo.error({ 
-                title: 'Error de Base de Datos', 
-                description: isColumnError 
-                    ? `Falta crear la columna en Supabase. Revisa la terminal/chat para más instrucciones. Detalle: ${error.message}` 
-                    : `No se pudo guardar: ${error.message || 'Error desconocido'}` 
+                title: 'No pudimos guardar', 
+                description: 'Algo salió mal. Por favor intenta de nuevo o escríbenos al WhatsApp de soporte.' 
             });
         } finally {
             setIsSaving(false);
