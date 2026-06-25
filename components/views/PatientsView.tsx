@@ -40,8 +40,15 @@ const PatientsView: React.FC = () => {
   };
 
   const handleSave = async (newPatient: PatientRecordType) => {
-    await savePatient.mutateAsync(newPatient);
-    navigate(`/patient/${newPatient.id}`);
+    try {
+      await savePatient.mutateAsync(newPatient);
+      navigate(`/patient/${newPatient.id}`);
+    } catch (e) {
+      // The error is already handled and displayed by onError in usePatientMutations,
+      // but we catch it here to prevent the unhandled rejection from breaking the UI
+      // and to ensure we only navigate on success.
+      console.error("Save failed:", e);
+    }
   };
 
   return (

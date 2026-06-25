@@ -60,24 +60,27 @@ export function useSubscription() {
 
   const status: SubscriptionPlan = sub?.status ?? 'inactive';
 
-  // Active means: paying customer with valid period
-  const isPro = status === 'active' && (sub?.is_active ?? false);
-
-  // Trial means: trial status with valid period (not expired)
-  const isTrial = status === 'trial' && (sub?.is_active ?? false);
-
-  // Has any valid access (pro OR active trial)
-  const hasAccess = isPro || isTrial;
-
-  // Is expired (was trial or active but period ended, or just inactive)
-  const isExpired = !hasAccess && status !== 'pending';
-
   // Days remaining in current period
   const daysLeft = (() => {
     if (!sub?.current_period_end) return 0;
     const diff = new Date(sub.current_period_end).getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   })();
+
+  // Active means: paying customer with valid period
+  const isPro = status === 'active' && (sub?.is_active ?? false);
+
+  // Trial means: trial status with valid period (not expired)
+  // FIX: Because the backend view subscription_status only sets is_active=true for 'active' plan,
+  // we must check the trial expiration manually using daysLeft.
+  const isTrial = status === 'trial' && daysLeft > 0;
+
+  // Has any valid access (pro OR active trial)
+  const hasAccess = isPro || isTrial;
+
+  // Is expired: they had a trial or active subscription, but it ended.
+  // If status is 'inactive', they never started a trial/subscription, so it's not "expired", it's just "inactive" (Freemium).
+  const isExpired = !hasAccess && status !== 'pending' && status !== 'inactive';
 
   // Expires soon (within 3 days for trial, 7 days for pro)
   const expiresSoon = hasAccess && daysLeft <= (isTrial ? 3 : 7);
