@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authService';
+import { useRoleAccess } from '../RoleGuard';
 import {
   getSubscriptionStatus,
   initCheckout,
@@ -81,6 +82,23 @@ const FeatureRow: React.FC<{ label: string; included?: boolean }> = ({ label, in
 const BillingView: React.FC = () => {
   const { clinicId } = useAuth();
   const navigate = useNavigate();
+  const { isAdmin } = useRoleAccess();
+
+  // Page guard: only owner/admin can see billing
+  if (!isAdmin) {
+    return (
+      <div className="flex-1 h-full flex items-center justify-center p-8">
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <Shield className="text-slate-400" size={28} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Acceso Restringido</h2>
+          <p className="text-sm text-slate-500">Solo el propietario o administrador de la clínica puede ver la facturación.</p>
+          <button onClick={() => navigate('/')} className="mt-6 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all">Ir al Dashboard</button>
+        </div>
+      </div>
+    );
+  }
 
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);

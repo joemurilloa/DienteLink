@@ -20,7 +20,8 @@ import {
     DollarSign,
     FileCheck,
     Pill,
-    FlaskConical
+    FlaskConical,
+    Shield
 } from 'lucide-react';
 import Odontogram from './Odontogram';
 import Periodontogram from './Periodontogram';
@@ -45,7 +46,7 @@ interface Props {
 type TabId = 'id' | 'odontogram' | 'periodontogram' | 'history' | 'documents' | 'citas' | 'budget' | 'lab';
 
 // ─── Wow Banner (shows on first open after patient creation) ──────────────────
-const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => void }> = ({ onNavigate, onDismiss }) => (
+const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => void; canViewFinancial: boolean }> = ({ onNavigate, onDismiss, canViewFinancial }) => (
     <div className="mb-6 p-5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-500/25 animate-in slide-in-from-top-4 duration-700">
         <div className="flex items-start justify-between mb-3">
             <div>
@@ -77,6 +78,7 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                     <p className="text-xs text-blue-200">Programa cuándo viene a consulta</p>
                 </div>
             </button>
+            {canViewFinancial && (
             <button
                 onClick={() => { onNavigate('budget'); onDismiss(); }}
                 className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
@@ -87,6 +89,7 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                     <p className="text-xs text-blue-200">Cuánto cuesta el tratamiento</p>
                 </div>
             </button>
+            )}
         </div>
     </div>
 );
@@ -99,7 +102,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [activeTab, setActiveTab] = useState<TabId>(initialTab);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
-    const { canViewClinical, canViewFinancial } = useRoleAccess();
+    const { canViewClinical, canViewFinancial, canEditClinical, role: userRole } = useRoleAccess();
 
     // Show wow banner for brand-new patients (created less than 3 minutes ago)
     const isNew = (() => {
@@ -131,7 +134,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         { id: 'periodontogram', label: 'Periodonto',            labelShort: 'Perio',       icon: BarChart3,   allowed: canViewClinical },
         { id: 'history',        label: 'Historial y Evolución', labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
         { id: 'citas',          label: 'Agenda',                labelShort: 'Agenda',      icon: Calendar,    allowed: true },
-        { id: 'documents',      label: 'Documentos',            labelShort: 'Docs',        icon: FileCheck,   allowed: true },
+        { id: 'documents',      label: 'Documentos',            labelShort: 'Docs',        icon: FileCheck,   allowed: canViewClinical },
         { id: 'lab',            label: 'Laboratorio',           labelShort: 'Lab',         icon: FlaskConical,allowed: canViewClinical },
         { id: 'budget',         label: 'Finanzas',              labelShort: 'Finanzas',    icon: DollarSign,  allowed: canViewFinancial },
     ].filter(t => t.allowed);
@@ -151,6 +154,19 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     };
 
     const isClinicalTab = ['odontogram', 'periodontogram'].includes(activeTab);
+
+    // Access denied screen for role-restricted content
+    const AccessDenied: React.FC<{ message?: string }> = ({ message }) => (
+        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                <Shield className="text-slate-400" size={28} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-700 mb-2">Acceso Restringido</h3>
+            <p className="text-sm text-slate-500 max-w-xs">
+                {message || 'Tu rol no tiene permisos para ver esta sección. Contacta al administrador de la clínica.'}
+            </p>
+        </div>
+    );
 
     const renderClinicalContent = () => {
         switch (activeTab) {
@@ -303,6 +319,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         <WowBanner
                             onNavigate={(tab) => setActiveTab(tab)}
                             onDismiss={() => setShowWow(false)}
+                            canViewFinancial={canViewFinancial}
                         />
                     )}
                     {renderTabContent()}

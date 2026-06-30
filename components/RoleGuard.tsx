@@ -13,8 +13,13 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles, fa
 
   if (loading) return null;
 
-  // RESTRICCIONES DESACTIVADAS TEMPORALMENTE A PETICIÓN DEL USUARIO
-  // El código original comprobaba si `allowedRoles.includes(userRole)`
+  const devRole = localStorage.getItem('DEV_ROLE');
+  const userRole = (devRole as UserRole) || (profile?.role as UserRole) || 'owner';
+
+  if (!allowedRoles.includes(userRole)) {
+    return <>{fallback}</>;
+  }
+
   return <>{children}</>;
 };
 
@@ -24,15 +29,25 @@ export function useRoleAccess() {
   const devRole = localStorage.getItem('DEV_ROLE');
   const userRole = (devRole as UserRole) || (profile?.role as UserRole) || 'owner';
 
-  // RESTRICCIONES DESACTIVADAS TEMPORALMENTE A PETICIÓN DEL USUARIO
+  const isOwner       = userRole === 'owner';
+  const isAdmin       = userRole === 'owner' || userRole === 'admin';
+  const isAssistant   = userRole === 'assistant';
+  const isReceptionist= userRole === 'receptionist';
+
   return {
     role: userRole,
-    isAdmin: true,
-    isReceptionist: false,
-    isAssistant: false,
-    canViewClinical: true,
-    canEditClinical: true,
-    canViewFinancial: true,
+    // Admin-level: can manage team, billing, settings
+    isAdmin,
+    // Clinical access: can view/edit clinical records (odontogram, perio, notes, consents, prescriptions)
+    canViewClinical : isOwner || isAdmin || isAssistant,
+    canEditClinical : isOwner || isAdmin || isAssistant,
+    // Financial access: can view/edit budgets, payments, dashboard financials
+    canViewFinancial: isOwner || isAdmin,
+    canEditFinancial: isOwner || isAdmin,
+    // Appointments: everyone can manage appointments
     canManageAppointments: true,
+    // Receptionist: limited to calendar + booking requests
+    isReceptionist,
+    isAssistant,
   };
 }

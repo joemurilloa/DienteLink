@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
 import { queryClient } from '../lib/queryClient';
 import { bookingService } from './bookingService';
+import { redeemPendingInvitation } from '../hooks/useTeam';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -47,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   // Fetch doctor profile from profiles table
-  const fetchProfile = async (userId: string, email?: string) => {
+  const fetchProfile = async (userId: string, email?: string, isNewAccount?: boolean) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -55,6 +56,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
 
     if (!error && data) {
+      // Only try to redeem an invitation if:
+      // 1. The user has no clinic_id (not yet linked to a clinic)
+      // 2. AND this is a newly created account (to avoid querying team_invitations on every owner login)
+      if (!data.clinic_id && email && isNewAccount) {
+        const redeemed = await redeemPendingInvitation(userId, email);
+        if (redeemed) {
+          // Re-fetch to get updated clinic_id + role
+          const { data: updatedData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+          if (updatedData) {
+            const prof: DoctorProfile = {
+              ...updatedData as DoctorProfile,
+              currency: updatedData.currency || 'HNL',
+              locale: updatedData.locale || 'es-HN',
+              theme_color: updatedData.theme_color || 'blue',
+              has_completed_onboarding: updatedData.has_completed_onboarding || false,
+            };
+            document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
+            setProfile(prof);
+            setCurrencyConfig(prof.currency, prof.locale);
+            return;
+          }
+        }
+      }
+
       const prof: DoctorProfile = {
         ...data as DoctorProfile,
         currency: data.currency || 'HNL',
@@ -70,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+
   useEffect(() => {
     // Get initial session.
     // IMPORTANT: setLoading(false) is called AFTER fetchProfile resolves so that
@@ -80,7 +110,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email).finally(() => {
+        // Detect if this is a brand-new account (registered in the last 10 minutes)
+        const createdAt = new Date(session.user.created_at).getTime();
+        const isNewAccount = Date.now() - createdAt < 10 * 60 * 1000;
+        fetchProfile(session.user.id, session.user.email, isNewAccount).finally(() => {
           setLoading(false);
         });
       } else {

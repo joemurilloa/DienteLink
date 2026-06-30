@@ -27,9 +27,18 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   };
   const { profile, signOut } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
-  const doctorRole = profile?.role || 'Odontólogo';
+  const doctorRole = profile?.role || 'owner';
   const doctorInitials = getInitials(doctorName, 'DR');
-  const { canViewFinancial, isAdmin } = useRoleAccess();
+  const { canViewFinancial, isAdmin, role: activeRole } = useRoleAccess();
+
+  const ROLE_DISPLAY: Record<string, { label: string; color: string }> = {
+    owner:        { label: 'Propietario',       color: 'text-indigo-600' },
+    admin:        { label: 'Administrador',     color: 'text-violet-600' },
+    assistant:    { label: 'Asistente Clínico', color: 'text-emerald-600' },
+    receptionist: { label: 'Recepcionista',     color: 'text-sky-600' },
+  };
+  const roleDisplay = ROLE_DISPLAY[activeRole] || { label: activeRole, color: 'text-slate-500' };
+  const devRole = localStorage.getItem('DEV_ROLE');
 
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -228,7 +237,10 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
           </div>
           <div className={cn("overflow-hidden flex-1 transition-all duration-300 hidden lg:block", isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
             <p className="text-[13px] font-bold text-slate-900 truncate leading-tight group-hover:text-blue-600 transition-colors duration-200">{doctorName}</p>
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider leading-tight mt-0.5">{doctorRole}</p>
+            <p className={`text-[11px] font-bold uppercase tracking-wider leading-tight mt-0.5 ${roleDisplay.color}`}>
+              {roleDisplay.label}
+              {devRole && <span className="ml-1 text-amber-500">(simulando)</span>}
+            </p>
           </div>
         </div>
       </div>
