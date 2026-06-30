@@ -36,11 +36,11 @@ const FeatureGate: React.FC<FeatureGateProps> = ({ feature, children, fallback, 
     return (
       <button
         onClick={() => navigate('/billing')}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-sm font-semibold hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all group"
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-300 text-slate-500 text-sm font-semibold hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all group"
       >
-        <Lock size={14} className="text-slate-400 group-hover:text-blue-500" />
+        <Lock size={14} className="text-slate-500 group-hover:text-blue-500" />
         <span>Plan Pro</span>
-        <span className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-bold rounded-md uppercase">Pro</span>
+        <span className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-xs font-bold rounded-md uppercase">Pro</span>
       </button>
     );
   }

@@ -17,6 +17,7 @@ import {
     FileText,
     Loader2
 } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 interface Props {
     patient: PatientRecordType;
@@ -52,6 +53,7 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
     const [formError, setFormError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     const prescriptions = patient.prescriptions || [];
 
@@ -217,7 +219,7 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Receta Médica</h3>
-                        <p className="text-slate-400 text-sm mt-1">{viewingRx.date} · {viewingRx.diagnosis}</p>
+                        <p className="text-slate-500 text-sm mt-1">{viewingRx.date} · {viewingRx.diagnosis}</p>
                     </div>
                     <div className="flex gap-2">
                         <button
@@ -229,7 +231,7 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                         </button>
                         <button
                             onClick={() => setViewingRx(null)}
-                            className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                            className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all"
                         >
                             <X size={18} />
                         </button>
@@ -239,19 +241,19 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                 <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl">
                     <div className="flex items-center gap-2.5 mb-3">
                         <Stethoscope size={16} className="text-blue-600" />
-                        <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Diagnóstico</p>
+                        <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">Diagnóstico</p>
                     </div>
                     <p className="text-sm text-slate-700 font-medium">{viewingRx.diagnosis}</p>
                 </div>
 
                 <div className="space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">
                         Medicamentos ({viewingRx.medications.length})
                     </p>
                     {viewingRx.medications.map((med, i) => (
-                        <div key={i} className="p-4 bg-white border border-slate-100 rounded-xl">
+                        <div key={i} className="p-4 bg-white border border-slate-300 rounded-xl">
                             <h4 className="font-semibold text-slate-900 text-sm mb-2">{i + 1}. {med.name}</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-slate-500">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-slate-500">
                                 {med.dosage && <span><span className="font-semibold text-slate-600">Dosis:</span> {med.dosage}</span>}
                                 {med.frequency && <span><span className="font-semibold text-slate-600">Frecuencia:</span> {med.frequency}</span>}
                                 {med.duration && <span><span className="font-semibold text-slate-600">Duración:</span> {med.duration}</span>}
@@ -262,8 +264,8 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                 </div>
 
                 {viewingRx.notes && (
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Notas</p>
+                    <div className="p-4 bg-slate-50 border border-slate-300 rounded-xl">
+                        <p className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-2">Notas</p>
                         <p className="text-sm text-slate-600">{viewingRx.notes}</p>
                     </div>
                 )}
@@ -278,11 +280,11 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Nueva Receta</h3>
-                        <p className="text-slate-400 text-sm mt-1">Para {patient.identification.fullName}</p>
+                        <p className="text-slate-500 text-sm mt-1">Para {patient.identification.fullName}</p>
                     </div>
                     <button
                         onClick={() => { setIsCreating(false); setFormError(''); }}
-                        className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                        className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all"
                     >
                         <X size={18} />
                     </button>
@@ -296,11 +298,11 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
 
                 {/* Diagnosis */}
                 <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Diagnóstico <span className="text-red-400">*</span>
                     </label>
                     <input
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-slate-50 outline-none text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                         value={diagnosis}
                         onChange={e => { setDiagnosis(e.target.value); setFormError(''); }}
                         placeholder="Ej. Caries profunda en pieza 36..."
@@ -309,13 +311,13 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
 
                 {/* Quick-add medications */}
                 <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Medicamentos frecuentes</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Medicamentos frecuentes</p>
                     <div className="flex gap-2 flex-wrap">
                         {COMMON_MEDS.map((med, i) => (
                             <button
                                 key={i}
                                 onClick={() => handleQuickAdd(med)}
-                                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[11px] font-semibold hover:bg-blue-100 transition-all border border-blue-100"
+                                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100 transition-all border border-blue-100"
                             >
                                 + {med.name}
                             </button>
@@ -325,50 +327,50 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
 
                 {/* Medications list */}
                 <div className="space-y-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Medicamentos <span className="text-red-400">*</span>
                     </p>
                     {medications.map((med, idx) => (
-                        <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                        <div key={idx} className="p-4 bg-slate-50 border border-slate-300 rounded-xl space-y-3">
                             <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-blue-600">Medicamento {idx + 1}</span>
+                                <span className="text-sm font-semibold text-blue-600">Medicamento {idx + 1}</span>
                                 {medications.length > 1 && (
                                     <button
                                         onClick={() => handleRemoveMed(idx)}
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
                                     >
                                         <Trash2 size={12} />
                                     </button>
                                 )}
                             </div>
                             <input
-                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white outline-none text-sm font-medium focus:border-blue-500 transition-all placeholder:text-slate-300"
+                                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white outline-none text-sm font-medium focus:border-blue-500 transition-all placeholder:text-slate-400"
                                 value={med.name}
                                 onChange={e => handleUpdateMed(idx, 'name', e.target.value)}
                                 placeholder="Nombre del medicamento..."
                             />
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <input
-                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-300"
+                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-400"
                                     value={med.dosage}
                                     onChange={e => handleUpdateMed(idx, 'dosage', e.target.value)}
                                     placeholder="Dosis (ej. 1 tableta)"
                                 />
                                 <input
-                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-300"
+                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-400"
                                     value={med.frequency}
                                     onChange={e => handleUpdateMed(idx, 'frequency', e.target.value)}
                                     placeholder="Frecuencia (ej. c/8 hrs)"
                                 />
                                 <input
-                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-300"
+                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-400"
                                     value={med.duration}
                                     onChange={e => handleUpdateMed(idx, 'duration', e.target.value)}
                                     placeholder="Duración (ej. 7 días)"
                                 />
                             </div>
                             <input
-                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-300"
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white outline-none text-sm focus:border-blue-500 transition-all placeholder:text-slate-400"
                                 value={med.instructions}
                                 onChange={e => handleUpdateMed(idx, 'instructions', e.target.value)}
                                 placeholder="Indicaciones especiales (ej. Tomar después de comer)..."
@@ -378,7 +380,7 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
 
                     <button
                         onClick={handleAddMed}
-                        className="w-full py-2.5 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-sm font-semibold hover:border-blue-300 hover:text-blue-500 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-2.5 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 text-sm font-semibold hover:border-blue-300 hover:text-blue-500 transition-all flex items-center justify-center gap-2"
                     >
                         <Plus size={14} /> Agregar otro medicamento
                     </button>
@@ -386,9 +388,9 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
 
                 {/* Notes */}
                 <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Notas adicionales</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Notas adicionales</label>
                     <textarea
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm text-slate-700 resize-none min-h-[80px] focus:border-blue-500 transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-slate-50 outline-none text-sm text-slate-700 resize-none min-h-[80px] focus:border-blue-500 transition-all"
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
                         placeholder="Indicaciones generales, dieta, cuidados post..."
@@ -414,7 +416,7 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Recetas Médicas</h3>
-                    <p className="text-slate-400 text-sm mt-1">Prescripciones dentales del paciente</p>
+                    <p className="text-slate-500 text-sm mt-1">Prescripciones dentales del paciente</p>
                 </div>
                 <button
                     onClick={() => setIsCreating(true)}
@@ -425,24 +427,24 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
             </div>
 
             {prescriptions.length === 0 ? (
-                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
                     <Pill size={32} className="mx-auto mb-3 text-slate-200" />
                     <h4 className="text-lg font-bold text-slate-700 mb-1">Sin recetas emitidas</h4>
-                    <p className="text-slate-400 text-sm max-w-xs mx-auto">
+                    <p className="text-slate-500 text-sm max-w-xs mx-auto">
                         Crea una receta médica con plantilla profesional para este paciente.
                     </p>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {prescriptions.map((rx, index) => (
-                        <div key={rx.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-100 transition-all group animate-in-up" style={{ animationDelay: `${index * 50}ms` }}>
+                        <div key={rx.id} className="flex items-center justify-between p-4 bg-white border border-slate-300 rounded-xl hover:shadow-md hover:border-blue-100 transition-all group animate-in-up" style={{ animationDelay: `${index * 50}ms` }}>
                             <div className="flex items-center gap-4">
                                 <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
                                     <Pill size={20} />
                                 </div>
                                 <div>
                                     <h4 className="font-semibold text-slate-900 text-sm">{rx.diagnosis}</h4>
-                                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                    <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1.5">
                                         <Calendar size={10} />
                                         {rx.date} · {rx.medications.length} medicamento{rx.medications.length !== 1 ? 's' : ''}
                                     </p>
@@ -451,21 +453,21 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setViewingRx(rx)}
-                                    className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                    className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                                     title="Ver"
                                 >
                                     <Eye size={16} />
                                 </button>
                                 <button
                                     onClick={() => handleExportPDF(rx)}
-                                    className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                                    className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
                                     title="Descargar PDF"
                                 >
                                     <Download size={14} />
                                 </button>
                                 <button
-                                    onClick={() => handleDelete(rx.id)}
-                                    className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                    onClick={() => setDeleteTarget(rx.id)}
+                                    className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                                     title="Eliminar"
                                 >
                                     <Trash2 size={14} />
@@ -474,6 +476,22 @@ const PrescriptionManager: React.FC<Props> = ({ patient, onUpdate, doctorName, c
                         </div>
                     ))}
                 </div>
+            )}
+
+            {deleteTarget && (
+                <ConfirmModal
+                    isOpen={true}
+                    title="Eliminar Receta"
+                    description="¿Estás seguro de que deseas eliminar esta receta médica? Se borrará del historial del paciente."
+                    confirmLabel="Eliminar Receta"
+                    cancelLabel="Cancelar"
+                    onConfirm={() => {
+                        handleDelete(deleteTarget);
+                        setDeleteTarget(null);
+                    }}
+                    onClose={() => setDeleteTarget(null)}
+                    variant="danger"
+                />
             )}
         </div>
     );

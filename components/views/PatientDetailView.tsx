@@ -46,13 +46,13 @@ const PatientDetailView: React.FC = () => {
         <header className="flex items-center gap-3 mb-4 md:mb-6">
           <button
             onClick={() => navigate('/patients')}
-            className="w-10 h-10 min-w-[40px] bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 border border-slate-200 hover:text-blue-600 transition-all text-lg"
+            className="w-11 h-11 min-w-[40px] bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-500 border border-slate-300 hover:text-blue-600 transition-all text-lg"
           >
             ←
           </button>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg md:text-2xl font-bold text-slate-900 tracking-tight truncate">{patient.identification.fullName}</h2>
-            <p className="text-slate-400 font-medium text-xs mt-0.5">{patient.identification.phone || 'Expediente clínico'}</p>
+            <p className="text-slate-500 font-medium text-sm mt-0.5">{patient.identification.phone || 'Expediente clínico'}</p>
           </div>
         </header>
         <div className="flex-1 overflow-hidden">

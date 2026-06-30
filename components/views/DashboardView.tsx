@@ -13,6 +13,7 @@ import { cn, formatCurrency, getInitials, getLocalISODate } from '../../lib/util
 import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, UserPlus, TrendingUp, Clock, Users, DollarSign, Bell } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
+import { useNotifications } from '../../hooks/useNotifications';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -37,6 +38,36 @@ const Dashboard: React.FC = () => {
   // Contextual tips (show once)
   useWelcomeTip();
   useDashboardTip();
+
+  const { addNotification } = useNotifications();
+
+  // ===== "Cita próxima" notifications — fire when ≤30 min away =====
+  useEffect(() => {
+    const check = () => {
+      const now = new Date();
+      const todayStr = getLocalISODate(now);
+      allAppointments
+        .filter(a => a.date === todayStr && a.status !== 'Eliminada' && a.status !== 'Completada')
+        .forEach(a => {
+          const [h, m] = a.time.split(':').map(Number);
+          const aptTime = new Date();
+          aptTime.setHours(h, m, 0, 0);
+          const diffMin = (aptTime.getTime() - now.getTime()) / 60000;
+          if (diffMin >= 0 && diffMin <= 30) {
+            addNotification(
+              'appointment_soon',
+              `Cita en ${Math.round(diffMin)} min`,
+              `${a.patientName} — ${a.type} a las ${a.time}`,
+              '/calendar',
+              `soon-${a.id}-${todayStr}`,
+            );
+          }
+        });
+    };
+    check();
+    const interval = setInterval(check, 60_000);
+    return () => clearInterval(interval);
+  }, [allAppointments, addNotification]);
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
 
@@ -173,46 +204,46 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4 animate-in-up stagger-delay-2 shrink-0">
           <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
                 <CalendarIcon size={15} className="text-blue-600" />
               </div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hoy</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hoy</span>
             </div>
             <p className="text-2xl font-bold text-slate-900">{pulseMetrics.totalToday}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">citas programadas</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">citas programadas</p>
           </div>
           <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
                 <Users size={15} className="text-emerald-600" />
               </div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pacientes</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pacientes</span>
             </div>
             <p className="text-2xl font-bold text-slate-900">{allPatients.length}</p>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">expedientes activos</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">expedientes activos</p>
           </div>
           {canViewFinancial && (
             <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
                   <DollarSign size={15} className="text-amber-600" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deuda</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Deuda</span>
               </div>
               <p className={cn("text-2xl font-bold", pulseMetrics.totalDebt > 0 ? "text-amber-600" : "text-slate-900")}>{formatCurrency(pulseMetrics.totalDebt)}</p>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">saldo pendiente</p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">saldo pendiente</p>
             </div>
           )}
           {isAdmin && (
             <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+                <div className="w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center">
                   <Bell size={15} className="text-violet-600" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Solicitudes</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Solicitudes</span>
               </div>
               <p className={cn("text-2xl font-bold", pendingRequests.length > 0 ? "text-violet-600" : "text-slate-900")}>{pendingRequests.length}</p>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">reservas pendientes</p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">reservas pendientes</p>
             </div>
           )}
         </div>
@@ -243,7 +274,7 @@ const Dashboard: React.FC = () => {
                 <div className="space-y-8 lg:space-y-10">
                   {groupedAppointments.map(group => (
                     <div key={group.label} className="space-y-3 lg:space-y-4">
-                      <h3 className="text-[12px] lg:text-[13px] font-semibold uppercase tracking-widest text-slate-500 pl-1 sticky top-0 bg-white/80 backdrop-blur-xl py-2 z-10">{group.label}</h3>
+                      <h3 className="text-sm lg:text-[13px] font-semibold uppercase tracking-widest text-slate-500 pl-1 sticky top-0 bg-white/80 backdrop-blur-xl py-2 z-10">{group.label}</h3>
                       <div className="grid grid-cols-1 gap-3 lg:gap-4">
                         {group.items.map(apt => (
                           <AppointmentCard

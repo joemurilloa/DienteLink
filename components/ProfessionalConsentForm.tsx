@@ -52,7 +52,7 @@ const ProfessionalConsentForm: React.FC<Props> = ({ patient, doctorName, clinicN
       placeholder={placeholder}
       style={{ width }}
       className={cn(
-        "inline-block border-b border-dashed border-slate-300 bg-transparent px-1 text-blue-700 font-medium focus:border-blue-500 focus:bg-blue-50/50 outline-none transition-all placeholder:text-slate-300 placeholder:font-normal text-center min-w-[60px]",
+        "inline-block border-b border-dashed border-slate-300 bg-transparent px-1 text-blue-700 font-medium focus:border-blue-500 focus:bg-blue-50/50 outline-none transition-all placeholder:text-slate-400 placeholder:font-normal text-center min-w-[60px]",
         className
       )}
     />
@@ -292,7 +292,7 @@ Observaciones: ${formData.observations || 'Ninguna'}
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in-up">
+    <div className="bg-white rounded-3xl border border-slate-300 shadow-xl overflow-hidden animate-in-up">
       {/* Header */}
       <div className="bg-slate-900 p-6 text-white flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -301,10 +301,10 @@ Observaciones: ${formData.observations || 'Ninguna'}
           </div>
           <div>
             <h3 className="text-xl font-bold tracking-tight">{config.title}</h3>
-            <p className="text-slate-400 text-xs uppercase tracking-widest font-semibold">Expediente Clínico Oficial</p>
+            <p className="text-slate-500 text-sm uppercase tracking-widest font-semibold">Expediente Clínico Oficial</p>
           </div>
         </div>
-        <button onClick={onCancel} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+        <button onClick={onCancel} className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
           <X size={20} />
         </button>
       </div>
@@ -312,7 +312,7 @@ Observaciones: ${formData.observations || 'Ninguna'}
       <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
         <div className="max-w-3xl mx-auto space-y-8 text-slate-700 leading-relaxed text-sm">
           
-          <div className="text-center font-bold text-lg text-slate-900 border-b-2 border-slate-100 pb-4 mb-8">
+          <div className="text-center font-bold text-lg text-slate-900 border-b-2 border-slate-300 pb-4 mb-8">
             {clinicName.toUpperCase()} <br/>
             <span className="text-blue-600 tracking-wide uppercase text-sm">{config.title}</span>
           </div>
@@ -326,15 +326,15 @@ Observaciones: ${formData.observations || 'Ninguna'}
           </p>
 
           {/* Procedure Specific Section */}
-          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-300">
             {(templateType === 'extraction' || templateType === 'endodontics') && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Pieza(s) dental(es)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Pieza(s) dental(es)</label>
                   {renderInlineInput("pieces", "Indicar piezas...", "100%", "text-left font-bold text-lg")}
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Observaciones relevantes</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Observaciones relevantes</label>
                   {renderInlineInput("observations", "Detalles clínicos...", "100%", "text-left italic")}
                 </div>
               </div>
@@ -343,11 +343,11 @@ Observaciones: ${formData.observations || 'Ninguna'}
             {templateType === 'orthodontics' && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tipo de aparatología propuesta</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Tipo de aparatología propuesta</label>
                   {renderInlineInput("applianceType", "Ej: Brackets metálicos...", "100%", "text-left font-bold text-lg")}
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Observaciones diagnósticas</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Observaciones diagnósticas</label>
                   {renderInlineInput("observations", "Clase I, apiñamiento...", "100%", "text-left italic")}
                 </div>
               </div>
@@ -355,15 +355,15 @@ Observaciones: ${formData.observations || 'Ninguna'}
 
             {templateType === 'general' && (
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Observaciones / Plan de atención</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Observaciones / Plan de atención</label>
                 {renderInlineInput("observations", "Evaluación odontológica...", "100%", "text-left italic")}
               </div>
             )}
           </div>
 
-          <div className="space-y-6 pt-4 border-t border-slate-100">
-            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-widest border-l-4 border-blue-500 pl-3">Cláusulas de Consentimiento (Resumen Visual)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-[10px] text-slate-500 uppercase font-semibold">
+          <div className="space-y-6 pt-4 border-t border-slate-300">
+            <h4 className="font-bold text-slate-900 text-sm uppercase tracking-widest border-l-4 border-blue-500 pl-3">Cláusulas de Consentimiento (Resumen Visual)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-xs text-slate-500 uppercase font-semibold">
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1" />
                 <span>Naturaleza del procedimiento</span>
@@ -399,24 +399,24 @@ Observaciones: ${formData.observations || 'Ninguna'}
             </div>
           </div>
 
-          <div className="bg-slate-950 p-6 rounded-2xl text-white italic text-xs text-center leading-relaxed">
+          <div className="bg-slate-950 p-6 rounded-2xl text-white italic text-sm text-center leading-relaxed">
             "Declaro que he recibido explicación suficiente, que he tenido oportunidad de formular preguntas y que autorizo libremente la realización del tratamiento antes descrito."
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-300">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Testigo 1 (opcional)</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center block">Testigo 1 (opcional)</label>
               {renderInlineInput("witness1", "Nombre completo", "100%", "text-left")}
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Testigo 2 (opcional)</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center block">Testigo 2 (opcional)</label>
               {renderInlineInput("witness2", "Nombre completo", "100%", "text-left")}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="p-6 bg-slate-50 border-t border-slate-100">
+      <div className="p-6 bg-slate-50 border-t border-slate-300">
         {showSigning ? (
           <div className="max-w-xl mx-auto">
             <SignatureCanvas
@@ -432,7 +432,7 @@ Observaciones: ${formData.observations || 'Ninguna'}
             >
               <CheckCircle2 size={18} /> Validar y Proceder a Firma
             </button>
-            <button onClick={onCancel} className="px-8 py-4 text-slate-400 font-semibold hover:text-red-500 transition-all">
+            <button onClick={onCancel} className="px-8 py-4 text-slate-500 font-semibold hover:text-red-500 transition-all">
               Cancelar
             </button>
           </div>

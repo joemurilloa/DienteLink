@@ -11,6 +11,7 @@ import { useAppointments, useAppointmentMutations } from '../hooks/useAppointmen
 import { cn, generateId, getInitials, formatAppDate } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
+import ConfirmModal from './ConfirmModal';
 
 interface Props {
   onBack: () => void;
@@ -39,6 +40,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publicUrl, setPublicUrl] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -47,6 +49,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
       setRequests(bookingService.getAppointmentRequests());
     } catch (e) {
       console.error('Error loading requests:', e);
+      sileo.error({ title: 'Error', description: 'No se pudieron cargar las solicitudes.' });
     } finally {
       setLoadingReqs(false);
     }
@@ -247,7 +250,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Solicitudes</h1>
               {pendingCount > 0 && (
-                <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold animate-pulse">
+                <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-sm font-bold animate-pulse">
                   {pendingCount} Pendientes
                 </div>
               )}
@@ -266,8 +269,8 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                    key={tab.key}
                    onClick={() => setActiveTab(tab.key)}
                    className={cn(
-                     "px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2",
-                     activeTab === tab.key ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : "text-slate-400 hover:text-slate-700"
+                     "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                     activeTab === tab.key ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : "text-slate-500 hover:text-slate-700"
                    )}
                  >
                    <span className="hidden sm:inline">{tab.label}</span>
@@ -281,7 +284,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
         {/* TAB: REQUESTS */}
         {activeTab === 'requests' && (
           <div className="animate-in fade-in duration-300">
-            <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4 overflow-x-auto hide-scrollbar">
+            <div className="flex items-center gap-2 mb-6 border-b border-slate-300 pb-4 overflow-x-auto hide-scrollbar">
               {([
                 { key: 'all', label: 'Todas' },
                 { key: 'pending', label: 'Pendientes' },
@@ -303,21 +306,21 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="w-10 h-10 rounded-[10px] flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50"
+                className="w-11 h-11 rounded-[10px] flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50"
               >
                 <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
               </button>
             </div>
 
             {loadingReqs ? (
-              <div className="text-center py-20"><div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" /></div>
+              <div className="text-center py-20"><div className="w-11 h-11 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" /></div>
             ) : filteredRequests.length === 0 ? (
               <div className="text-center py-24">
-                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-300">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-400">
                   <Bell size={24} />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mb-2">Buzón vacío</h3>
-                <p className="text-[15px] font-medium text-slate-400">Las peticiones de cita aparecerán aquí para tu aprobación.</p>
+                <p className="text-[15px] font-medium text-slate-500">Las peticiones de cita aparecerán aquí para tu aprobación.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -327,14 +330,14 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="group bg-white rounded-2xl p-5 hover:bg-slate-50/50 transition-colors border border-transparent hover:border-slate-100 flex flex-col md:flex-row gap-5 items-start md:items-center relative"
+                    className="group bg-white rounded-2xl p-5 hover:bg-slate-50/50 transition-colors border border-slate-300 hover:border-slate-300 flex flex-col md:flex-row gap-5 items-start md:items-center relative"
                   >
                     {/* Status Dot */}
                     <div className={cn("w-2 h-2 rounded-full mt-1.5 md:mt-0 flex-shrink-0", statusColor(req.status))} />
                     
                     {/* Profile & Info */}
                     <div className="flex-1 min-w-0 flex items-start gap-4">
-                      <div className="w-11 h-11 bg-white border border-slate-100 shadow-sm rounded-xl flex items-center justify-center text-slate-600 font-bold text-sm">
+                      <div className="w-11 h-11 bg-white border border-slate-300 shadow-sm rounded-xl flex items-center justify-center text-slate-600 font-bold text-sm">
                         {getInitials(req.patientName)}
                       </div>
                       <div className="min-w-0">
@@ -347,13 +350,13 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                           <span>{req.appointmentType}</span>
                         </div>
                         {req.message && (
-                          <p className="mt-2 text-[13px] text-slate-600 bg-white border border-slate-100 p-2.5 rounded-lg">"{req.message}"</p>
+                          <p className="mt-2 text-[13px] text-slate-600 bg-white border border-slate-300 p-2.5 rounded-lg">"{req.message}"</p>
                         )}
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity w-full md:w-auto justify-end border-t border-slate-100 md:border-0 pt-4 md:pt-0">
+                    <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity w-full md:w-auto justify-end border-t border-slate-300 md:border-0 pt-4 md:pt-0">
                       {req.status === 'pending' && (
                         <>
                            <button onClick={() => handleApprove(req.id)} className="px-5 py-2.5 bg-slate-900 text-white rounded-[10px] text-[13px] font-bold hover:bg-slate-800 transition-all">Aprobar</button>
@@ -361,18 +364,18 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                         </>
                       )}
                       {req.status === 'approved' && (
-                        <button onClick={() => handleChangeStatus(req.id, 'rejected')} className="px-4 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">Revocar</button>
+                        <button onClick={() => handleChangeStatus(req.id, 'rejected')} className="px-4 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold transition-all">Revocar</button>
                       )}
                       {req.status === 'rejected' && (
-                        <button onClick={() => handleChangeStatus(req.id, 'approved')} className="px-4 py-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg text-xs font-bold transition-all">Re-Aprobar</button>
+                        <button onClick={() => handleChangeStatus(req.id, 'approved')} className="px-4 py-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg text-sm font-bold transition-all">Re-Aprobar</button>
                       )}
                       <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block" />
-                      <button onClick={() => handleDelete(req.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors">
+                      <button onClick={() => setDeleteTarget(req.id)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                         <Trash2 size={14} />
                       </button>
                     </div>
 
-                    <div className="absolute right-5 top-5 md:hidden text-[10px] uppercase font-bold text-slate-300">
+                    <div className="absolute right-5 top-5 md:hidden text-xs uppercase font-bold text-slate-400">
                       {req.status}
                     </div>
                   </motion.div>
@@ -399,23 +402,23 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
              <div className="space-y-12">
                {/* Sección 1 */}
                <section>
-                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-6">Reglas de Reserva</h3>
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Reglas de Reserva</h3>
                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                    <div className="space-y-2">
                      <label className="text-[13px] font-semibold text-slate-900">Duración base</label>
-                     <select value={availability.slotDuration} onChange={e => { setAvailability(p => ({ ...p, slotDuration: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
+                     <select value={availability.slotDuration} onChange={e => { setAvailability(p => ({ ...p, slotDuration: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
                        <option value={15}>15 minutos</option><option value={30}>30 minutos</option><option value={45}>45 minutos</option><option value={60}>1 hora</option>
                      </select>
                    </div>
                    <div className="space-y-2">
                      <label className="text-[13px] font-semibold text-slate-900">Pausa intermedia</label>
-                     <select value={availability.bufferTime} onChange={e => { setAvailability(p => ({ ...p, bufferTime: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
+                     <select value={availability.bufferTime} onChange={e => { setAvailability(p => ({ ...p, bufferTime: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
                        <option value={0}>Sin pausa</option><option value={15}>15 minutos</option><option value={30}>30 minutos</option>
                      </select>
                    </div>
                    <div className="space-y-2">
                      <label className="text-[13px] font-semibold text-slate-900">Anticipación max.</label>
-                     <select value={availability.advanceBookingDays} onChange={e => { setAvailability(p => ({ ...p, advanceBookingDays: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
+                     <select value={availability.advanceBookingDays} onChange={e => { setAvailability(p => ({ ...p, advanceBookingDays: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
                        <option value={7}>1 semana</option><option value={14}>2 semanas</option><option value={30}>1 mes</option><option value={60}>2 meses</option>
                      </select>
                    </div>
@@ -426,20 +429,20 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
                {/* Sección 2 */}
                <section>
-                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-6">Disponibilidad Semanal</h3>
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Disponibilidad Semanal</h3>
                  <div className="space-y-2">
                    {daysOfWeek.map(day => {
                      const cfg = availability.weeklySchedule.find(d => d.dayOfWeek === day.value);
                      if (!cfg) return null;
                      return (
-                       <div key={day.value} className={cn("rounded-2xl p-4 transition-all duration-300", cfg.enabled ? "bg-white border border-slate-100 shadow-sm" : "bg-transparent border border-transparent")}>
+                       <div key={day.value} className={cn("rounded-2xl p-4 transition-all duration-300", cfg.enabled ? "bg-white border border-slate-300 shadow-sm" : "bg-transparent border border-slate-300")}>
                          <div className="flex items-center justify-between">
                            <label className="flex items-center gap-4 cursor-pointer">
                              <input type="checkbox" checked={cfg.enabled} onChange={() => handleDayToggle(day.value)} className="w-5 h-5 rounded-md text-blue-600 border-slate-300 focus:ring-blue-600 transition-all cursor-pointer" />
-                             <span className={cn('text-[15px] font-bold', cfg.enabled ? 'text-slate-900' : 'text-slate-400')}>{day.label}</span>
+                             <span className={cn('text-[15px] font-bold', cfg.enabled ? 'text-slate-900' : 'text-slate-500')}>{day.label}</span>
                            </label>
                            {cfg.enabled && (
-                             <button onClick={() => addTimeSlot(day.value)} className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition-colors">
+                             <button onClick={() => addTimeSlot(day.value)} className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-sm font-bold hover:bg-blue-100 transition-colors">
                                Agregar Franja
                              </button>
                            )}
@@ -448,10 +451,10 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                            <div className="mt-4 pl-9 space-y-3">
                              {cfg.timeSlots.map((slot, idx) => (
                                <div key={idx} className="flex items-center gap-3">
-                                 <input type="time" value={slot.start} onChange={e => updateTimeSlot(day.value, idx, 'start', e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-semibold outline-none focus:border-blue-500 transition-colors" />
-                                 <span className="text-slate-300 text-xs font-bold">A</span>
-                                 <input type="time" value={slot.end} onChange={e => updateTimeSlot(day.value, idx, 'end', e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-semibold outline-none focus:border-blue-500 transition-colors" />
-                                 <button onClick={() => removeTimeSlot(day.value, idx)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors ml-4">
+                                 <input type="time" value={slot.start} onChange={e => updateTimeSlot(day.value, idx, 'start', e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold outline-none focus:border-blue-500 transition-colors" />
+                                 <span className="text-slate-400 text-sm font-bold">A</span>
+                                 <input type="time" value={slot.end} onChange={e => updateTimeSlot(day.value, idx, 'end', e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold outline-none focus:border-blue-500 transition-colors" />
+                                 <button onClick={() => removeTimeSlot(day.value, idx)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors ml-4">
                                    <X size={16} />
                                  </button>
                                </div>
@@ -468,20 +471,20 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
                {/* Sección 3 */}
                <section className="pb-12">
-                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-6">Portal de Reservas</h3>
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Portal de Reservas</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-5">
                       <div className="space-y-2">
                         <label className="text-[13px] font-semibold text-slate-900">Nombre del Perfil</label>
-                        <input type="text" value={settings.doctorName} onChange={e => { setSettings(p => ({ ...p, doctorName: e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold focus:bg-white focus:border-blue-500 border border-transparent transition-all" />
+                        <input type="text" value={settings.doctorName} onChange={e => { setSettings(p => ({ ...p, doctorName: e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold focus:bg-white focus:border-blue-500 border border-slate-300 transition-all" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[13px] font-semibold text-slate-900">Descripción Médica</label>
-                        <textarea rows={3} value={settings.description} onChange={e => { setSettings(p => ({ ...p, description: e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-[13px] text-slate-600 focus:bg-white focus:border-blue-500 border border-transparent resize-none transition-all" />
+                        <textarea rows={3} value={settings.description} onChange={e => { setSettings(p => ({ ...p, description: e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-[13px] text-slate-600 focus:bg-white focus:border-blue-500 border border-slate-300 resize-none transition-all" />
                       </div>
                     </div>
                     <div className="space-y-5">
-                       <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                       <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-slate-300 hover:bg-slate-50 transition-colors">
                          <input type="checkbox" checked={settings.isActive} onChange={() => { setSettings(p => ({ ...p, isActive: !p.isActive })); setHasChanges(true); }} className="w-5 h-5 rounded-md cursor-pointer" />
                          <span className="text-sm font-bold text-slate-900">Agenda Pública Activa</span>
                        </label>
@@ -507,19 +510,19 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                <p className="text-slate-500 font-medium">Envía este enlace a tus pacientes para que reserven su propia cita desde cualquier dispositivo.</p>
              </div>
 
-             <div className="bg-slate-50 border border-slate-100 p-6 rounded-[24px] mb-8 relative group">
+             <div className="bg-slate-50 border border-slate-300 p-6 rounded-[24px] mb-8 relative group">
                 <code className="text-[15px] font-semibold text-slate-700 break-all pr-12">{publicUrl}</code>
-                <button onClick={copyUrl} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white shadow-sm rounded-xl flex items-center justify-center text-slate-400 hover:text-blue-600 hover:scale-105 transition-all">
+                <button onClick={copyUrl} className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white shadow-sm rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:scale-105 transition-all">
                   <Copy size={18} />
                 </button>
              </div>
 
              <div className="grid grid-cols-2 gap-4">
-                <button onClick={openPreview} className="p-4 bg-white border border-slate-200 rounded-[20px] shadow-sm hover:border-slate-300 hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group">
+                <button onClick={openPreview} className="p-4 bg-white border border-slate-300 rounded-[20px] shadow-sm hover:border-slate-300 hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group">
                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition-colors"><Eye size={20} /></div>
                    <span className="text-[13px] font-bold text-slate-900">Probar como paciente</span>
                 </button>
-                <button onClick={shareWhatsApp} className="p-4 bg-white border border-slate-200 rounded-[20px] shadow-sm hover:border-green-200 hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group">
+                <button onClick={shareWhatsApp} className="p-4 bg-white border border-slate-300 rounded-[20px] shadow-sm hover:border-green-200 hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group">
                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600 group-hover:bg-green-500 group-hover:text-white transition-colors"><Share2 size={20} /></div>
                    <span className="text-[13px] font-bold text-green-700">Enviar por WhatsApp</span>
                 </button>
@@ -527,6 +530,22 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
           </div>
         )}
       </div>
+
+      {deleteTarget && (
+        <ConfirmModal
+          isOpen={true}
+          title="Eliminar Solicitud"
+          description="¿Estás seguro de que deseas eliminar esta solicitud de cita? Esta acción no se puede deshacer."
+          confirmLabel="Eliminar Solicitud"
+          cancelLabel="Cancelar"
+          onConfirm={() => {
+            handleDelete(deleteTarget);
+            setDeleteTarget(null);
+          }}
+          onClose={() => setDeleteTarget(null)}
+          variant="danger"
+        />
+      )}
     </div>
   );
 };

@@ -11,25 +11,90 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <!-- Theme & PWA -->
     <meta name="theme-color" content="#3b82f6">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DienteLink">
+    <meta name="application-name" content="DienteLink">
+
+    <!-- SEO -->
+    <meta name="description" content="Gestión dental profesional: expedientes clínicos, odontogramas, agenda de citas y reservas online.">
+    <meta name="keywords" content="odontología, gestión dental, expediente clínico, odontograma, citas dentales">
+
+    <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
     <link rel="apple-touch-icon" href="/icon.svg">
-    <title>DienteLink | Gestión Dental Profesional</title>
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="manifest" href="/manifest.json">
+
+    <title>DienteLink | Gestión Dental Profesional</title>
+
+    <style>
+        /* Splash screen styles — inlined to avoid FOUC */
+        #initial-loader {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #F8FAFC;
+            z-index: 9999;
+            transition: opacity 0.4s ease;
+            gap: 16px;
+        }
+
+        #initial-loader .logo-wrap {
+            width: 72px;
+            height: 72px;
+            background: #2563eb;
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            box-shadow: 0 20px 50px rgba(59,130,246,0.35);
+            animation: splash-pulse 1.6s ease-in-out infinite;
+        }
+
+        #initial-loader .logo-text {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.03em;
+            color: #0f172a;
+        }
+
+        #initial-loader .logo-sub {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 600;
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-top: -10px;
+        }
+
+        @keyframes splash-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 20px 50px rgba(59,130,246,0.35); }
+            50%       { transform: scale(1.06); box-shadow: 0 28px 60px rgba(59,130,246,0.45); }
+        }
+    </style>
 </head>
 
 <body class="h-full overflow-hidden mesh-bg">
     <div id="initial-loader">
-        <div
-            class="w-16 h-16 bg-blue-600 rounded-[22px] flex items-center justify-center text-white text-3xl shadow-[0_20px_50px_rgba(59,130,246,0.3)] animate-bounce">
-            🦷</div>
-        <div class="mt-4 font-bold text-slate-900 tracking-tighter text-xl">DIENTELINK</div>
+        <div class="logo-wrap">🦷</div>
+        <div class="logo-text">DIENTELINK</div>
+        <div class="logo-sub">Gestión Dental</div>
     </div>
     <div id="root" class="h-full"></div>
     <script type="module" src="/index.tsx"></script>
@@ -38,7 +103,7 @@
             const loader = document.getElementById('initial-loader');
             if (loader) {
                 loader.style.opacity = '0';
-                setTimeout(() => loader.remove(), 500);
+                setTimeout(() => loader.remove(), 450);
             }
         });
     </script>
@@ -54,4 +119,4 @@
     </script>
 </body>
 
-</html>
+</html>

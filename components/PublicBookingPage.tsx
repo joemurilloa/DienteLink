@@ -278,18 +278,18 @@ const PublicBookingPage: React.FC = () => {
   return (
     <div className="min-h-screen min-h-[100dvh] bg-white flex flex-col">
       {/* Compact Header */}
-      <header className="border-b border-slate-100 px-4 py-3 flex items-center gap-3 bg-white sticky top-0 z-10">
-        <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+      <header className="border-b border-slate-300 px-4 py-3 flex items-center gap-3 bg-white sticky top-0 z-10">
+        <div className="w-11 h-11 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
           <CalendarIcon size={18} className="text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="text-sm font-bold text-slate-900 truncate">{settings.clinicName || 'Clínica Dental'}</h1>
-          {settings.doctorName && <p className="text-[11px] text-slate-400 truncate">{settings.doctorName}</p>}
+          {settings.doctorName && <p className="text-xs text-slate-500 truncate">{settings.doctorName}</p>}
         </div>
         {/* Step indicator with label */}
         {step !== 'welcome' && (
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[10px] font-semibold text-slate-400 hidden min-[380px]:block">
+            <span className="text-xs font-semibold text-slate-500 hidden min-[380px]:block">
               {step === 'select-date' && 'Fecha'}
               {step === 'select-time' && 'Hora'}
               {step === 'fill-info' && 'Datos'}
@@ -344,7 +344,7 @@ const PublicBookingPage: React.FC = () => {
             {step === 'select-date' && (
               <motion.div key="date" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
                 <h2 className="text-xl font-bold text-slate-900 mb-1">Elige una fecha</h2>
-                <p className="text-sm text-slate-400 mb-5">{settings.description || 'Selecciona el día que mejor te convenga.'}</p>
+                <p className="text-sm text-slate-500 mb-5">{settings.description || 'Selecciona el día que mejor te convenga.'}</p>
 
                 {/* Calendar Navigation */}
                 <div className="flex items-center justify-between mb-4">
@@ -364,7 +364,7 @@ const PublicBookingPage: React.FC = () => {
                 {/* Calendar Grid */}
                 <div className="grid grid-cols-7 gap-1 mb-2">
                   {['D', 'L', 'M', 'Mi', 'J', 'V', 'S'].map(d => (
-                    <div key={d} className="text-center text-[10px] font-semibold uppercase text-slate-400 py-2">{d}</div>
+                    <div key={d} className="text-center text-xs font-semibold uppercase text-slate-500 py-2">{d}</div>
                   ))}
                   {Array.from({ length: calendarDays.firstDay }).map((_, i) => <div key={`s-${i}`} />)}
                   {Array.from({ length: calendarDays.totalDays }).map((_, i) => {
@@ -384,7 +384,7 @@ const PublicBookingPage: React.FC = () => {
                           'aspect-square rounded-xl text-sm font-medium transition-all flex items-center justify-center',
                           isSelected ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                             : isAvailable ? 'hover:bg-blue-50 text-slate-900 hover:text-blue-600 cursor-pointer'
-                            : 'text-slate-400 cursor-not-allowed opacity-40 line-through',
+                            : 'text-slate-500 cursor-not-allowed opacity-40 line-through',
                           isToday && !isSelected && 'ring-2 ring-blue-200'
                         )}
                       >
@@ -394,7 +394,7 @@ const PublicBookingPage: React.FC = () => {
                   })}
                 </div>
 
-                <p className="text-xs text-slate-400 text-center mt-3">Los días resaltados tienen disponibilidad</p>
+                <p className="text-sm text-slate-500 text-center mt-3">Los días resaltados tienen disponibilidad</p>
               </motion.div>
             )}
 
@@ -405,18 +405,18 @@ const PublicBookingPage: React.FC = () => {
                   <ArrowLeft size={16} /> Cambiar fecha
                 </button>
                 <h2 className="text-xl font-bold text-slate-900 mb-1">Elige un horario</h2>
-                <p className="text-sm text-slate-400 mb-5">{formatDate(selectedDate)}</p>
+                <p className="text-sm text-slate-500 mb-5">{formatDate(selectedDate)}</p>
 
                 {loadingSlots ? (
                   <div>
                     <div className="grid grid-cols-3 gap-2 mb-4">
                       {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="py-3 px-2 rounded-xl border border-slate-100 bg-slate-50 animate-pulse">
+                        <div key={i} className="py-3 px-2 rounded-xl border border-slate-300 bg-slate-50 animate-pulse">
                           <div className="h-4 bg-slate-200 rounded-md mx-auto w-16"></div>
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-slate-400 text-center">Consultando disponibilidad...</p>
+                    <p className="text-sm text-slate-500 text-center">Consultando disponibilidad...</p>
                   </div>
                 ) : availableTimes.length === 0 ? (
                   <div className="text-center py-10">
@@ -432,7 +432,7 @@ const PublicBookingPage: React.FC = () => {
                       <button
                         key={time}
                         onClick={() => handleTimeSelect(time)}
-                        className="py-3 px-2 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-center text-sm font-semibold text-slate-700 hover:text-blue-600"
+                        className="py-3 px-2 rounded-xl border border-slate-300 hover:border-blue-500 hover:bg-blue-50 transition-all text-center text-sm font-semibold text-slate-700 hover:text-blue-600"
                       >
                         {formatTime(time)}
                       </button>
@@ -452,50 +452,50 @@ const PublicBookingPage: React.FC = () => {
                 {/* Summary chip */}
                 <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-xl mb-3">
                   <CalendarIcon size={14} className="text-blue-600 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-blue-700">{formatDate(selectedDate)} — {formatTime(selectedTime)}</span>
+                  <span className="text-sm font-semibold text-blue-700">{formatDate(selectedDate)} — {formatTime(selectedTime)}</span>
                 </div>
 
                 <h2 className="text-lg font-bold text-slate-900 mb-3">Completa tus datos</h2>
 
                 <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nombre completo *</label>
+                    <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Nombre completo *</label>
                     <div className="relative">
-                      <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                      <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu nombre completo" />
+                        className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu nombre completo" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Correo electrónico <span className="text-slate-300 normal-case">(opcional)</span></label>
+                    <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Correo electrónico <span className="text-slate-400 normal-case">(opcional)</span></label>
                     <div className="relative">
-                      <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                      <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="tu@email.com (opcional)" />
+                        className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="tu@email.com (opcional)" />
                     </div>
                   </div>
 
                   {settings.requirePhone && (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Teléfono *</label>
+                      <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Teléfono *</label>
                       <div className="relative">
-                        <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                        <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="tel" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu número" />
+                          className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm" placeholder="Tu número" />
                       </div>
                     </div>
                   )}
 
                   <div className="pt-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Tipo de cita</label>
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Tipo de cita</label>
                     <div className="flex gap-2 flex-wrap">
                       {settings.availableTypes.map(type => (
                         <button key={type} type="button" onClick={() => setFormData({ ...formData, appointmentType: type })}
                           className={cn('px-5 py-3 rounded-2xl text-sm font-bold transition-all border shadow-sm',
                             formData.appointmentType === type
                               ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/30 ring-4 ring-blue-500/10' 
-                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                              : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
                           )}>
                           {type}
                         </button>
@@ -504,15 +504,15 @@ const PublicBookingPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                      Motivo de consulta {settings.requireMessage ? '*' : <span className="text-slate-300 normal-case">(opcional)</span>}
+                    <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                      Motivo de consulta {settings.requireMessage ? '*' : <span className="text-slate-400 normal-case">(opcional)</span>}
                     </label>
                     <textarea
                       required={settings.requireMessage}
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                       rows={2}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm resize-none"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm resize-none"
                       placeholder="Ej: dolor en muela, limpieza dental, revisión..."
                     />
                   </div>
@@ -547,20 +547,20 @@ const PublicBookingPage: React.FC = () => {
                 
                 <div className="bg-slate-50 rounded-xl p-5 text-left mb-5 space-y-2.5">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Fecha</span>
+                    <span className="text-slate-500">Fecha</span>
                     <span className="font-semibold text-slate-900">{formatDate(selectedDate)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Hora</span>
+                    <span className="text-slate-500">Hora</span>
                     <span className="font-semibold text-slate-900">{formatTime(selectedTime)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Tipo</span>
+                    <span className="text-slate-500">Tipo</span>
                     <span className="font-semibold text-slate-900">{formData.appointmentType}</span>
                   </div>
                   {formData.message && (
-                    <div className="pt-2 border-t border-slate-200 mt-2">
-                      <span className="text-slate-400 text-xs block mb-1">Comentarios / Motivo</span>
+                    <div className="pt-2 border-t border-slate-300 mt-2">
+                      <span className="text-slate-500 text-sm block mb-1">Comentarios / Motivo</span>
                       <span className="font-medium text-slate-800 text-sm">{formData.message}</span>
                     </div>
                   )}
@@ -577,8 +577,8 @@ const PublicBookingPage: React.FC = () => {
 
       {/* Footer — hidden during form step to maximize space */}
       {step !== 'fill-info' && step !== 'welcome' && (
-        <footer className="border-t border-slate-100 px-5 py-2 text-center flex-shrink-0">
-          <p className="text-[10px] text-slate-300 font-medium">Agenda proporcionada por DienteLink</p>
+        <footer className="border-t border-slate-300 px-5 py-2 text-center flex-shrink-0">
+          <p className="text-xs text-slate-400 font-medium">Agenda proporcionada por DienteLink</p>
         </footer>
       )}
     </div>

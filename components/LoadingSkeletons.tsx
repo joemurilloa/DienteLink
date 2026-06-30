@@ -11,7 +11,7 @@ export const PatientCardSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-100"
+    className="bg-white rounded-2xl p-6 border border-slate-300"
   >
     <div className="flex items-center gap-4 mb-4">
       <Skeleton className="w-12 h-12 rounded-xl" />
@@ -43,10 +43,10 @@ export const AppointmentCardSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-100"
+    className="bg-white rounded-2xl p-6 border border-slate-300"
   >
     <div className="flex items-center gap-3 mb-4">
-      <Skeleton className="w-10 h-10 rounded-lg" />
+      <Skeleton className="w-11 h-11 rounded-lg" />
       <div className="flex-1">
         <Skeleton className="h-4 w-28 mb-2" />
         <Skeleton className="h-3 w-20" />
@@ -71,10 +71,10 @@ export const StatsCardSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-100"
+    className="bg-white rounded-2xl p-6 border border-slate-300"
   >
     <div className="flex items-center gap-3 mb-4">
-      <Skeleton className="w-10 h-10 rounded-xl" />
+      <Skeleton className="w-11 h-11 rounded-xl" />
       <div className="flex-1">
         <Skeleton className="h-3 w-20 mb-2" />
         <Skeleton className="h-6 w-12" />
@@ -89,7 +89,7 @@ export const BookingRequestSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-100"
+    className="bg-white rounded-2xl p-6 border border-slate-300"
   >
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export const ListItemSkeleton: React.FC = () => (
     animate={{ opacity: 1 }}
     className="flex items-center gap-3 p-3"
   >
-    <Skeleton className="w-8 h-8 rounded-lg" />
+    <Skeleton className="w-11 h-11 rounded-lg" />
     <div className="flex-1">
       <Skeleton className="h-4 w-32 mb-1" />
       <Skeleton className="h-3 w-24" />
@@ -144,7 +144,7 @@ export const ListItemSkeleton: React.FC = () => (
 
 // Calendar day skeleton
 export const CalendarDaySkeleton: React.FC = () => (
-  <div className="p-2 border border-slate-100 rounded-lg min-h-[100px]">
+  <div className="p-2 border border-slate-300 rounded-lg min-h-[100px]">
     <Skeleton className="h-4 w-6 mb-2" />
     <div className="space-y-1">
       <Skeleton className="h-2 w-full rounded" />
@@ -158,10 +158,10 @@ export const SearchResultSkeleton: React.FC = () => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
-    className="p-3 hover:bg-slate-50 rounded-xl border-b border-slate-100 last:border-b-0"
+    className="p-3 hover:bg-slate-50 rounded-xl border-b border-slate-300 last:border-b-0"
   >
     <div className="flex items-center gap-3">
-      <Skeleton className="w-8 h-8 rounded-lg" />
+      <Skeleton className="w-11 h-11 rounded-lg" />
       <div className="flex-1">
         <Skeleton className="h-4 w-40 mb-1" />
         <Skeleton className="h-3 w-24" />

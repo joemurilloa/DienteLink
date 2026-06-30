@@ -8,6 +8,8 @@ import { useFocusManagement } from './lib/KeyboardShortcuts';
 import GlobalSearch from './components/GlobalSearch';
 import OnboardingWizard from './components/OnboardingWizard';
 import UpgradeBanner from './components/UpgradeBanner';
+import InstallPrompt from './components/InstallPrompt';
+import ConnectionStatus from './components/ConnectionStatus';
 import { sileo, Toaster } from 'sileo';
 import 'sileo/styles.css';
 
@@ -129,6 +131,8 @@ const Layout: React.FC = () => {
             aria-label="Contenido principal"
           >
             <UpgradeBanner />
+            <InstallPrompt />
+            <ConnectionStatus />
             <Suspense fallback={
               <div className="flex items-center justify-center w-full h-full">
                 <div className="text-center">
@@ -154,19 +158,7 @@ const Layout: React.FC = () => {
           </main>
           <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
           
-          {/* Floating WhatsApp Support Button for Beta */}
-          <a 
-            href="https://wa.me/50498053628?text=Hola,%20necesito%20ayuda%20con%20la%20Beta%20de%20DienteLink"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-50 bg-[#25D366] hover:bg-[#128C7E] text-white p-3.5 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center group"
-            aria-label="Soporte Beta por WhatsApp"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-circle-question"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs group-hover:ml-2 group-hover:px-1 transition-all duration-300 font-bold text-sm">
-              Soporte Beta
-            </span>
-          </a>
+
         </>
       )}
     </div>

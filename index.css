@@ -822,3 +822,101 @@ body, input, textarea, button, select {
 [data-sileo-viewport] {
   padding-top: env(safe-area-inset-top, 50px) !important;
 }
+
+/* ================================
+   SAFE AREA UTILITIES
+   ================================ */
+
+/* Bottom nav safe area for iPhone home indicator */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+
+/* ================================
+   PWA STANDALONE MODE
+   ================================ */
+
+@media (display-mode: standalone) {
+  /* Prevent overscroll bounce — native app feel */
+  html,
+  body {
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+  }
+
+  /* Hide scrollbars in standalone for cleaner look */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  /* Status bar safe area at top */
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Keep UpgradeBanner / InstallPrompt below status bar */
+  .upgrade-banner-wrapper,
+  .install-prompt-wrapper {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* ================================
+   TOUCH TARGETS (WCAG 2.5.8)
+   ================================ */
+
+/* On touch devices: ensure all interactive elements meet 44px minimum */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a,
+  select,
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Smooth momentum scrolling on all scroll containers */
+  .overflow-y-auto,
+  .overflow-auto,
+  .overflow-y-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Larger tap targets for small icon buttons */
+  .tap-effect {
+    position: relative;
+  }
+
+  .tap-effect::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: inherit;
+  }
+
+  /* Active state feedback (replaces hover on touch) */
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.97);
+    transition-duration: 0.08s;
+  }
+}
+
+/* ================================
+   PULL-TO-REFRESH PREVENTION
+   ================================ */
+
+/* Prevent pull-to-refresh gesture from triggering in the app shell */
+body {
+  overscroll-behavior-y: contain;
+}

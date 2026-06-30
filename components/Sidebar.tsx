@@ -6,6 +6,8 @@ import { LayoutDashboard, Users, Calendar as CalendarIcon, Settings, Bell, Menu,
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 import { motion, AnimatePresence } from 'framer-motion';
+import NotificationCenter from './NotificationCenter';
+import { sileo } from 'sileo';
 
 interface SidebarProps {
   activePath: string;
@@ -49,6 +51,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
       navigate('/login');
     } catch (err) {
       console.error('Error signing out:', err);
+      sileo.error({ title: 'Error', description: 'No se pudo cerrar sesión. Intenta de nuevo.' });
     }
   };
 
@@ -61,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
 
   return (
     <aside className={cn(
-      "hidden md:flex flex-col h-full bg-white border-r border-slate-200 p-3 lg:py-6 transition-all duration-300 relative z-40",
+      "hidden md:flex flex-col h-full bg-white border-r border-slate-300 p-3 lg:py-6 transition-all duration-300 relative z-40",
       isCollapsed ? "w-[72px]" : "w-[72px] lg:w-[260px] lg:px-4",
       "shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
     )}>
@@ -77,12 +80,12 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
           )}
           onClick={() => navigate('/')}
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[12px] flex items-center justify-center text-white text-lg shadow-sm group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300 flex-shrink-0">
+          <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[12px] flex items-center justify-center text-white text-lg shadow-sm group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300 flex-shrink-0">
             🦷
           </div>
           <div className={cn("overflow-hidden transition-all duration-300 whitespace-nowrap hidden lg:block", isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
             <h1 className="text-[15px] font-bold text-slate-900 tracking-tight leading-none">DienteLink</h1>
-            <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Gestión Dental</p>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">Gestión Dental</p>
           </div>
         </div>
 
@@ -129,7 +132,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
               )}
               {item.badge != null && item.badge > 0 && (
                 <span className={cn(
-                  "min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full flex items-center justify-center",
+                  "min-w-[18px] h-[18px] px-1 text-xs font-bold rounded-full flex items-center justify-center",
                   isCollapsed ? "absolute top-1 right-1" : "hidden lg:flex lg:ml-auto",
                   !isCollapsed && "hidden lg:flex",
                   isActive
@@ -144,8 +147,13 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
         })}
       </nav>
 
+      {/* Notification Center — desktop */}
+      <div className="mt-2 flex justify-center lg:justify-start lg:px-3 py-1">
+        <NotificationCenter />
+      </div>
+
       {/* Doctor Profile */}
-      <div className="mt-auto pt-4 border-t border-slate-100 relative" ref={dropdownRef}>
+      <div className="mt-auto pt-4 border-t border-slate-300 relative" ref={dropdownRef}>
         <AnimatePresence>
           {isDropdownOpen && (
             <motion.div
@@ -154,15 +162,15 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
               className={cn(
-                "absolute bottom-full mb-2 bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-2xl p-1 z-50 flex flex-col gap-0.5 min-w-[190px]",
+                "absolute bottom-full mb-2 bg-white/90 backdrop-blur-md border border-slate-300/50 rounded-2xl p-1 z-50 flex flex-col gap-0.5 min-w-[190px]",
                 "shadow-[0_12px_36px_-6px_rgba(0,0,0,0.08),_0_4px_12px_-2px_rgba(0,0,0,0.03)]",
                 isCollapsed ? "left-0" : "left-0 right-0 lg:left-3 lg:right-3"
               )}
             >
               {/* iOS-style header when collapsed */}
               {isCollapsed && (
-                <div className="px-3 py-2 border-b border-slate-100/60 mb-1">
-                  <p className="text-[12px] font-bold text-slate-800 truncate leading-none">{doctorName}</p>
+                <div className="px-3 py-2 border-b border-slate-300/60 mb-1">
+                  <p className="text-sm font-bold text-slate-800 truncate leading-none">{doctorName}</p>
                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1 leading-none">{doctorRole}</p>
                 </div>
               )}
@@ -213,14 +221,14 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
           onClick={() => setIsDropdownOpen(prev => !prev)}
         >
           <div className="relative flex-shrink-0">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
-              <span className="text-white font-semibold text-[11px]">{doctorInitials}</span>
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
+              <span className="text-white font-semibold text-xs">{doctorInitials}</span>
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />
           </div>
           <div className={cn("overflow-hidden flex-1 transition-all duration-300 hidden lg:block", isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
             <p className="text-[13px] font-bold text-slate-900 truncate leading-tight group-hover:text-blue-600 transition-colors duration-200">{doctorName}</p>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-tight mt-0.5">{doctorRole}</p>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider leading-tight mt-0.5">{doctorRole}</p>
           </div>
         </div>
       </div>

@@ -88,7 +88,7 @@ const AuthPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 text-center">
+          <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-300 p-8 text-center">
             <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">✉️</span>
             </div>
@@ -97,7 +97,7 @@ const AuthPage: React.FC = () => {
               Te enviamos un enlace de confirmación a <strong className="text-slate-700">{email}</strong>. 
               Haz clic en el enlace para activar tu cuenta.
             </p>
-            <p className="text-xs text-slate-400 mb-6">
+            <p className="text-sm text-slate-500 mb-6">
               ¿No lo encuentras? Revisa tu carpeta de spam o correo no deseado.
             </p>
             <button
@@ -121,17 +121,17 @@ const AuthPage: React.FC = () => {
             <span className="text-3xl">🦷</span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">DienteLink</h1>
-          <p className="text-sm text-slate-400 font-semibold mt-1">Gestión Dental Profesional</p>
+          <p className="text-sm text-slate-500 font-semibold mt-1">Gestión Dental Profesional</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-300 p-8">
           {/* Toggle */}
           <div className="flex bg-slate-50 rounded-xl p-1 mb-7">
             <button
               onClick={() => { setIsLogin(true); setError(''); }}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                isLogin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                isLogin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-600'
               }`}
             >
               Iniciar Sesión
@@ -139,7 +139,7 @@ const AuthPage: React.FC = () => {
             <button
               onClick={() => { setIsLogin(false); setError(''); }}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                !isLogin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                !isLogin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-600'
               }`}
             >
               Crear Cuenta
@@ -155,7 +155,7 @@ const AuthPage: React.FC = () => {
               });
             }}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-all shadow-sm mb-6"
+            className="w-full flex items-center justify-center gap-3 py-3.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-all shadow-sm mb-6"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -168,17 +168,17 @@ const AuthPage: React.FC = () => {
           </button>
 
           <div className="relative flex items-center mb-6">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink-0 mx-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="flex-grow border-t border-slate-300"></div>
+            <span className="flex-shrink-0 mx-4 text-sm font-semibold text-slate-500 uppercase tracking-wider">
               o usar correo
             </span>
-            <div className="flex-grow border-t border-slate-200"></div>
+            <div className="flex-grow border-t border-slate-300"></div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
                   Nombre completo
                 </label>
                 <input
@@ -186,14 +186,14 @@ const AuthPage: React.FC = () => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Dr. Juan Pérez"
-                  className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                  className="w-full px-4 py-3.5 rounded-xl border border-slate-300 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                   autoComplete="name"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
                 Email
               </label>
               <input
@@ -201,7 +201,7 @@ const AuthPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="doctor@ejemplo.com"
-                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                className="w-full px-4 py-3.5 rounded-xl border border-slate-300 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                 required
                 autoComplete="email"
               />
@@ -210,14 +210,14 @@ const AuthPage: React.FC = () => {
             {!isResetMode && (
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Contraseña
                   </label>
                   {isLogin && (
                     <button
                       type="button"
                       onClick={() => { setIsResetMode(true); setError(''); setResetSuccess(false); }}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
                       ¿Olvidaste tu contraseña?
                     </button>
@@ -229,7 +229,7 @@ const AuthPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={isLogin ? '••••••••' : 'Mínimo 6 caracteres'}
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                    className="w-full px-4 py-3.5 rounded-xl border border-slate-300 bg-slate-50 text-sm font-medium outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                     required={!isResetMode}
                     minLength={6}
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
@@ -237,7 +237,7 @@ const AuthPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-widest text-slate-300 hover:text-slate-500 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-slate-500 transition-colors"
                   >
                     {showPassword ? 'Ocultar' : 'Ver'}
                   </button>
@@ -284,13 +284,13 @@ const AuthPage: React.FC = () => {
           </form>
 
           {!isLogin && (
-            <p className="text-xs text-slate-400 text-center mt-5 leading-relaxed">
+            <p className="text-sm text-slate-500 text-center mt-5 leading-relaxed">
               Al crear tu cuenta aceptas que tus datos clínicos serán almacenados de forma segura en la nube.
             </p>
           )}
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-sm text-slate-500 mt-6">
           © {new Date().getFullYear()} DienteLink — Gestión Dental Profesional
         </p>
       </div>

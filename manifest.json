@@ -1,12 +1,17 @@
 {
+  "id": "/",
   "name": "DienteLink",
   "short_name": "DienteLink",
-  "description": "Sistema de gestión dental profesional con expedientes clínicos, odontogramas y agenda de citas.",
+  "description": "Gestión dental profesional: expedientes clínicos, odontogramas, agenda de citas y reservas online.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
+  "categories": ["medical", "health", "business", "productivity"],
+  "lang": "es",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icon.svg",
@@ -20,5 +25,21 @@
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nueva Cita",
+      "short_name": "Nueva Cita",
+      "description": "Agendar una nueva cita rápidamente",
+      "url": "/calendar?new=true",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Pacientes",
+      "short_name": "Pacientes",
+      "description": "Ver lista de pacientes",
+      "url": "/patients",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
   ]
-}
+}

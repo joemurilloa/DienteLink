@@ -56,8 +56,8 @@ export class ErrorBoundary extends Component<Props, State> {
               Recargar la Aplicación
             </button>
             
-            <div className="mt-8 text-left p-4 bg-slate-50 rounded-2xl border border-slate-100 overflow-x-auto">
-              <p className="text-[10px] font-mono text-slate-400">
+            <div className="mt-8 text-left p-4 bg-slate-50 rounded-2xl border border-slate-300 overflow-x-auto">
+              <p className="text-xs font-mono text-slate-500">
                 {this.state.error?.message || 'Error Desconocido'}
               </p>
             </div>

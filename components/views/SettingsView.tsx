@@ -75,15 +75,15 @@ const SettingsView: React.FC = () => {
 
   const SettingsInput = ({ label, value, field }: { label: string; value: string; field: keyof typeof form }) => (
     <div>
-      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">{label}</label>
+      <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">{label}</label>
       {isEditing ? (
         <input
           value={value}
           onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
-          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all bg-white"
+          className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all bg-white"
         />
       ) : (
-        <p className="text-sm font-medium text-slate-900 py-2.5">{value || <span className="text-slate-300">Sin definir</span>}</p>
+        <p className="text-sm font-medium text-slate-900 py-2.5">{value || <span className="text-slate-400">Sin definir</span>}</p>
       )}
     </div>
   );
@@ -102,11 +102,11 @@ const SettingsView: React.FC = () => {
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-bold text-slate-900">Perfil del Doctor</h3>
             {!isEditing ? (
-              <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-blue-100 transition-all border border-blue-100">Editar</button>
+              <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-all border border-blue-100">Editar</button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
-                <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center gap-1.5">
+                <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
+                <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center gap-1.5">
                   {saving && <span className="animate-spin">⏳</span>}
                   Guardar
                 </button>
@@ -120,7 +120,7 @@ const SettingsView: React.FC = () => {
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
               <SettingsInput label="Nombre completo" value={form.full_name} field="full_name" />
               <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Rol en el sistema</label>
+                <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Rol en el sistema</label>
                 <p className="text-sm font-bold text-slate-900 py-2.5 capitalize">{profile?.role || 'Propietario'}</p>
               </div>
               <SettingsInput label="Nombre de la clínica" value={form.clinic_name} field="clinic_name" />
@@ -132,17 +132,17 @@ const SettingsView: React.FC = () => {
         {/* Currency Settings */}
         <div className="card-premium p-6">
           <h3 className="text-base font-bold text-slate-900 mb-4">Moneda y Región</h3>
-          <p className="text-xs text-slate-400 mb-4">Configura la moneda que se usará en presupuestos, pagos y reportes.</p>
+          <p className="text-sm text-slate-500 mb-4">Configura la moneda que se usará en presupuestos, pagos y reportes.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Moneda</label>
+              <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Moneda</label>
               <select
                 value={form.currency}
                 onChange={e => {
                   const selected = CURRENCY_OPTIONS.find(c => c.code === e.target.value);
                   if (selected) setForm(f => ({ ...f, currency: selected.code, locale: selected.locale }));
                 }}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all bg-white"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all bg-white"
               >
                 {CURRENCY_OPTIONS.map(c => (
                   <option key={c.code} value={c.code}>{c.flag} {c.label} ({c.code})</option>
@@ -150,8 +150,8 @@ const SettingsView: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Vista previa</label>
-              <div className="px-4 py-2.5 rounded-xl border border-slate-100 bg-slate-50 text-sm font-medium text-slate-700">
+              <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Vista previa</label>
+              <div className="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-sm font-medium text-slate-700">
                 {(() => {
                   try {
                     return new Intl.NumberFormat(form.locale, { style: 'currency', currency: form.currency }).format(1500);
@@ -172,7 +172,7 @@ const SettingsView: React.FC = () => {
                   setSaving(false);
                 }}
                 disabled={saving}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all disabled:opacity-50"
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : 'Guardar moneda'}
               </button>
@@ -186,12 +186,12 @@ const SettingsView: React.FC = () => {
         {/* Exportar Datos */}
         <div className="card-premium p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+            <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center">
               <Download size={18} className="text-blue-600" />
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">Exportar Datos</h3>
-              <p className="text-xs text-slate-400">Descarga tus datos en formato CSV (compatible con Excel)</p>
+              <p className="text-sm text-slate-500">Descarga tus datos en formato CSV (compatible con Excel)</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -202,12 +202,12 @@ const SettingsView: React.FC = () => {
                 exportPatientsCSV(patients);
                 sileo.success({ title: 'Pacientes exportados', description: `${patients.length} registros descargados` });
               }}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200 hover:border-blue-200 transition-all group"
+              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-300 hover:border-blue-200 transition-all group"
             >
-              <Users size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+              <Users size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
               <div className="text-left">
                 <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">Pacientes</p>
-                <p className="text-[10px] text-slate-400">Datos, presupuestos, pagos</p>
+                <p className="text-xs text-slate-500">Datos, presupuestos, pagos</p>
               </div>
             </button>
             <button
@@ -217,12 +217,12 @@ const SettingsView: React.FC = () => {
                 exportAppointmentsCSV(apts);
                 sileo.success({ title: 'Citas exportadas', description: `${apts.length} citas descargadas` });
               }}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200 hover:border-blue-200 transition-all group"
+              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-300 hover:border-blue-200 transition-all group"
             >
-              <CalendarIcon size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+              <CalendarIcon size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
               <div className="text-left">
                 <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">Citas</p>
-                <p className="text-[10px] text-slate-400">Historial completo de agenda</p>
+                <p className="text-xs text-slate-500">Historial completo de agenda</p>
               </div>
             </button>
             <button
@@ -244,16 +244,16 @@ const SettingsView: React.FC = () => {
                 }
               }}
               disabled={isGeneratingReport}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200 hover:border-blue-200 transition-all group disabled:opacity-50"
+              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-300 hover:border-blue-200 transition-all group disabled:opacity-50"
             >
               {isGeneratingReport ? (
                 <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent animate-spin rounded-full mx-1" />
               ) : (
-                <FileText size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                <FileText size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
               )}
               <div className="text-left">
                 <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">{isGeneratingReport ? 'Generando...' : 'Reporte Mensual'}</p>
-                <p className="text-[10px] text-slate-400">Resumen en PDF del mes actual</p>
+                <p className="text-xs text-slate-500">Resumen en PDF del mes actual</p>
               </div>
             </button>
           </div>
@@ -262,17 +262,17 @@ const SettingsView: React.FC = () => {
         {/* DEV SIMULATOR */}
         <div className="card-premium p-6 mt-8 border-dashed border-violet-300 bg-violet-50/50">
           <h3 className="text-sm font-bold text-violet-900 mb-2">Modo de Prueba (Simulador)</h3>
-          <p className="text-xs text-violet-700 mb-4">Usa estos botones para ver cómo vería la aplicación tu secretaria u otro rol.</p>
+          <p className="text-sm text-violet-700 mb-4">Usa estos botones para ver cómo vería la aplicación tu secretaria u otro rol.</p>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => { localStorage.removeItem('DEV_ROLE'); window.location.reload(); }}
-              className="px-4 py-2 bg-white text-violet-700 rounded-xl text-xs font-bold border border-violet-200 shadow-sm hover:bg-violet-50 transition-all"
+              className="px-4 py-2 bg-white text-violet-700 rounded-xl text-sm font-bold border border-violet-200 shadow-sm hover:bg-violet-50 transition-all"
             >
               👩‍⚕️ Volver a mi cuenta (Doctor/Admin)
             </button>
             <button
               onClick={() => { localStorage.setItem('DEV_ROLE', 'receptionist'); window.location.reload(); }}
-              className="px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-violet-700 transition-all"
+              className="px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-violet-700 transition-all"
             >
               👩‍💻 Simular vista de Secretaria
             </button>

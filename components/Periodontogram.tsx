@@ -160,7 +160,7 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
         {/* FDI number inside tooth */}
         <span className={cn(
           'absolute text-[9px] font-black tabular-nums',
-          isSelected ? 'text-blue-600' : 'text-slate-300'
+          isSelected ? 'text-blue-600' : 'text-slate-400'
         )}>
           {info?.fdi}
         </span>
@@ -225,7 +225,7 @@ const ToothProbe: React.FC<ToothProbeProps> = ({ toothData, isSelected, onSelect
         {/* Mm label */}
         <div className="absolute bottom-1.5 left-0 right-0 text-center pointer-events-none">
           <span
-            className="text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-md transition-all"
+            className="text-xs font-black tabular-nums px-1.5 py-0.5 rounded-md transition-all"
             style={{
               color: activeDepth > 0 ? color : '#94A3B8',
               backgroundColor: activeDepth > 5 ? '#FEF2F2' : 'transparent',
@@ -282,16 +282,16 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
     const sites = face === 'buccal' ? tooth.buccal : tooth.lingual;
     return (
       <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
         <div className="grid grid-cols-3 gap-2">
           {sites.map((site, idx) => (
-            <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-              <p className="text-[9px] font-bold text-slate-400 mb-1.5">{SITE_NAMES[idx]}</p>
+            <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-300">
+              <p className="text-[9px] font-bold text-slate-500 mb-1.5">{SITE_NAMES[idx]}</p>
               {/* Depth */}
               <div className="flex items-center gap-1 mb-2">
                 <button
                   onClick={() => updateSite(face, idx, { depth: Math.max(0, site.depth - 0.5) })}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-100 active:scale-90 text-sm font-bold"
+                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 text-sm font-bold"
                 >
                   −
                 </button>
@@ -303,7 +303,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
                 </div>
                 <button
                   onClick={() => updateSite(face, idx, { depth: Math.min(15, site.depth + 0.5) })}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-100 active:scale-90 text-sm font-bold"
+                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-100 active:scale-90 text-sm font-bold"
                 >
                   +
                 </button>
@@ -312,10 +312,10 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
               <button
                 onClick={() => updateSite(face, idx, { bleeding: !site.bleeding })}
                 className={cn(
-                  'w-full h-7 rounded-lg flex items-center justify-center gap-1 text-[10px] font-bold transition-all active:scale-95',
+                  'w-full h-7 rounded-lg flex items-center justify-center gap-1 text-xs font-bold transition-all active:scale-95',
                   site.bleeding
                     ? 'bg-red-50 text-red-500 border border-red-200'
-                    : 'bg-white text-slate-300 border border-slate-200 hover:text-red-300'
+                    : 'bg-white text-slate-400 border border-slate-300 hover:text-red-300'
                 )}
               >
                 <Droplets size={10} />
@@ -334,25 +334,25 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 12 }}
       transition={{ duration: 0.15 }}
-      className="bg-white rounded-2xl border border-slate-200 p-5 shadow-lg"
+      className="bg-white rounded-2xl border border-slate-300 p-5 shadow-lg"
     >
       {/* Header with navigation */}
       <div className="flex items-center gap-3 mb-5">
-        <button onClick={onPrev} className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 active:scale-90 transition-all">
+        <button onClick={onPrev} className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 active:scale-90 transition-all">
           <ChevronLeft size={16} className="text-slate-500" />
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-black text-blue-600 tabular-nums">{info?.fdi}</span>
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900">{info?.name}</p>
-              <p className="text-[10px] text-slate-400">Pieza {tooth.toothId} | {getDepthLabel(tooth.buccal[1].depth)}</p>
+              <p className="text-xs text-slate-500">Pieza {tooth.toothId} | {getDepthLabel(tooth.buccal[1].depth)}</p>
             </div>
           </div>
         </div>
-        <button onClick={onNext} className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 active:scale-90 transition-all">
+        <button onClick={onNext} className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 active:scale-90 transition-all">
           <ChevronRight size={16} className="text-slate-500" />
         </button>
       </div>
@@ -364,18 +364,18 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
       </div>
 
       {/* Mobility & Furcation */}
-      <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100">
+      <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-300">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Movilidad</span>
+          <span className="text-xs font-bold text-slate-500 uppercase">Movilidad</span>
           {([0, 1, 2, 3] as const).map(v => (
             <button
               key={v}
               onClick={() => updateToothField('mobility', v)}
               className={cn(
-                'w-8 h-8 rounded-lg text-xs font-bold transition-all active:scale-90',
+                'w-11 h-11 rounded-lg text-sm font-bold transition-all active:scale-90',
                 tooth.mobility === v
                   ? (v === 0 ? 'bg-slate-200 text-slate-700' : v <= 1 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')
-                  : 'bg-slate-50 text-slate-300 hover:bg-slate-100'
+                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
               )}
             >
               {v}
@@ -384,16 +384,16 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
         </div>
         {isMolar && (
           <div className="flex items-center gap-1.5 ml-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Furca</span>
+            <span className="text-xs font-bold text-slate-500 uppercase">Furca</span>
             {([0, 1, 2, 3] as const).map(v => (
               <button
                 key={v}
                 onClick={() => updateToothField('furcation', v)}
                 className={cn(
-                  'w-8 h-8 rounded-lg text-xs font-bold transition-all active:scale-90',
+                  'w-11 h-11 rounded-lg text-sm font-bold transition-all active:scale-90',
                   tooth.furcation === v
                     ? (v === 0 ? 'bg-slate-200 text-slate-700' : v <= 1 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')
-                    : 'bg-slate-50 text-slate-300 hover:bg-slate-100'
+                    : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
                 )}
               >
                 {v}
@@ -445,22 +445,22 @@ const SummaryStats: React.FC<{ data: PeriodontogramData }> = React.memo(({ data 
         <div className="bg-slate-900 rounded-2xl p-4 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent" />
           <div className="relative">
-            <p className="text-[9px] font-bold uppercase text-slate-400 tracking-widest mb-1">Bolsas ≥4mm</p>
+            <p className="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-1">Bolsas ≥4mm</p>
             <p className="text-2xl font-black tabular-nums text-amber-400">{stats.ge4}</p>
           </div>
         </div>
         <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
           <p className="text-[9px] font-bold uppercase text-red-400 tracking-widest mb-1">Bolsas ≥6mm</p>
           <p className="text-2xl font-black text-red-600 tabular-nums">{stats.ge6}</p>
-          {stats.ge6 > 0 && <p className="text-[10px] text-red-400 mt-1 flex items-center gap-1 font-semibold"><AlertTriangle size={10} /> Atención</p>}
+          {stats.ge6 > 0 && <p className="text-xs text-red-400 mt-1 flex items-center gap-1 font-semibold"><AlertTriangle size={10} /> Atención</p>}
         </div>
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
           <p className="text-[9px] font-bold uppercase text-blue-400 tracking-widest mb-1">Sangrado (BOP)</p>
           <p className="text-2xl font-black text-blue-700 tabular-nums">{stats.bopPct.toFixed(0)}<span className="text-sm text-blue-400 ml-0.5">%</span></p>
         </div>
-        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-          <p className="text-[9px] font-bold uppercase text-slate-400 tracking-widest mb-1">Promedio</p>
-          <p className="text-2xl font-black text-slate-900 tabular-nums">{stats.avg.toFixed(1)}<span className="text-sm text-slate-400 ml-0.5">mm</span></p>
+        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-300">
+          <p className="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-1">Promedio</p>
+          <p className="text-2xl font-black text-slate-900 tabular-nums">{stats.avg.toFixed(1)}<span className="text-sm text-slate-500 ml-0.5">mm</span></p>
         </div>
       </div>
 
@@ -469,13 +469,13 @@ const SummaryStats: React.FC<{ data: PeriodontogramData }> = React.memo(({ data 
           {stats.mobilityCount > 0 && (
             <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
               <Activity size={14} className="text-amber-500" />
-              <span className="text-xs font-bold text-amber-700">{stats.mobilityCount} con movilidad</span>
+              <span className="text-sm font-bold text-amber-700">{stats.mobilityCount} con movilidad</span>
             </div>
           )}
           {stats.furcaCount > 0 && (
             <div className="flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-xl border border-orange-100">
               <AlertTriangle size={14} className="text-orange-500" />
-              <span className="text-xs font-bold text-orange-700">{stats.furcaCount} con furca</span>
+              <span className="text-sm font-bold text-orange-700">{stats.furcaCount} con furca</span>
             </div>
           )}
         </div>
@@ -556,15 +556,15 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
   }, [onUpdate]);
 
   return (
-    <div className="bg-white p-5 lg:p-8 rounded-2xl select-none border border-slate-200 shadow-sm">
+    <div className="bg-white p-5 lg:p-8 rounded-2xl select-none border border-slate-300 shadow-sm">
       {/* Header */}
       <div className="flex flex-col xl:flex-row items-start justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="px-2.5 py-1 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-bold">Evaluación Periodontal</span>
+            <span className="px-2.5 py-1 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold">Evaluación Periodontal</span>
           </div>
           <h3 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight mb-1">Periodontograma</h3>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-500 text-sm">
             <span className="text-blue-500 font-semibold">Arrastre la sonda</span> verticalmente sobre cada diente para registrar la profundidad.
             Toque un diente para ver detalles.
           </p>
@@ -572,7 +572,7 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={resetAll}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-200 transition-all active:scale-95"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-300 transition-all active:scale-95"
           >
             <RotateCcw size={14} />
             Reiniciar
@@ -586,8 +586,8 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
           <button
             onClick={() => setViewArch('upper')}
             className={cn(
-              'px-5 py-2.5 rounded-lg text-xs font-bold transition-all',
-              viewArch === 'upper' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+              'px-5 py-2.5 rounded-lg text-sm font-bold transition-all',
+              viewArch === 'upper' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-600'
             )}
           >
             Arcada Superior
@@ -595,8 +595,8 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
           <button
             onClick={() => setViewArch('lower')}
             className={cn(
-              'px-5 py-2.5 rounded-lg text-xs font-bold transition-all',
-              viewArch === 'lower' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+              'px-5 py-2.5 rounded-lg text-sm font-bold transition-all',
+              viewArch === 'lower' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-600'
             )}
           >
             Arcada Inferior
@@ -607,15 +607,15 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
         <div className="hidden sm:flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-            <span className="text-[9px] font-bold text-slate-400">≤3mm Sano</span>
+            <span className="text-[9px] font-bold text-slate-500">≤3mm Sano</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 bg-amber-500 rounded-full" />
-            <span className="text-[9px] font-bold text-slate-400">4-5mm</span>
+            <span className="text-[9px] font-bold text-slate-500">4-5mm</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 bg-red-500 rounded-full" />
-            <span className="text-[9px] font-bold text-slate-400">≥6mm</span>
+            <span className="text-[9px] font-bold text-slate-500">≥6mm</span>
           </div>
         </div>
       </div>

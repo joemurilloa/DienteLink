@@ -46,8 +46,10 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                 console.error("Speech recognition error", event.error);
                 if (event.error === 'not-allowed') {
                     sileo.error({ title: 'Sin permisos', description: 'Permite el acceso al micrófono en tu navegador.' });
-                    setIsRecording(false);
+                } else {
+                    sileo.error({ title: 'Error de micrófono', description: 'Hubo un error con el reconocimiento de voz.' });
                 }
+                setIsRecording(false);
             };
 
             recognitionRef.current.onend = () => {
@@ -71,8 +73,8 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                 setIsRecording(true);
                 sileo.info({ title: 'Micrófono Activo 🎙️', description: 'Comienza a hablar, se escribirá automáticamente.' });
             } catch (e) {
-                // If it's already started
                 console.error(e);
+                sileo.error({ title: 'Error', description: 'No se pudo iniciar el micrófono.' });
             }
         }
     };
@@ -101,21 +103,21 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
         <div className="space-y-8 animate-in-up duration-500">
             <div>
                 <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Evolución</h3>
-                <p className="text-slate-400 text-sm mt-1">Bitácora de seguimiento clínico</p>
+                <p className="text-slate-500 text-sm mt-1">Bitácora de seguimiento clínico</p>
             </div>
 
             {/* Add note form */}
-            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+            <div className="p-5 bg-slate-50 border border-slate-300 rounded-2xl space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input
                         placeholder="Procedimiento (Ej. Resina, Extracción...)"
-                        className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
+                        className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-400"
                         value={newNote.procedure}
                         onChange={e => setNewNote(prev => ({ ...prev, procedure: e.target.value }))}
                     />
                     <div className="hidden md:flex items-center gap-2 px-4">
                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                        <span className="text-[11px] font-medium text-slate-400">Nuevo registro</span>
+                        <span className="text-xs font-medium text-slate-500">Nuevo registro</span>
                     </div>
                 </div>
                 
@@ -123,8 +125,8 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     <textarea
                         placeholder="Describa la evolución del tratamiento en esta sesión... (O usa el dictado por voz)"
                         className={cn(
-                            "w-full bg-white px-4 py-4 pr-16 rounded-xl border outline-none text-sm text-slate-700 min-h-[120px] resize-none transition-all placeholder:text-slate-300",
-                            isRecording ? "border-violet-400 ring-4 ring-violet-500/10 shadow-[0_0_20px_rgba(139,92,246,0.1)]" : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                            "w-full bg-white px-4 py-4 pr-16 rounded-xl border outline-none text-sm text-slate-700 min-h-[120px] resize-none transition-all placeholder:text-slate-400",
+                            isRecording ? "border-violet-400 ring-4 ring-violet-500/10 shadow-[0_0_20px_rgba(139,92,246,0.1)]" : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                         )}
                         value={newNote.content}
                         onChange={e => setNewNote(prev => ({ ...prev, content: e.target.value }))}
@@ -132,7 +134,7 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     <button
                         onClick={toggleRecording}
                         className={cn(
-                            "absolute right-3 bottom-3 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm",
+                            "absolute right-3 bottom-3 w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm",
                             isRecording 
                                 ? "bg-red-50 text-red-500 border border-red-200 animate-pulse hover:bg-red-100" 
                                 : "bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-600 hover:text-white"
@@ -142,7 +144,7 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                         {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
                     </button>
                     {isRecording && (
-                        <div className="absolute left-4 bottom-[-24px] text-[10px] font-bold text-violet-600 flex items-center gap-1 animate-pulse">
+                        <div className="absolute left-4 bottom-[-24px] text-xs font-bold text-violet-600 flex items-center gap-1 animate-pulse">
                             <span className="w-1.5 h-1.5 bg-violet-600 rounded-full"></span> Escuchando...
                         </div>
                     )}
@@ -164,14 +166,14 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                 {patient.evolutionNotes.map((note, index) => (
                     <div key={note.id} className="relative pl-8 group animate-in-up" style={{ animationDelay: `${index * 60}ms` }}>
                         <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-200 rounded-full" />
-                        <div className="absolute left-[-3px] top-5 w-2.5 h-2.5 bg-white border-[3px] border-slate-200 rounded-full group-hover:border-blue-500 transition-all" />
-                        <div className="bg-white p-5 rounded-xl border border-slate-100 group-hover:border-blue-100 transition-all hover:shadow-md">
+                        <div className="absolute left-[-3px] top-5 w-2.5 h-2.5 bg-white border-[3px] border-slate-300 rounded-full group-hover:border-blue-500 transition-all" />
+                        <div className="bg-white p-5 rounded-xl border border-slate-300 group-hover:border-blue-100 transition-all hover:shadow-md">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-2">
-                                    <Calendar size={14} className="text-slate-400" />
-                                    <span className="text-xs font-medium text-slate-500">{note.date}</span>
+                                    <Calendar size={14} className="text-slate-500" />
+                                    <span className="text-sm font-medium text-slate-500">{note.date}</span>
                                 </div>
-                                <span className="inline-flex px-3 py-1 bg-slate-900 text-white rounded-lg text-[11px] font-semibold w-fit">
+                                <span className="inline-flex px-3 py-1 bg-slate-900 text-white rounded-lg text-xs font-semibold w-fit">
                                     {note.procedure}
                                 </span>
                             </div>
@@ -180,12 +182,12 @@ const EvolutionTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     </div>
                 ))}
                 {patient.evolutionNotes.length === 0 && (
-                    <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
                         <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                            <ClipboardList size={28} className="text-slate-300" />
+                            <ClipboardList size={28} className="text-slate-400" />
                         </div>
                         <h4 className="text-lg font-bold text-slate-700 mb-1">Sin notas de evolución</h4>
-                        <p className="text-slate-400 text-sm max-w-xs mx-auto">Registra el primer seguimiento clínico de este paciente usando el formulario de arriba.</p>
+                        <p className="text-slate-500 text-sm max-w-xs mx-auto">Registra el primer seguimiento clínico de este paciente usando el formulario de arriba.</p>
                     </div>
                 )}
             </div>

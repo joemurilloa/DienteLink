@@ -14,6 +14,7 @@ import {
 import { sileo } from 'sileo';
 import { generatePaymentReceiptPDF, generateAccountStatementPDF } from '../../lib/invoiceGenerator';
 import { useAuth } from '../../services/authService';
+import ConfirmModal from '../ConfirmModal';
 
 interface Props {
     patient: PatientRecordType;
@@ -41,6 +42,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
     const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash' as Payment['method'], note: '' });
     const [budgetError, setBudgetError] = useState('');
     const [paymentError, setPaymentError] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState<{ type: 'treatment' | 'payment', id: string } | null>(null);
 
     const budgetItems = patient.budget || [];
     const payments = patient.payments || [];
@@ -109,22 +111,22 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Presupuesto</h3>
-                    <p className="text-slate-400 text-sm mt-1">Plan de tratamiento y control de pagos</p>
+                    <p className="text-slate-500 text-sm mt-1">Plan de tratamiento y control de pagos</p>
                 </div>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-500 mb-1">Total</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">Total</p>
                     <p className="text-lg font-bold text-blue-700">{formatCurrency(totalBudget)}</p>
                 </div>
                 <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500 mb-1">Pagado</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500 mb-1">Pagado</p>
                     <p className="text-lg font-bold text-emerald-700">{formatCurrency(totalPaid)}</p>
                 </div>
-                <div className={cn("p-4 rounded-xl border", pendingBalance > 0 ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-100")}>
-                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-1", pendingBalance > 0 ? "text-amber-500" : "text-slate-400")}>Saldo</p>
+                <div className={cn("p-4 rounded-xl border", pendingBalance > 0 ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-300")}>
+                    <p className={cn("text-xs font-semibold uppercase tracking-wider mb-1", pendingBalance > 0 ? "text-amber-500" : "text-slate-500")}>Saldo</p>
                     <p className={cn("text-lg font-bold", pendingBalance > 0 ? "text-amber-700" : "text-slate-500")}>{formatCurrency(pendingBalance)}</p>
                 </div>
             </div>
@@ -132,7 +134,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             {/* Progress Bar */}
             {totalBudget > 0 && (
                 <div>
-                    <div className="flex justify-between text-xs text-slate-500 mb-2">
+                    <div className="flex justify-between text-sm text-slate-500 mb-2">
                         <span className="font-medium">Progreso de pago</span>
                         <span className="font-semibold">{Math.min(100, Math.round((totalPaid / totalBudget) * 100))}%</span>
                     </div>
@@ -146,26 +148,26 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             )}
 
             {/* Add Treatment Form */}
-            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+            <div className="p-5 bg-slate-50 border border-slate-300 rounded-2xl">
                 <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 bg-blue-600 text-white rounded-xl flex items-center justify-center"><Plus size={16} /></div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Agregar Tratamiento</p>
+                    <div className="w-11 h-11 bg-blue-600 text-white rounded-xl flex items-center justify-center"><Plus size={16} /></div>
+                    <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">Agregar Tratamiento</p>
                 </div>
                 {budgetError && (
                     <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium mb-4">{budgetError}</div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                     <div className="md:col-span-5">
-                        <input placeholder="Tratamiento (Ej. Resina, Corona...)" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-300" value={newTreatment.treatment} onChange={e => { setNewTreatment(p => ({ ...p, treatment: e.target.value })); setBudgetError(''); }} />
+                        <input placeholder="Tratamiento (Ej. Resina, Corona...)" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" value={newTreatment.treatment} onChange={e => { setNewTreatment(p => ({ ...p, treatment: e.target.value })); setBudgetError(''); }} />
                     </div>
                     <div className="md:col-span-2">
-                        <input placeholder="Costo" type="number" step="0.01" min="0" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-300" value={newTreatment.unitCost} onChange={e => { setNewTreatment(p => ({ ...p, unitCost: e.target.value })); setBudgetError(''); }} />
+                        <input placeholder="Costo" type="number" step="0.01" min="0" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" value={newTreatment.unitCost} onChange={e => { setNewTreatment(p => ({ ...p, unitCost: e.target.value })); setBudgetError(''); }} />
                     </div>
                     <div className="md:col-span-1">
-                        <input placeholder="Cant." type="number" min="1" className="w-full bg-white px-3 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-300 text-center" value={newTreatment.quantity} onChange={e => setNewTreatment(p => ({ ...p, quantity: e.target.value }))} />
+                        <input placeholder="Cant." type="number" min="1" className="w-full bg-white px-3 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-400 text-center" value={newTreatment.quantity} onChange={e => setNewTreatment(p => ({ ...p, quantity: e.target.value }))} />
                     </div>
                     <div className="md:col-span-2">
-                        <input placeholder="Pieza #" type="number" min="1" max="32" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-300" value={newTreatment.toothId} onChange={e => setNewTreatment(p => ({ ...p, toothId: e.target.value }))} />
+                        <input placeholder="Pieza #" type="number" min="1" max="32" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-400" value={newTreatment.toothId} onChange={e => setNewTreatment(p => ({ ...p, toothId: e.target.value }))} />
                     </div>
                     <div className="md:col-span-2 flex items-stretch">
                         <button onClick={handleAddTreatment} className="w-full py-3 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 font-semibold text-sm active:scale-[0.98]">
@@ -174,8 +176,8 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">Catálogo Rápido (Toca para autocompletar)</p>
+                <div className="mt-4 pt-4 border-t border-slate-300">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2.5">Catálogo Rápido (Toca para autocompletar)</p>
                     <div className="flex flex-wrap gap-2">
                         {DEFAULT_CATALOG.map(item => (
                             <button
@@ -184,9 +186,9 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                     setNewTreatment(p => ({ ...p, treatment: item.name, unitCost: item.cost.toString() }));
                                     setBudgetError('');
                                 }}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all hover:shadow-sm"
+                                className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all hover:shadow-sm"
                             >
-                                {item.name} <span className="text-slate-400 opacity-60 ml-1">({item.cost})</span>
+                                {item.name} <span className="text-slate-500 opacity-60 ml-1">({item.cost})</span>
                             </button>
                         ))}
                     </div>
@@ -195,26 +197,26 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
 
             {/* Treatment Items List */}
             {budgetItems.length === 0 ? (
-                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
                     <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                        <DollarSign size={28} className="text-slate-300" />
+                        <DollarSign size={28} className="text-slate-400" />
                     </div>
                     <h4 className="text-lg font-bold text-slate-700 mb-1">Sin tratamientos en el presupuesto</h4>
-                    <p className="text-slate-400 text-sm max-w-xs mx-auto">Agrega tratamientos arriba para crear el plan financiero del paciente.</p>
+                    <p className="text-slate-500 text-sm max-w-xs mx-auto">Agrega tratamientos arriba para crear el plan financiero del paciente.</p>
                 </div>
             ) : (
                 <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Tratamientos ({budgetItems.length})</p>
+                    <p className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Tratamientos ({budgetItems.length})</p>
                     {budgetItems.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-sm transition-all group">
+                        <div key={item.id} className="flex items-center justify-between p-4 bg-white border border-slate-300 rounded-xl hover:shadow-sm transition-all group">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <button
                                     onClick={() => handleToggleStatus(item.id)}
                                     className={cn(
-                                        "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
+                                        "w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
                                         item.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
                                         item.status === 'in_progress' ? "bg-amber-100 text-amber-600" :
-                                        "bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-600"
+                                        "bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600"
                                     )}
                                     title={item.status === 'pending' ? 'Pendiente → En progreso' : item.status === 'in_progress' ? 'En progreso → Completado' : 'Completado → Pendiente'}
                                 >
@@ -223,17 +225,17 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                      <Clock size={16} />}
                                 </button>
                                 <div className="min-w-0">
-                                    <h4 className={cn("font-semibold text-sm truncate", item.status === 'completed' ? "text-slate-400 line-through" : "text-slate-900")}>
+                                    <h4 className={cn("font-semibold text-sm truncate", item.status === 'completed' ? "text-slate-500 line-through" : "text-slate-900")}>
                                         {item.treatment}
                                     </h4>
-                                    <p className="text-xs text-slate-400 flex items-center gap-2">
+                                    <p className="text-sm text-slate-500 flex items-center gap-2">
                                         {item.toothId && <span>Pieza #{item.toothId}</span>}
                                         <span>{item.quantity > 1 ? `${item.quantity} × ${formatCurrency(item.unitCost)}` : formatCurrency(item.unitCost)}</span>
                                         <span className={cn(
-                                            "px-1.5 py-0.5 rounded text-[10px] font-semibold",
+                                            "px-1.5 py-0.5 rounded text-xs font-semibold",
                                             item.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
                                             item.status === 'in_progress' ? "bg-amber-50 text-amber-600" :
-                                            "bg-slate-50 text-slate-400"
+                                            "bg-slate-50 text-slate-500"
                                         )}>
                                             {item.status === 'completed' ? 'Hecho' : item.status === 'in_progress' ? 'En curso' : 'Pendiente'}
                                         </span>
@@ -242,7 +244,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="font-bold text-sm text-slate-800">{formatCurrency(item.unitCost * item.quantity)}</span>
-                                <button onClick={() => handleDeleteTreatment(item.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
+                                <button onClick={() => setDeleteTarget({ type: 'treatment', id: item.id })} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
                                     <Trash2 size={14} />
                                 </button>
                             </div>
@@ -252,10 +254,10 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
             )}
 
             {/* Payments Section */}
-            <div className="border-t border-slate-100 pt-8">
+            <div className="border-t border-slate-300 pt-8">
                 <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-8 h-8 bg-emerald-600 text-white rounded-xl flex items-center justify-center"><CreditCard size={16} /></div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Registrar Abono / Pago</p>
+                    <div className="w-11 h-11 bg-emerald-600 text-white rounded-xl flex items-center justify-center"><CreditCard size={16} /></div>
+                    <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">Registrar Abono / Pago</p>
                 </div>
 
                 {paymentError && (
@@ -264,10 +266,10 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
                     <div className="md:col-span-3">
-                        <input placeholder="Monto" type="number" step="0.01" min="0" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-slate-300" value={newPayment.amount} onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }} />
+                        <input placeholder="Monto" type="number" step="0.01" min="0" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400" value={newPayment.amount} onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }} />
                     </div>
                     <div className="md:col-span-3">
-                        <select className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-800 transition-all focus:border-emerald-500 appearance-none" value={newPayment.method} onChange={e => setNewPayment(p => ({ ...p, method: e.target.value as Payment['method'] }))}>
+                        <select className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-800 transition-all focus:border-emerald-500 appearance-none" value={newPayment.method} onChange={e => setNewPayment(p => ({ ...p, method: e.target.value as Payment['method'] }))}>
                             <option value="cash">Efectivo</option>
                             <option value="card">Tarjeta</option>
                             <option value="transfer">Transferencia</option>
@@ -275,7 +277,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                         </select>
                     </div>
                     <div className="md:col-span-4">
-                        <input placeholder="Nota (opcional)" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 transition-all placeholder:text-slate-300" value={newPayment.note} onChange={e => setNewPayment(p => ({ ...p, note: e.target.value }))} />
+                        <input placeholder="Nota (opcional)" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 transition-all placeholder:text-slate-400" value={newPayment.note} onChange={e => setNewPayment(p => ({ ...p, note: e.target.value }))} />
                     </div>
                     <div className="md:col-span-2 flex items-stretch">
                         <button onClick={handleAddPayment} className="w-full py-3 bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/15 font-semibold text-sm active:scale-[0.98]">
@@ -287,10 +289,10 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                 {payments.length > 0 && (
                     <div className="space-y-2">
                         <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Historial de Pagos ({payments.length})</p>
+                            <p className="text-sm font-semibold uppercase tracking-wider text-slate-500">Historial de Pagos ({payments.length})</p>
                             <button 
                                 onClick={() => generateAccountStatementPDF(patient, clinicName, doctorName)}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                                className="flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
                             >
                                 <Download size={12} /> Estado de Cuenta
                             </button>
@@ -298,10 +300,10 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                         {payments.map((pay) => (
                             <div key={pay.id} className="flex items-center justify-between p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl group">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center"><CreditCard size={14} /></div>
+                                    <div className="w-11 h-11 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center"><CreditCard size={14} /></div>
                                     <div>
                                         <p className="text-sm font-semibold text-slate-800">{formatCurrency(pay.amount)}</p>
-                                        <p className="text-xs text-slate-400">
+                                        <p className="text-sm text-slate-500">
                                             {pay.date} · {pay.method === 'cash' ? 'Efectivo' : pay.method === 'card' ? 'Tarjeta' : pay.method === 'transfer' ? 'Transferencia' : 'Otro'}
                                             {pay.note && ` · ${pay.note}`}
                                         </p>
@@ -310,14 +312,14 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                     <button 
                                         onClick={() => generatePaymentReceiptPDF(patient, pay, clinicName, doctorName)}
-                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                        className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                                         title="Generar Recibo"
                                     >
                                         <Download size={14} />
                                     </button>
                                     <button 
-                                        onClick={() => handleDeletePayment(pay.id)} 
-                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                                        onClick={() => setDeleteTarget({ type: 'payment', id: pay.id })} 
+                                        className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all"
                                         title="Eliminar Pago"
                                     >
                                         <Trash2 size={14} />
@@ -328,6 +330,26 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
                     </div>
                 )}
             </div>
+
+            {deleteTarget && (
+                <ConfirmModal
+                    isOpen={true}
+                    title={deleteTarget.type === 'treatment' ? "Eliminar Tratamiento" : "Eliminar Pago"}
+                    description={`¿Estás seguro de que deseas eliminar este ${deleteTarget.type === 'treatment' ? 'tratamiento del presupuesto' : 'registro de pago'}? Esta acción no se puede deshacer y alterará el balance de la cuenta.`}
+                    confirmLabel="Eliminar"
+                    cancelLabel="Cancelar"
+                    onConfirm={() => {
+                        if (deleteTarget.type === 'treatment') {
+                            handleDeleteTreatment(deleteTarget.id);
+                        } else {
+                            handleDeletePayment(deleteTarget.id);
+                        }
+                        setDeleteTarget(null);
+                    }}
+                    onClose={() => setDeleteTarget(null)}
+                    variant="danger"
+                />
+            )}
         </div>
     );
 };

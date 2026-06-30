@@ -39,21 +39,21 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
         <div className="space-y-8 animate-in-up duration-500">
             <div>
                 <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Historial Clínico</h3>
-                <p className="text-slate-400 text-sm mt-1">Registro de tratamientos realizados</p>
+                <p className="text-slate-500 text-sm mt-1">Registro de tratamientos realizados</p>
             </div>
 
             {/* Quick add event */}
             <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl">
                 <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 bg-blue-600 text-white rounded-xl flex items-center justify-center"><Zap size={16} /></div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Registro Rápido</p>
+                    <div className="w-11 h-11 bg-blue-600 text-white rounded-xl flex items-center justify-center"><Zap size={16} /></div>
+                    <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">Registro Rápido</p>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                     <div className="lg:col-span-5">
                         <InputGroup label="Descripción del procedimiento" placeholder="Ej. Limpieza Dental Profunda" value={newEvent.description} onChange={val => setNewEvent(p => ({ ...p, description: val }))} />
                     </div>
                     <div className="lg:col-span-4 space-y-2">
-                        <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1">Tipo</label>
+                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">Tipo</label>
                         <select
                             className="w-full bg-white px-4 py-3 rounded-xl border border-blue-100 outline-none text-sm font-medium text-slate-800 transition-all focus:border-blue-500 appearance-none"
                             value={newEvent.type}
@@ -76,19 +76,19 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
             {/* Events list */}
             <div className="space-y-3">
                 {patient.history.length === 0 ? (
-                    <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
                         <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                            <Activity size={28} className="text-slate-300" />
+                            <Activity size={28} className="text-slate-400" />
                         </div>
                         <h4 className="text-lg font-bold text-slate-700 mb-1">Sin procedimientos registrados</h4>
-                        <p className="text-slate-400 text-sm max-w-xs mx-auto">Usa el registro rápido de arriba para documentar tratamientos, limpiezas o extracciones.</p>
+                        <p className="text-slate-500 text-sm max-w-xs mx-auto">Usa el registro rápido de arriba para documentar tratamientos, limpiezas o extracciones.</p>
                     </div>
                 ) : (
                     patient.history.map((event, index) => (
                         <div 
                             key={event.id} 
                             onClick={() => setSelectedEvent(event)}
-                            className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-200 transition-all group animate-in-up cursor-pointer" 
+                            className="flex items-center justify-between p-4 bg-white border border-slate-300 rounded-xl hover:shadow-md hover:border-blue-200 transition-all group animate-in-up cursor-pointer" 
                             style={{ animationDelay: `${index * 40}ms` }}
                         >
                             <div className="flex items-center gap-4">
@@ -102,7 +102,7 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                 </div>
                                 <div>
                                     <h4 className="font-semibold text-slate-900 text-sm">{event.description}</h4>
-                                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                    <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1.5">
                                         <Calendar size={10} />
                                         {event.date} &middot; <span className="text-blue-500 font-medium">{event.type === 'treatment' ? 'Tratamiento' : event.type === 'extraction' ? 'Extracción' : event.type === 'cleaning' ? 'Limpieza' : 'Diagnóstico'}</span>
                                     </p>
@@ -117,9 +117,9 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
             {selectedEvent && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedEvent(null)}>
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div className="p-6 border-b border-slate-300 flex justify-between items-center bg-slate-50/50">
                             <h3 className="text-lg font-bold text-slate-900">Detalles de la Consulta</h3>
-                            <button onClick={() => setSelectedEvent(null)} className="w-8 h-8 flex items-center justify-center bg-slate-200 rounded-full text-slate-600 hover:bg-slate-300 transition-colors">
+                            <button onClick={() => setSelectedEvent(null)} className="w-11 h-11 flex items-center justify-center bg-slate-200 rounded-full text-slate-600 hover:bg-slate-300 transition-colors">
                                 <X size={16} />
                             </button>
                         </div>
@@ -144,8 +144,8 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                 const notes = patient.evolutionNotes?.filter(n => n.date === selectedEvent.date);
                                 if (notes && notes.length > 0) {
                                     return (
-                                        <div className="mt-6 pt-6 border-t border-slate-100">
-                                            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                        <div className="mt-6 pt-6 border-t border-slate-300">
+                                            <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
                                                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                                 Notas de Evolución
                                             </h4>
@@ -160,7 +160,7 @@ const HistoryTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                     );
                                 }
                                 return (
-                                    <div className="mt-6 pt-6 border-t border-slate-100">
+                                    <div className="mt-6 pt-6 border-t border-slate-300">
                                         <p className="text-sm text-slate-500 italic bg-slate-50 p-4 rounded-xl text-center">No hay notas de evolución detalladas para esta fecha.</p>
                                     </div>
                                 );

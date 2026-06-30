@@ -13,7 +13,7 @@ import {
 } from './lib/constants';
 
 export type ReminderStatus = ReminderStatusType;
-export type UserRole = 'admin' | 'assistant' | 'receptionist';
+export type UserRole = 'admin' | 'assistant' | 'receptionist' | 'owner' | 'doctor' | 'dr' | 'odontologo' | 'odontólogo';
 
 export interface TeamInvitation {
   id: string;

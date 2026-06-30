@@ -13,6 +13,7 @@ import {
     FileCheck,
     Loader2,
 } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 interface Props {
     patient: PatientRecordType;
@@ -38,6 +39,7 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
     const [isSelectingType, setIsSelectingType] = useState(false);
     const [viewingConsent, setViewingConsent] = useState<ConsentForm | null>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     const consents = patient.consents || [];
 
@@ -250,7 +252,7 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-2xl font-bold text-slate-900 tracking-tight">{viewingConsent.title}</h3>
-                        <p className="text-slate-400 text-sm mt-1">
+                        <p className="text-slate-500 text-sm mt-1">
                             Firmado el {new Date(viewingConsent.signedAt).toLocaleDateString('es-HN')}
                         </p>
                     </div>
@@ -264,14 +266,14 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                         </button>
                         <button
                             onClick={() => setViewingConsent(null)}
-                            className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                            className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all"
                         >
                             <X size={18} />
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6">
+                <div className="bg-slate-50 rounded-2xl border border-slate-300 p-6">
                     <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{viewingConsent.content}</p>
                 </div>
 
@@ -282,8 +284,8 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                 )}
 
                 {viewingConsent.signatureData && (
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 inline-block">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Firma del paciente</p>
+                    <div className="bg-white p-4 rounded-xl border border-slate-300 inline-block">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Firma del paciente</p>
                         <img src={viewingConsent.signatureData} alt="Firma" className="h-24 object-contain" />
                     </div>
                 )}
@@ -297,11 +299,11 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Tipo de Consentimiento</h3>
-                        <p className="text-slate-400 text-sm mt-1">Selecciona el formato clínico a generar</p>
+                        <p className="text-slate-500 text-sm mt-1">Selecciona el formato clínico a generar</p>
                     </div>
                     <button
                         onClick={() => setIsSelectingType(false)}
-                        className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                        className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all"
                     >
                         <X size={18} />
                     </button>
@@ -312,14 +314,14 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                         <button
                             key={type.id}
                             onClick={() => handleSelectType(type.id)}
-                            className="group p-6 bg-white border border-slate-200 rounded-2xl hover:border-blue-500 hover:shadow-lg transition-all text-left flex items-center gap-4"
+                            className="group p-6 bg-white border border-slate-300 rounded-2xl hover:border-blue-500 hover:shadow-lg transition-all text-left flex items-center gap-4"
                         >
-                            <div className="w-12 h-12 bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 rounded-xl flex items-center justify-center transition-colors">
+                            <div className="w-12 h-12 bg-slate-50 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 rounded-xl flex items-center justify-center transition-colors">
                                 <Plus size={24} />
                             </div>
                             <div>
                                 <h4 className="font-bold text-slate-900">{type.title}</h4>
-                                <p className="text-xs text-slate-400 mt-1">Generar documento legal detallado</p>
+                                <p className="text-sm text-slate-500 mt-1">Generar documento legal detallado</p>
                             </div>
                         </button>
                     ))}
@@ -349,7 +351,7 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Documentación Clínica</h3>
-                    <p className="text-slate-400 text-sm mt-1">Gestión de consentimientos y avisos legales</p>
+                    <p className="text-slate-500 text-sm mt-1">Gestión de consentimientos y avisos legales</p>
                 </div>
                 <button
                     onClick={handleStartNew}
@@ -360,24 +362,24 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
             </div>
 
             {consents.length === 0 ? (
-                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                <div className="p-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
                     <FileCheck size={32} className="mx-auto mb-3 text-slate-200" />
                     <h4 className="text-lg font-bold text-slate-700 mb-1">Sin consentimientos</h4>
-                    <p className="text-slate-400 text-sm max-w-xs mx-auto">
+                    <p className="text-slate-500 text-sm max-w-xs mx-auto">
                         Crea un consentimiento informado con firma digital para este paciente.
                     </p>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {consents.map((consent, index) => (
-                        <div key={consent.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-blue-100 transition-all group animate-in-up" style={{ animationDelay: `${index * 50}ms` }}>
+                        <div key={consent.id} className="flex items-center justify-between p-4 bg-white border border-slate-300 rounded-xl hover:shadow-md hover:border-blue-100 transition-all group animate-in-up" style={{ animationDelay: `${index * 50}ms` }}>
                             <div className="flex items-center gap-4">
                                 <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
                                     <FileCheck size={20} />
                                 </div>
                                 <div>
                                     <h4 className="font-semibold text-slate-900 text-sm">{consent.title}</h4>
-                                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                    <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1.5">
                                         <Calendar size={10} />
                                         Firmado el {new Date(consent.signedAt).toLocaleDateString('es-HN')}
                                         {consent.witnessName && <span>· Testigo: {consent.witnessName}</span>}
@@ -387,21 +389,21 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setViewingConsent(consent)}
-                                    className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                    className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                                     title="Ver"
                                 >
                                     <Eye size={16} />
                                 </button>
                                 <button
                                     onClick={() => handleExportPDF(consent)}
-                                    className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                                    className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
                                     title="Descargar PDF"
                                 >
                                     <Download size={16} />
                                 </button>
                                 <button
-                                    onClick={() => handleDelete(consent.id)}
-                                    className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                                    onClick={() => setDeleteTarget(consent.id)}
+                                    className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                                     title="Eliminar"
                                 >
                                     <Trash2 size={14} />
@@ -410,6 +412,22 @@ const ConsentManager: React.FC<Props> = ({ patient, onUpdate, doctorName, clinic
                         </div>
                     ))}
                 </div>
+            )}
+
+            {deleteTarget && (
+                <ConfirmModal
+                    isOpen={true}
+                    title="Eliminar Consentimiento"
+                    description="¿Estás seguro de que deseas eliminar este documento legal? Perderás la firma capturada y esta acción no se puede deshacer."
+                    confirmLabel="Eliminar"
+                    cancelLabel="Cancelar"
+                    onConfirm={() => {
+                        handleDelete(deleteTarget);
+                        setDeleteTarget(null);
+                    }}
+                    onClose={() => setDeleteTarget(null)}
+                    variant="danger"
+                />
             )}
         </div>
     );

@@ -52,17 +52,17 @@ export const InputGroup: React.FC<{
 
     return (
         <div className="space-y-2 group">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1 group-focus-within:text-blue-500 transition-colors">{label}</label>
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1 group-focus-within:text-blue-500 transition-colors">{label}</label>
             <div className="relative">
                 {Icon && (
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
                         <Icon size={16} />
                     </div>
                 )}
                 <input
                     type={type}
                     className={cn(
-                        "w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300",
+                        "w-full py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400",
                         Icon ? "pl-11 pr-4" : "px-4"
                     )}
                     value={localValue}

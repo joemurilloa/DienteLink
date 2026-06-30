@@ -82,7 +82,7 @@ interface ConditionTheme {
 }
 
 const conditionThemes: Record<ClinicalCondition, ConditionTheme> = {
-  healthy:               { label: 'Sano',            abbr: 'SN',  color: '#94A3B8', bg: 'bg-slate-100',   border: 'border-slate-200',   group: 'estado',      icon: Shield },
+  healthy:               { label: 'Sano',            abbr: 'SN',  color: '#94A3B8', bg: 'bg-slate-100',   border: 'border-slate-300',   group: 'estado',      icon: Shield },
   caries:                { label: 'Caries',           abbr: 'CA',  color: '#EF4444', bg: 'bg-red-50',      border: 'border-red-200',     group: 'estado',      icon: Crosshair },
   obturado:              { label: 'Obturado',         abbr: 'OB',  color: '#3B82F6', bg: 'bg-blue-50',     border: 'border-blue-200',    group: 'estado',      icon: Square },
   fractura:              { label: 'Fractura',         abbr: 'FR',  color: '#8B5CF6', bg: 'bg-violet-50',   border: 'border-violet-200',  group: 'estado',      icon: AlertTriangle },
@@ -259,12 +259,12 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
             <line x1="75" y1="20" x2="25" y2="120" stroke="#64748B" strokeWidth="3" />
           </svg>
         </div>
-        <span className="text-[10px] font-black text-slate-300 tabular-nums">{tooth.id}</span>
+        <span className="text-xs font-black text-slate-400 tabular-nums">{tooth.id}</span>
 
         {showTooltip && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-50 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="px-3 py-2 bg-slate-900 text-white rounded-xl text-[10px] whitespace-nowrap shadow-2xl min-w-[140px]">
-              <p className="font-black text-xs mb-0.5">{info?.name}</p>
+            <div className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs whitespace-nowrap shadow-2xl min-w-[140px]">
+              <p className="font-black text-sm mb-0.5">{info?.name}</p>
               <p className="text-slate-500 text-[9px] mb-1">Universal: {tooth.id} | FDI: {info?.fdi}</p>
               <p className="text-slate-500 italic border-t border-slate-700 pt-1">Ausente / Extraído</p>
             </div>
@@ -354,8 +354,8 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
 
       {/* Tooth number */}
       <span className={cn(
-        "text-[10px] font-black tabular-nums transition-colors leading-tight",
-        readOnly ? "text-slate-300" : "text-slate-500 group-hover:text-blue-600"
+        "text-xs font-black tabular-nums transition-colors leading-tight",
+        readOnly ? "text-slate-400" : "text-slate-500 group-hover:text-blue-600"
       )}>
         {tooth.id}
       </span>
@@ -425,15 +425,15 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
       {/* Detailed tooltip */}
       {showTooltip && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <div className="px-3 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] whitespace-nowrap shadow-2xl min-w-[170px]">
-            <p className="font-black text-xs mb-0.5">{info?.name}</p>
+          <div className="px-3 py-2.5 bg-slate-900 text-white rounded-xl text-xs whitespace-nowrap shadow-2xl min-w-[170px]">
+            <p className="font-black text-sm mb-0.5">{info?.name}</p>
             <p className="text-slate-500 text-[9px] mb-1.5">Universal: {tooth.id} | FDI: {info?.fdi}</p>
             {tooth.surfaces.length > 0 ? (
               <div className="space-y-0.5 border-t border-slate-700 pt-1.5">
                 {tooth.surfaces.map(s => (
                   <div key={s.surface} className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: conditionThemes[s.condition]?.color }} />
-                    <span className="text-slate-300">
+                    <span className="text-slate-400">
                       {getSurfaceDisplayName(s.surface, tooth.id)}: {conditionThemes[s.condition]?.label}
                     </span>
                   </div>
@@ -466,7 +466,7 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
       <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
         <div className="flex items-start gap-2">
           <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
-          <div className="text-[10px] text-blue-700 font-bold leading-relaxed">
+          <div className="text-xs text-blue-700 font-bold leading-relaxed">
             <p>1. Selecciona una condición</p>
             <p>2. Click en la superficie del diente</p>
             <p className="text-blue-400 mt-1">Click derecho o mantener presionado → limpiar superficie</p>
@@ -477,13 +477,13 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
       {/* Active tool summary */}
       <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-blue-200 bg-blue-50/50">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
+          className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
           style={{ backgroundColor: conditionThemes[selected].color }}
         >
           {React.createElement(conditionThemes[selected].icon, { size: 16, className: 'text-white' })}
         </div>
         <div>
-          <p className="text-xs font-black text-slate-900">{conditionThemes[selected].label}</p>
+          <p className="text-sm font-black text-slate-900">{conditionThemes[selected].label}</p>
           <p className="text-[9px] text-slate-500 font-bold">
             {conditionThemes[selected].wholeToothOnly ? 'Diente completo' : 'Por superficie'}
           </p>
@@ -493,7 +493,7 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
       {/* Condition groups */}
       {CONDITION_GROUPS.map(group => (
         <div key={group.key}>
-          <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-300 mb-2">{group.label}</p>
+          <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-400 mb-2">{group.label}</p>
           <div className="space-y-1">
             {group.conditions.map(cond => {
               const theme = conditionThemes[cond];
@@ -504,7 +504,7 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
                   key={cond}
                   onClick={() => { onSelect(cond); setMobileOpen(false); }}
                   className={cn(
-                    "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all border text-left",
+                    "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all border text-left",
                     isActive
                       ? "bg-blue-50 border-blue-400 text-slate-900 shadow-sm"
                       : `${theme.bg} ${theme.border} text-slate-600 hover:shadow-sm`
@@ -540,7 +540,7 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
       <div className="xl:hidden fixed bottom-0 left-0 right-0 z-40">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]"
+          className="w-full flex items-center justify-between px-4 py-3 bg-white border-t border-slate-300 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]"
         >
           <div className="flex items-center gap-2">
             <div
@@ -549,7 +549,7 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
             >
               {React.createElement(conditionThemes[selected].icon, { size: 12, className: 'text-white' })}
             </div>
-            <span className="text-xs font-black text-slate-700">{conditionThemes[selected].label}</span>
+            <span className="text-sm font-black text-slate-700">{conditionThemes[selected].label}</span>
             <span className="text-[9px] text-slate-500 font-bold">— toca para cambiar</span>
           </div>
           <ChevronUp size={16} className={cn("text-slate-500 transition-transform", mobileOpen && "rotate-180")} />
@@ -570,7 +570,7 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
                 initial={{ height: 0 }}
                 animate={{ height: 'auto' }}
                 exit={{ height: 0 }}
-                className="overflow-hidden bg-white border-t border-slate-100"
+                className="overflow-hidden bg-white border-t border-slate-300"
               >
                 <div className="max-h-[50vh] overflow-y-auto p-4 pb-6">
                   {panelContent}
@@ -645,11 +645,11 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
         className="w-full flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-11 h-11 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
             <Crosshair size={16} className="text-white" />
           </div>
           <div className="text-left">
-            <p className="text-xs font-black text-slate-900">Resumen del Odontograma</p>
+            <p className="text-sm font-black text-slate-900">Resumen del Odontograma</p>
             <p className="text-[9px] text-slate-500 font-bold">
               {stats.totalAffected} dientes afectados · {condEntries.length} condicion{condEntries.length !== 1 ? 'es' : ''}
             </p>
@@ -658,7 +658,7 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2">
             <div className="px-2 py-1 bg-blue-50 rounded-lg">
-              <span className="text-[10px] font-black text-blue-600">{stats.integrity}%</span>
+              <span className="text-xs font-black text-blue-600">{stats.integrity}%</span>
             </div>
           </div>
           {expanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
@@ -672,7 +672,7 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="border-t border-slate-100 overflow-hidden"
+            className="border-t border-slate-300 overflow-hidden"
           >
             <div className="p-5 space-y-5">
               {/* Stats grid */}
@@ -710,7 +710,7 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
               {/* Per-condition counts */}
               {condEntries.length > 0 && (
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-300 mb-2">Conteo por Condición</p>
+                  <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-400 mb-2">Conteo por Condición</p>
                   <div className="space-y-1.5">
                     {condEntries.map(([cond, data]) => {
                       const theme = conditionThemes[cond as ClinicalCondition];
@@ -718,9 +718,9 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
                         <div key={cond} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
                           <div className="flex items-center gap-2">
                             <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: theme?.color }} />
-                            <span className="text-[11px] font-bold text-slate-700">{theme?.label}</span>
+                            <span className="text-xs font-bold text-slate-700">{theme?.label}</span>
                           </div>
-                          <span className="text-[10px] font-black text-slate-500">
+                          <span className="text-xs font-black text-slate-500">
                             {data.surfaces} superficie{data.surfaces !== 1 ? 's' : ''} en {data.teeth.size} diente{data.teeth.size !== 1 ? 's' : ''}
                           </span>
                         </div>
@@ -733,17 +733,17 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
               {/* Treatment teeth list */}
               {stats.treatmentTeeth.length > 0 && (
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-300 mb-2">Tratamiento Indicado</p>
+                  <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-400 mb-2">Tratamiento Indicado</p>
                   <div className="space-y-1">
                     {stats.treatmentTeeth.map(t => {
                       const info = TOOTH_INFO[t.id];
                       const treatments = t.surfaces.filter(s => conditionThemes[s.condition]?.group === 'tratamiento');
                       return (
                         <div key={t.id} className="flex items-center gap-2 p-2.5 bg-orange-50 rounded-xl">
-                          <span className="text-[10px] font-black text-slate-700 flex-shrink-0">
+                          <span className="text-xs font-black text-slate-700 flex-shrink-0">
                             Pieza {info?.fdi}
                           </span>
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-xs text-slate-500">
                             {treatments.map(s => conditionThemes[s.condition].label).join(', ')}
                           </span>
                         </div>
@@ -757,10 +757,10 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
               <button
                 onClick={handleCopy}
                 className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-[11px] font-black uppercase tracking-[1px] transition-all border",
+                  "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-black uppercase tracking-[1px] transition-all border",
                   copied
                     ? "bg-blue-100 text-blue-700 border-blue-200"
-                    : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                    : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
                 )}
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -816,11 +816,11 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
       {/* Header */}
       <div className="flex items-center justify-between p-5 flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-11 h-11 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
             <Clock size={16} className="text-white" />
           </div>
           <div>
-            <p className="text-xs font-black text-slate-900">Historial de Estados</p>
+            <p className="text-sm font-black text-slate-900">Historial de Estados</p>
             <p className="text-[9px] text-slate-500 font-bold">{snapshots.length} registro{snapshots.length !== 1 ? 's' : ''} guardado{snapshots.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
@@ -829,8 +829,8 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
             <button
               onClick={onToggleCompare}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[1px] transition-all border",
-                compareMode ? "bg-blue-600 text-white border-blue-600" : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-[1px] transition-all border",
+                compareMode ? "bg-blue-600 text-white border-blue-600" : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
               )}
             >
               <ArrowLeftRight size={12} />
@@ -840,7 +840,7 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
           {snapshots.length > 0 && (
             <button
               onClick={() => setListExpanded(!listExpanded)}
-              className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors"
+              className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors"
             >
               {listExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
             </button>
@@ -855,14 +855,14 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
           <select
             value={viewingSnapshotId || 'current'}
             onChange={e => onViewSnapshot(e.target.value === 'current' ? null : e.target.value)}
-            className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
+            className="flex-1 p-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-700"
           >
             {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
           {viewingSnapshotId && (
             <button
               onClick={() => onViewSnapshot(null)}
-              className="px-3 py-2 bg-amber-100 text-amber-700 rounded-xl text-[10px] font-black border border-amber-200"
+              className="px-3 py-2 bg-amber-100 text-amber-700 rounded-xl text-xs font-black border border-amber-200"
             >
               Volver al actual
             </button>
@@ -877,7 +877,7 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-slate-100 overflow-hidden"
+            className="border-t border-slate-300 overflow-hidden"
           >
             <div className="p-5">
               <div className="flex flex-col md:flex-row items-center gap-4">
@@ -886,18 +886,18 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
                   <select
                     value={compareA}
                     onChange={e => onSetCompareA(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-700"
                   >
                     {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
                   </select>
                 </div>
-                <ArrowLeftRight size={16} className="text-slate-300 flex-shrink-0 mt-4 md:mt-0" />
+                <ArrowLeftRight size={16} className="text-slate-400 flex-shrink-0 mt-4 md:mt-0" />
                 <div className="flex-1 w-full">
                   <label className="text-[9px] font-black uppercase tracking-[2px] text-slate-500 mb-1 block">Fecha B</label>
                   <select
                     value={compareB}
                     onChange={e => onSetCompareB(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-700"
                   >
                     {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
                   </select>
@@ -906,7 +906,7 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
 
               {changedTeeth.size > 0 && (
                 <div className="mt-3 p-2.5 bg-blue-50 rounded-xl">
-                  <p className="text-[10px] font-bold text-blue-700">
+                  <p className="text-xs font-bold text-blue-700">
                     <span className="font-black">{changedTeeth.size}</span> diente{changedTeeth.size !== 1 ? 's' : ''} con cambios — resaltados con borde punteado azul
                   </p>
                 </div>
@@ -934,7 +934,7 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
                               className={cn(
                                 "w-5 h-5 rounded-sm flex items-center justify-center text-[6px] font-black",
                                 isChanged && "ring-1 ring-blue-400",
-                                !hasConditions && "bg-white text-slate-300 border border-slate-100",
+                                !hasConditions && "bg-white text-slate-400 border border-slate-300",
                               )}
                               style={hasConditions ? { backgroundColor: color, color: 'white' } : {}}
                             >
@@ -960,7 +960,7 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="border-t border-slate-100 overflow-hidden"
+            className="border-t border-slate-300 overflow-hidden"
           >
             <div className="p-5 space-y-2 max-h-48 overflow-y-auto hide-scrollbar">
               {snapshots.map((snap, i) => {
@@ -981,7 +981,7 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
                         {snapshots.length - i}
                       </div>
                       <div>
-                        <p className="text-[10px] font-black text-slate-700">
+                        <p className="text-xs font-black text-slate-700">
                           {date.toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </p>
                         <p className="text-[9px] text-slate-500">
@@ -1119,8 +1119,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
   if (!teeth || teeth.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-72 gap-4">
-        <div className="w-10 h-10 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest animate-pulse">Cargando odontograma…</p>
+        <div className="w-11 h-11 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-slate-500 font-bold text-sm uppercase tracking-widest animate-pulse">Cargando odontograma…</p>
       </div>
     );
   }
@@ -1129,7 +1129,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
   const lower = displayTeeth.slice(16, 32);
 
   return (
-    <div className="bg-white p-4 lg:p-6 rounded-2xl select-none border border-slate-200 shadow-sm transition-all duration-500">
+    <div className="bg-white p-4 lg:p-6 rounded-2xl select-none border border-slate-300 shadow-sm transition-all duration-500">
       {/* Header */}
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
@@ -1145,7 +1145,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
       {/* Mobile Disclaimer */}
       <div className="md:hidden mb-4 p-3 bg-blue-50/80 border border-blue-200/50 rounded-xl flex items-start gap-2.5">
         <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
-        <p className="text-[11px] font-medium text-blue-800 leading-snug">
+        <p className="text-xs font-medium text-blue-800 leading-snug">
           Para una experiencia óptima al marcar piezas dentales, te recomendamos usar una <span className="font-bold">Tablet o Computadora</span>.
         </p>
       </div>
@@ -1155,13 +1155,13 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock size={14} className="text-amber-600" />
-            <span className="text-[11px] font-bold text-amber-700">
+            <span className="text-xs font-bold text-amber-700">
               Visualizando versión histórica — solo lectura
             </span>
           </div>
           <button
             onClick={() => setViewingSnapshotId(null)}
-            className="px-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg text-[10px] font-black hover:bg-amber-300 transition-colors"
+            className="px-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg text-xs font-black hover:bg-amber-300 transition-colors"
           >
             Volver al actual
           </button>
@@ -1185,15 +1185,15 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
             <span className="absolute bottom-20 left-1/4 -translate-x-1/2 text-[40px] font-black text-slate-50 opacity-[0.03]">4</span>
             <span className="absolute bottom-20 right-1/4 translate-x-1/2 text-[40px] font-black text-slate-50 opacity-[0.03]">3</span>
             
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-black text-slate-300 uppercase tracking-widest">Derecho</span>
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-[10px] font-black text-slate-300 uppercase tracking-widest">Izquierdo</span>
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-black text-slate-400 uppercase tracking-widest">Derecho</span>
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-xs font-black text-slate-400 uppercase tracking-widest">Izquierdo</span>
           </div>
 
           {/* Upper Arch */}
           <div className="flex flex-col items-center relative z-10">
             <div className="flex items-center gap-3 mb-6">
               <div className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200" />
-              <span className="text-[10px] font-black uppercase text-slate-500 tracking-[3px]">Arcada Superior</span>
+              <span className="text-xs font-black uppercase text-slate-500 tracking-[3px]">Arcada Superior</span>
               <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
             </div>
             <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
@@ -1259,7 +1259,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
             </div>
             <div className="flex items-center gap-3 mt-10">
               <div className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200" />
-              <span className="text-[10px] font-black uppercase text-slate-500 tracking-[3px]">Arcada Inferior</span>
+              <span className="text-xs font-black uppercase text-slate-500 tracking-[3px]">Arcada Inferior</span>
               <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
             </div>
           </div>

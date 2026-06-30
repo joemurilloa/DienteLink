@@ -127,7 +127,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
         className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-50">
+        <div className="p-6 border-b border-slate-300 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-50">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Configurar Agenda Pública</h2>
             <p className="text-slate-600 mt-1">Sistema de reservas tipo Calendly para tus pacientes</p>
@@ -151,7 +151,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-100">
+        <div className="flex border-b border-slate-300">
           {[
             { key: 'schedule', label: 'Horarios', icon: Calendar },
             { key: 'settings', label: 'Configuración', icon: Settings },
@@ -189,7 +189,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                         setAvailability({ ...availability, slotDuration: Number(e.target.value) });
                         setHasChanges(true);
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value={15}>15 minutos</option>
                       <option value={30}>30 minutos</option>
@@ -205,7 +205,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                         setAvailability({ ...availability, bufferTime: Number(e.target.value) });
                         setHasChanges(true);
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value={0}>Sin pausa</option>
                       <option value={15}>15 minutos</option>
@@ -220,7 +220,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                         setAvailability({ ...availability, advanceBookingDays: Number(e.target.value) });
                         setHasChanges(true);
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value={7}>1 semana</option>
                       <option value={14}>2 semanas</option>
@@ -239,7 +239,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                   if (!dayConfig) return null;
 
                   return (
-                    <div key={day.value} className="bg-white border border-slate-200 rounded-2xl p-6">
+                    <div key={day.value} className="bg-white border border-slate-300 rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <button
@@ -276,14 +276,14 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                                 type="time"
                                 value={slot.start}
                                 onChange={(e) => updateTimeSlot(day.value, index, 'start', e.target.value)}
-                                className="px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
-                              <span className="text-slate-400">hasta</span>
+                              <span className="text-slate-500">hasta</span>
                               <input
                                 type="time"
                                 value={slot.end}
                                 onChange={(e) => updateTimeSlot(day.value, index, 'end', e.target.value)}
-                                className="px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                               <button
                                 onClick={() => removeTimeSlot(day.value, index)}
@@ -317,7 +317,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                         setSettings({ ...settings, doctorName: e.target.value });
                         setHasChanges(true);
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
@@ -330,7 +330,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                         setSettings({ ...settings, clinicName: e.target.value });
                         setHasChanges(true);
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
@@ -343,7 +343,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                         setHasChanges(true);
                       }}
                       rows={3}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                   </div>
                 </div>
@@ -401,7 +401,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                         setHasChanges(true);
                       }}
                       rows={3}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                   </div>
                 </div>
@@ -417,7 +417,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                   <h3 className="text-lg font-semibold text-slate-900">Tu Link Público de Reservas</h3>
                 </div>
                 
-                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                <div className="bg-white rounded-xl p-4 border border-slate-300">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-slate-600">URL pública</span>
                     <div className="flex gap-2">

@@ -29,7 +29,7 @@ const PatientIdTab: React.FC<Props> = ({ patient, onUpdate, onExportPDF, isExpor
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Ficha del Paciente</h3>
-                    <p className="text-slate-400 text-sm mt-1">Información personal y de contacto</p>
+                    <p className="text-slate-500 text-sm mt-1">Información personal y de contacto</p>
                 </div>
                 <button
                     onClick={onExportPDF}
@@ -48,18 +48,18 @@ const PatientIdTab: React.FC<Props> = ({ patient, onUpdate, onExportPDF, isExpor
                 <InputGroup label="Nombre Completo" icon={User} value={id.fullName} onChange={(val) => onUpdate({ ...patient, identification: { ...id, fullName: val } })} placeholder="Nombre del paciente" />
                 <DateInput label="Fecha de Nacimiento" value={id.birthDate} onChange={(val) => onUpdate({ ...patient, identification: { ...id, birthDate: val } })} />
                 <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 ml-1">Género</label>
-                    <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">Género</label>
+                    <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-300">
                         {['Masculino', 'Femenino', 'Otro'].map(g => (
                             <button
                                 key={g}
                                 type="button"
                                 onClick={() => onUpdate({ ...patient, identification: { ...id, gender: g as PatientIdentification['gender'] } })}
                                 className={cn(
-                                    "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all",
+                                    "flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all",
                                     id.gender === g
-                                        ? "bg-white text-blue-600 shadow-sm border border-slate-200"
-                                        : "text-slate-400 hover:text-slate-600"
+                                        ? "bg-white text-blue-600 shadow-sm border border-slate-300"
+                                        : "text-slate-500 hover:text-slate-600"
                                 )}
                             >
                                 {g}

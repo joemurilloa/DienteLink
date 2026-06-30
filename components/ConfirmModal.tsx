@@ -67,7 +67,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                    className="absolute top-4 right-4 w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
                 >
                     <X size={16} />
                 </button>
@@ -82,7 +82,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
                 {requireText && (
                     <div className="mb-5">
-                        <p className="text-xs text-slate-400 text-center mb-2">
+                        <p className="text-sm text-slate-500 text-center mb-2">
                             Escribe <strong className="text-red-600 font-bold">{requireText}</strong> para confirmar
                         </p>
                         <input
@@ -90,7 +90,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                             value={typedText}
                             onChange={e => setTypedText(e.target.value)}
                             placeholder={requireText}
-                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-center outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 transition-all"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-center outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 transition-all"
                             autoFocus
                             autoComplete="off"
                             spellCheck={false}
@@ -110,7 +110,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                         disabled={!isConfirmEnabled}
                         className={cn(
                             "flex-1 py-3 text-white rounded-xl font-semibold text-sm transition-all shadow-lg",
-                            isConfirmEnabled ? colors.button : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                            isConfirmEnabled ? colors.button : 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
                         )}
                     >
                         {confirmLabel}

@@ -58,7 +58,7 @@ const StatusBadge: React.FC<{ status: SubscriptionStatus['status'] }> = ({ statu
     blue:    'bg-blue-50    text-blue-700    border-blue-200',
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${colorMap[cfg.color]}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${colorMap[cfg.color]}`}>
       <Icon size={12} />
       {cfg.label}
     </span>
@@ -66,13 +66,13 @@ const StatusBadge: React.FC<{ status: SubscriptionStatus['status'] }> = ({ statu
 };
 
 const FeatureRow: React.FC<{ label: string; included?: boolean }> = ({ label, included = true }) => (
-  <div className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
+  <div className="flex items-center gap-3 py-2.5 border-b border-slate-300 last:border-0">
     <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${included ? 'bg-emerald-100' : 'bg-slate-100'}`}>
       {included
         ? <CheckCircle2 size={12} className="text-emerald-600" />
-        : <XCircle size={12} className="text-slate-400" />}
+        : <XCircle size={12} className="text-slate-500" />}
     </div>
-    <span className={`text-sm ${included ? 'text-slate-700' : 'text-slate-400'}`}>{label}</span>
+    <span className={`text-sm ${included ? 'text-slate-700' : 'text-slate-500'}`}>{label}</span>
   </div>
 );
 
@@ -124,7 +124,7 @@ const BillingView: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3 text-slate-400">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
           <Loader2 size={28} className="animate-spin" />
           <p className="text-sm font-medium">Cargando suscripción...</p>
         </div>
@@ -149,7 +149,7 @@ const BillingView: React.FC = () => {
             <AlertTriangle size={20} className="text-amber-500 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-bold text-amber-800">Tu suscripción vence en {days} días</p>
-              <p className="text-xs text-amber-600 mt-0.5">Renueva ahora para evitar interrupciones en tu clínica.</p>
+              <p className="text-sm text-amber-600 mt-0.5">Renueva ahora para evitar interrupciones en tu clínica.</p>
             </div>
           </div>
         )}
@@ -160,7 +160,7 @@ const BillingView: React.FC = () => {
             <XCircle size={20} className="text-red-500 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-bold text-red-800">Sin suscripción activa</p>
-              <p className="text-xs text-red-600 mt-0.5">Activa tu plan para seguir gestionando tu clínica.</p>
+              <p className="text-sm text-red-600 mt-0.5">Activa tu plan para seguir gestionando tu clínica.</p>
             </div>
           </div>
         )}
@@ -171,7 +171,7 @@ const BillingView: React.FC = () => {
             <Clock size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-bold text-blue-800">Ya recibimos tu pago</p>
-              <p className="text-xs text-blue-600 mt-0.5">Lo estamos verificando. En unos minutos tu cuenta queda activa. ¡Gracias por confiar en nosotros!</p>
+              <p className="text-sm text-blue-600 mt-0.5">Lo estamos verificando. En unos minutos tu cuenta queda activa. ¡Gracias por confiar en nosotros!</p>
             </div>
           </div>
         )}
@@ -187,12 +187,12 @@ const BillingView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
 
           {/* ── Current Status Card ── */}
-          <div className="md:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+          <div className="md:col-span-3 bg-white rounded-2xl border border-slate-300 shadow-sm p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Tu suscripción</h2>
               <button
                 onClick={fetchStatus}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                 title="Actualizar"
               >
                 <RefreshCw size={14} />
@@ -201,22 +201,22 @@ const BillingView: React.FC = () => {
 
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-3xl font-extrabold text-slate-900">$15<span className="text-lg font-semibold text-slate-400">/mes</span></p>
-                <p className="text-xs text-slate-500 mt-1">Plan Profesional · Sin contratos</p>
+                <p className="text-3xl font-extrabold text-slate-900">$15<span className="text-lg font-semibold text-slate-500">/mes</span></p>
+                <p className="text-sm text-slate-500 mt-1">Plan Profesional · Sin contratos</p>
               </div>
               <StatusBadge status={sub?.status ?? 'inactive'} />
             </div>
 
-            <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div className="space-y-3 pt-2 border-t border-slate-300">
               {sub?.current_period_end && (
                 <div className="flex items-center gap-3">
-                  <Calendar size={15} className="text-slate-400 flex-shrink-0" />
+                  <Calendar size={15} className="text-slate-500 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-slate-400 font-medium">Se renueva el</p>
+                    <p className="text-sm text-slate-500 font-medium">Se renueva el</p>
                     <p className="text-sm font-semibold text-slate-700">{formatDate(sub.current_period_end)}</p>
                   </div>
                   {isActive && (
-                    <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                    <span className="ml-auto text-sm font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
                       {days}d restantes
                     </span>
                   )}
@@ -224,9 +224,9 @@ const BillingView: React.FC = () => {
               )}
               {sub?.last_payment_at && (
                 <div className="flex items-center gap-3">
-                  <CreditCard size={15} className="text-slate-400 flex-shrink-0" />
+                  <CreditCard size={15} className="text-slate-500 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-slate-400 font-medium">Tu último pago fue el</p>
+                    <p className="text-sm text-slate-500 font-medium">Tu último pago fue el</p>
                     <p className="text-sm font-semibold text-slate-700">{formatDate(sub.last_payment_at)}</p>
                   </div>
                 </div>
@@ -273,16 +273,16 @@ const BillingView: React.FC = () => {
               </button>
               */}
 
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Elige cómo pagar</p>
+              <div className="bg-slate-50 border border-slate-300 rounded-xl p-4 mt-2">
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Elige cómo pagar</p>
 
                 {/* Option A: PayPal */}
-                <div className="mb-3 p-3.5 bg-white border border-slate-200 rounded-xl">
+                <div className="mb-3 p-3.5 bg-white border border-slate-300 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">🅿️</span>
                     <h3 className="text-sm font-bold text-slate-800">PayPal — Con tarjeta o saldo</h3>
                   </div>
-                  <p className="text-xs text-slate-500 mb-3">Paga de inmediato con tu tarjeta de crédito, débito o saldo PayPal. Sin esperas.</p>
+                  <p className="text-sm text-slate-500 mb-3">Paga de inmediato con tu tarjeta de crédito, débito o saldo PayPal. Sin esperas.</p>
                   <a
                     href="https://www.paypal.com/paypalme/dientelink/15"
                     target="_blank"
@@ -295,7 +295,7 @@ const BillingView: React.FC = () => {
                 </div>
 
                 {/* Option B: BAC Transfer */}
-                <div className="p-3.5 bg-white border border-slate-200 rounded-xl">
+                <div className="p-3.5 bg-white border border-slate-300 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <Building size={16} className="text-blue-600" />
                     <h3 className="text-sm font-bold text-slate-800">Transferencia BAC Honduras</h3>
@@ -315,19 +315,19 @@ const BillingView: React.FC = () => {
                   </a>
                 </div>
 
-                <p className="text-[10px] text-slate-400 text-center mt-3">Tu cuenta se activa en minutos una vez confirmemos tu pago. ¡Te avisamos!</p>
+                <p className="text-xs text-slate-500 text-center mt-3">Tu cuenta se activa en minutos una vez confirmemos tu pago. ¡Te avisamos!</p>
               </div>
 
             </div>
 
-            <div className="flex items-center gap-2 justify-center text-xs text-slate-400">
+            <div className="flex items-center gap-2 justify-center text-sm text-slate-500">
               <Shield size={12} />
               <span>Activación rápida — En minutos estarás listo para trabajar</span>
             </div>
           </div>
 
           {/* ── Plan Features ── */}
-          <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="md:col-span-2 bg-white rounded-2xl border border-slate-300 shadow-sm p-6">
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">¿Qué incluye el plan? 🦷</h2>
             <div className="space-y-0.5">
               <FeatureRow label="Pacientes ilimitados" />
@@ -344,7 +344,7 @@ const BillingView: React.FC = () => {
         </div>
 
         {/* Footer note */}
-        <p className="text-xs text-center text-slate-400 pb-4">
+        <p className="text-sm text-center text-slate-500 pb-4">
           DienteLink · Gestión Dental Profesional · Honduras 🇭🇳
         </p>
       </div>

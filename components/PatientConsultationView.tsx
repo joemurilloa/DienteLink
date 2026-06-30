@@ -180,11 +180,11 @@ const PatientConsultationView: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col font-sans">
       {/* Top Navigation */}
-      <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 relative z-10 shadow-sm">
+      <header className="h-16 bg-white border-b border-slate-300 px-6 flex items-center justify-between flex-shrink-0 relative z-10 shadow-sm">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate('/')} 
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors"
+            className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors"
           >
             <ArrowLeft size={16} />
           </button>
@@ -193,12 +193,12 @@ const PatientConsultationView: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               Consulta Activa
             </h1>
-            <p className="text-xs font-bold text-slate-600">DienteLink Co-Pilot</p>
+            <p className="text-sm font-bold text-slate-600">DienteLink Co-Pilot</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-6">
-          <div className="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+          <div className="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300">
             <Clock size={14} className="text-slate-500" />
             <span className="text-sm font-mono font-bold text-slate-700">{formatTime(timer)}</span>
           </div>
@@ -225,7 +225,7 @@ const PatientConsultationView: React.FC = () => {
 
       {viewMode === 'expediente' ? (
         <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
-          <div className="bg-white px-6 py-3 border-b border-slate-200 flex items-center shadow-sm z-10 w-full shrink-0">
+          <div className="bg-white px-6 py-3 border-b border-slate-300 flex items-center shadow-sm z-10 w-full shrink-0">
             <button 
               onClick={() => {
                 setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '' });
@@ -237,7 +237,7 @@ const PatientConsultationView: React.FC = () => {
             </button>
             <span className="ml-4 text-sm font-semibold text-slate-500 flex items-center gap-2 divide-x divide-slate-300">
               <span className="pr-2 text-slate-800">Expediente de {patient.identification.fullName}</span>
-              <span className="pl-2 uppercase tracking-widest text-[10px]">{searchParams.get('tab') || ''}</span>
+              <span className="pl-2 uppercase tracking-widest text-xs">{searchParams.get('tab') || ''}</span>
             </span>
           </div>
           <div className="flex-1 overflow-auto relative">
@@ -250,7 +250,7 @@ const PatientConsultationView: React.FC = () => {
       <div className="flex-1 flex overflow-hidden">
         
         {/* Left Column: Context Area */}
-        <aside className="w-[320px] bg-white border-r border-slate-200 flex flex-col overflow-y-auto hide-scrollbar">
+        <aside className="w-[320px] bg-white border-r border-slate-300 flex flex-col overflow-y-auto hide-scrollbar">
           <div className="p-6 space-y-6">
             
             {/* Patient Identity */}
@@ -264,13 +264,13 @@ const PatientConsultationView: React.FC = () => {
               </p>
             </div>
 
-            <hr className="border-slate-100" />
+            <hr className="border-slate-300" />
 
             {/* Critical Info */}
             <div className="space-y-4">
               {patient.clinicalHistory.allergies.length > 0 && (
                 <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
-                  <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase tracking-wider mb-2">
+                  <div className="flex items-center gap-2 text-red-700 font-bold text-sm uppercase tracking-wider mb-2">
                     <AlertTriangle size={14} /> Alergias
                   </div>
                   <p className="text-sm font-semibold text-red-900">{patient.clinicalHistory.allergies.join(', ')}</p>
@@ -278,7 +278,7 @@ const PatientConsultationView: React.FC = () => {
               )}
               
               <div className="bg-blue-50/50 border border-blue-100/50 p-4 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2 text-blue-700 font-bold text-xs uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-blue-700 font-bold text-sm uppercase tracking-wider">
                   <Activity size={14} /> Último Trat.
                 </div>
                 <p className="text-sm font-medium text-blue-900 leading-snug">
@@ -294,7 +294,7 @@ const PatientConsultationView: React.FC = () => {
                   setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'odontogram' });
                   setViewMode('expediente');
                 }}
-                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-100 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-blue-200 transition-all active:scale-95 shadow-sm"
+                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-300 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-blue-200 transition-all active:scale-95 shadow-sm"
               >
                 <LayoutGrid size={18} className="text-blue-500" /> Ver Odontograma
               </button>
@@ -303,7 +303,7 @@ const PatientConsultationView: React.FC = () => {
                   setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'id' });
                   setViewMode('expediente');
                 }}
-                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-100 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-indigo-200 transition-all active:scale-95 shadow-sm"
+                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-300 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-indigo-200 transition-all active:scale-95 shadow-sm"
               >
                 <User size={18} className="text-indigo-500" /> Expediente Completo
               </button>
@@ -316,7 +316,7 @@ const PatientConsultationView: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6 sm:p-10 hide-scrollbar">
           <div className="max-w-3xl mx-auto space-y-8">
             
-            <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-8">
+            <div className="bg-white p-8 rounded-[32px] border border-slate-300 shadow-sm space-y-8">
               
               {/* Motivo */}
               <div className="space-y-3">
@@ -326,7 +326,7 @@ const PatientConsultationView: React.FC = () => {
                   placeholder="Ej. Evaluación de caries, Dolor de muela..."
                   value={formData.motivo}
                   onChange={e => setFormData(p => ({ ...p, motivo: e.target.value }))}
-                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
+                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-slate-300 focus:border-blue-200 transition-all"
                 />
               </div>
 
@@ -338,7 +338,7 @@ const PatientConsultationView: React.FC = () => {
                   placeholder="Ej. Pulpitis irreversible en pieza 46"
                   value={formData.diagnostico}
                   onChange={e => setFormData(p => ({ ...p, diagnostico: e.target.value }))}
-                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all"
+                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-semibold focus:ring-2 focus:ring-blue-100 focus:bg-white border border-slate-300 focus:border-blue-200 transition-all"
                 />
               </div>
 
@@ -346,7 +346,7 @@ const PatientConsultationView: React.FC = () => {
               <div className="space-y-3">
                 <label className="flex items-center justify-between text-[13px] font-bold uppercase tracking-widest text-slate-600">
                   <span>Procedimiento Realizado <span className="text-red-400">*</span></span>
-                  <span className="text-[11px] text-slate-500 capitalize normal-case font-medium">Se añadirá al historial de tratamientos</span>
+                  <span className="text-xs text-slate-500 capitalize normal-case font-medium">Se añadirá al historial de tratamientos</span>
                 </label>
                 <input 
                   type="text"
@@ -361,42 +361,42 @@ const PatientConsultationView: React.FC = () => {
               <div className="space-y-3">
                 <label className="flex items-center justify-between text-[13px] font-bold uppercase tracking-widest text-slate-600">
                   <span>Notas de Evolución</span>
-                  <span className="text-[11px] text-slate-500 capitalize normal-case font-medium">Observaciones generales de la atención</span>
+                  <span className="text-xs text-slate-500 capitalize normal-case font-medium">Observaciones generales de la atención</span>
                 </label>
                 <textarea 
                   rows={4}
                   placeholder="Describe la evolución, anestesia aplicada, complicaciones o indicaciones..."
                   value={formData.notas}
                   onChange={e => setFormData(p => ({ ...p, notas: e.target.value }))}
-                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-medium focus:ring-2 focus:ring-blue-100 focus:bg-white border border-transparent focus:border-blue-200 transition-all resize-none"
+                  className="w-full px-5 py-5 text-base sm:text-lg bg-slate-50 rounded-[20px] outline-none text-slate-900 font-medium focus:ring-2 focus:ring-blue-100 focus:bg-white border border-slate-300 focus:border-blue-200 transition-all resize-none"
                 />
               </div>
 
             </div>
 
             {/* Prescriptions Section */}
-            <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
+            <div className="bg-white p-8 rounded-[32px] border border-slate-300 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                  <div className="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
                     <Pill size={20} />
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 leading-tight">Receta Médica</h2>
-                    <p className="text-xs font-semibold text-slate-500">Opcional. Se guardará en el expediente.</p>
+                    <p className="text-sm font-semibold text-slate-500">Opcional. Se guardará en el expediente.</p>
                   </div>
                 </div>
                 {!showPrescription ? (
                   <button 
                     onClick={() => { setShowPrescription(true); if(medications.length===0) addMedication(); }} 
-                    className="px-4 py-2 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-600 font-bold text-xs rounded-lg transition-colors border border-slate-200 hover:border-violet-200"
+                    className="px-4 py-2 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-600 font-bold text-sm rounded-lg transition-colors border border-slate-300 hover:border-violet-200"
                   >
                     + Agregar Medicamentos
                   </button>
                 ) : (
                   <button 
                     onClick={() => { setShowPrescription(false); setMedications([]); }} 
-                    className="px-4 py-2 bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-600 font-bold text-xs rounded-lg transition-colors border border-slate-200 hover:border-red-200"
+                    className="px-4 py-2 bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-600 font-bold text-sm rounded-lg transition-colors border border-slate-300 hover:border-red-200"
                   >
                     Quitar Receta
                   </button>
@@ -406,44 +406,44 @@ const PatientConsultationView: React.FC = () => {
               {showPrescription && (
                 <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
                   {medications.map((med, index) => (
-                    <div key={med.id} className="p-5 bg-slate-50 border border-slate-100 rounded-2xl relative group">
+                    <div key={med.id} className="p-5 bg-slate-50 border border-slate-300 rounded-2xl relative group">
                       <button 
                         onClick={() => removeMedication(med.id)} 
-                        className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white text-red-400 border border-slate-200 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600"
+                        className="absolute -top-3 -right-3 w-11 h-11 rounded-full bg-white text-red-400 border border-slate-300 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600"
                       >
                         <Trash2 size={14} />
                       </button>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Medicamento</label>
+                          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Medicamento</label>
                           <input 
                             type="text" value={med.name} placeholder="Ej. Amoxicilina 500mg"
                             onChange={e => { const m = [...medications]; m[index].name = e.target.value; setMedications(m); }}
-                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-300 focus:border-violet-400"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Dosis / Frecuencia</label>
+                          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Dosis / Frecuencia</label>
                           <input 
                             type="text" value={med.frequency} placeholder="Ej. 1 tableta cada 8 horas"
                             onChange={e => { const m = [...medications]; m[index].frequency = e.target.value; setMedications(m); }}
-                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-300 focus:border-violet-400"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Duración</label>
+                          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Duración</label>
                           <input 
                             type="text" value={med.duration} placeholder="Ej. Por 7 días"
                             onChange={e => { const m = [...medications]; m[index].duration = e.target.value; setMedications(m); }}
-                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-300 focus:border-violet-400"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Indicaciones Adicionales</label>
+                          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Indicaciones Adicionales</label>
                           <input 
                             type="text" value={med.instructions} placeholder="Opcional"
                             onChange={e => { const m = [...medications]; m[index].instructions = e.target.value; setMedications(m); }}
-                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-200 focus:border-violet-400"
+                            className="w-full px-4 py-2.5 bg-white rounded-xl outline-none text-sm font-semibold border border-slate-300 focus:border-violet-400"
                           />
                         </div>
                       </div>
@@ -452,7 +452,7 @@ const PatientConsultationView: React.FC = () => {
 
                   <button 
                     onClick={addMedication} 
-                    className="w-full py-4 bg-white border-2 border-dashed border-slate-200 hover:border-violet-300 rounded-2xl text-violet-600 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+                    className="w-full py-4 bg-white border-2 border-dashed border-slate-300 hover:border-violet-300 rounded-2xl text-violet-600 font-bold text-sm flex items-center justify-center gap-2 transition-colors"
                   >
                     <Plus size={16} /> Añadir otro medicamento
                   </button>

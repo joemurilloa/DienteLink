@@ -114,13 +114,13 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onCanc
                     <PenTool size={16} className="text-blue-600" />
                     Dibuja tu firma
                 </div>
-                <button onClick={clear} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-red-500 bg-slate-50 rounded-lg hover:bg-red-50 transition-all">
+                <button onClick={clear} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-slate-500 hover:text-red-500 bg-slate-50 rounded-lg hover:bg-red-50 transition-all">
                     <RotateCcw size={12} /> Limpiar
                 </button>
             </div>
             <canvas
                 ref={canvasRef}
-                className="w-full h-48 border-2 border-dashed border-slate-200 rounded-xl cursor-crosshair touch-none bg-white"
+                className="w-full h-48 border-2 border-dashed border-slate-300 rounded-xl cursor-crosshair touch-none bg-white"
                 onMouseDown={startDraw}
                 onMouseMove={draw}
                 onMouseUp={endDraw}
@@ -138,7 +138,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onCanc
                 </button>
                 <button
                     onClick={onCancel}
-                    className="px-5 py-3 text-slate-400 text-sm font-semibold hover:text-red-500 transition-colors"
+                    className="px-5 py-3 text-slate-500 text-sm font-semibold hover:text-red-500 transition-colors"
                 >
                     Cancelar
                 </button>

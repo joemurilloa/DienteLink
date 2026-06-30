@@ -81,18 +81,18 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
             <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
 
             <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300">
-                <div className="flex items-center gap-4 p-6 border-b border-slate-100">
-                    <Search size={20} className="text-slate-400" />
+                <div className="flex items-center gap-4 p-6 border-b border-slate-300">
+                    <Search size={20} className="text-slate-500" />
                     <input
                         ref={inputRef}
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Buscar paciente por nombre o teléfono..."
-                        className="flex-1 bg-transparent outline-none text-lg font-medium text-slate-900 placeholder:text-slate-400"
+                        className="flex-1 bg-transparent outline-none text-lg font-medium text-slate-900 placeholder:text-slate-500"
                     />
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                        <X size={18} className="text-slate-400" />
+                        <X size={18} className="text-slate-500" />
                     </button>
                 </div>
 
@@ -104,7 +104,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                                 onClick={() => handleSelect(patient.id)}
                                 className={cn(
                                     "w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-left group",
-                                    selectedIndex === index ? "bg-blue-50 border-2 border-blue-500 shadow-sm outline-none" : "hover:bg-slate-50 border-2 border-transparent"
+                                    selectedIndex === index ? "bg-blue-50 border-2 border-blue-500 shadow-sm outline-none" : "hover:bg-slate-50 border-2 border-slate-300"
                                 )}
                             >
                                 <div className={cn(
@@ -121,15 +121,15 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                                         {patient.identification.fullName}
                                     </h4>
                                     <p className={cn(
-                                        "text-[10px] font-bold uppercase tracking-widest transition-colors",
+                                        "text-xs font-bold uppercase tracking-widest transition-colors",
                                         selectedIndex === index ? "text-blue-500" : "text-slate-500"
                                     )}>
                                         {patient.identification.phone || 'Sin teléfono'}
                                     </p>
                                 </div>
                                 <span className={cn(
-                                    "text-[10px] font-black uppercase tracking-widest transition-all",
-                                    selectedIndex === index ? "text-blue-700 opacity-100" : "text-slate-300 opacity-0 group-hover:opacity-100"
+                                    "text-xs font-black uppercase tracking-widest transition-all",
+                                    selectedIndex === index ? "text-blue-700 opacity-100" : "text-slate-400 opacity-0 group-hover:opacity-100"
                                 )}>
                                     {selectedIndex === index ? "ENTER ↵" : "Ver →"}
                                 </span>
@@ -140,8 +140,8 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
 
                 {query.length >= 2 && results.length === 0 && (
                     <div className="p-8 text-center">
-                        <p className="text-slate-400 font-medium">No se encontraron pacientes</p>
-                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mt-1">
+                        <p className="text-slate-500 font-medium">No se encontraron pacientes</p>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
                             Intenta buscar por nombre, teléfono o ID
                         </p>
                     </div>

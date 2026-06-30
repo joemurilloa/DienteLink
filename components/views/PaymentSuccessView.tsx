@@ -58,7 +58,7 @@ const PaymentSuccessView: React.FC = () => {
 
   return (
     <div className="flex-1 flex items-center justify-center bg-slate-50 p-6">
-      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-xl p-8 text-center space-y-6">
+      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-300 shadow-xl p-8 text-center space-y-6">
 
         {/* Icon */}
         <div className="flex items-center justify-center">
@@ -93,7 +93,7 @@ const PaymentSuccessView: React.FC = () => {
         {/* Success detail */}
         {status === 'success' && periodEnd && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-left">
-            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Suscripción activa hasta</p>
+            <p className="text-sm font-bold text-emerald-600 uppercase tracking-wider mb-1">Suscripción activa hasta</p>
             <p className="text-base font-bold text-emerald-800">{fmtDate(periodEnd)}</p>
           </div>
         )}

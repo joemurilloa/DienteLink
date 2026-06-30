@@ -52,7 +52,7 @@ const UpgradeBanner: React.FC = () => {
 
         <button
           onClick={() => navigate('/billing')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex-shrink-0 ${
             isUrgent
               ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-sm'
               : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
@@ -87,7 +87,7 @@ const UpgradeBanner: React.FC = () => {
 
         <button
           onClick={() => navigate('/billing')}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all flex-shrink-0"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all flex-shrink-0"
         >
           Activar Plan Pro
           <ArrowRight size={12} />
@@ -113,7 +113,7 @@ const UpgradeBanner: React.FC = () => {
         </div>
 
         <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-          <span className="truncate text-xs font-semibold">
+          <span className="truncate text-sm font-semibold">
             {isAtLimit
               ? `🔒 Límite de ${FREE_PATIENT_LIMIT} pacientes alcanzado`
               : `Demo Gratuita · ${used}/${FREE_PATIENT_LIMIT} pacientes usados`
@@ -129,7 +129,7 @@ const UpgradeBanner: React.FC = () => {
 
         <button
           onClick={() => navigate('/billing')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 shadow-sm ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex-shrink-0 shadow-sm ${
             isAtLimit
               ? 'bg-red-600 text-white hover:bg-red-700'
               : 'bg-amber-600 text-white hover:bg-amber-700'

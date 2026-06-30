@@ -64,7 +64,7 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                 <span className="text-2xl">🦷</span>
                 <div>
                     <p className="font-bold text-sm">Pintar Odontograma</p>
-                    <p className="text-[11px] text-blue-200">Marca las piezas que necesitan trabajo</p>
+                    <p className="text-xs text-blue-200">Marca las piezas que necesitan trabajo</p>
                 </div>
             </button>
             <button
@@ -74,7 +74,7 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                 <span className="text-2xl">📅</span>
                 <div>
                     <p className="font-bold text-sm">Agendar Primera Cita</p>
-                    <p className="text-[11px] text-blue-200">Programa cuándo viene a consulta</p>
+                    <p className="text-xs text-blue-200">Programa cuándo viene a consulta</p>
                 </div>
             </button>
             <button
@@ -84,7 +84,7 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                 <span className="text-2xl">💰</span>
                 <div>
                     <p className="font-bold text-sm">Crear Presupuesto</p>
-                    <p className="text-[11px] text-blue-200">Cuánto cuesta el tratamiento</p>
+                    <p className="text-xs text-blue-200">Cuánto cuesta el tratamiento</p>
                 </div>
             </button>
         </div>
@@ -178,7 +178,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 return (
                     <div className="space-y-8">
                         <PatientIdTab patient={patient} onUpdate={onUpdate} onExportPDF={handleExportPDF} isExporting={isExporting} />
-                        <hr className="border-slate-100" />
+                        <hr className="border-slate-300" />
                         <AnamnesisTab patient={patient} onUpdate={onUpdate} />
                     </div>
                 );
@@ -198,7 +198,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 return (
                     <div className="space-y-12 animate-in-up duration-500">
                         <HistoryTab patient={patient} onUpdate={onUpdate} />
-                        <hr className="border-slate-100" />
+                        <hr className="border-slate-300" />
                         <EvolutionTab patient={patient} onUpdate={onUpdate} />
                     </div>
                 );
@@ -206,7 +206,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 return (
                     <div className="space-y-12 animate-in-up duration-500">
                         <ConsentManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />
-                        <hr className="border-slate-100" />
+                        <hr className="border-slate-300" />
                         <PrescriptionManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />
                     </div>
                 );
@@ -225,7 +225,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         <div className="fixed inset-0 z-[10000] bg-white flex flex-col p-6 lg:p-12 animate-in fade-in duration-300 overflow-y-auto overflow-x-hidden">
             <button
                 onClick={() => setIsFocusMode(false)}
-                className="fixed top-8 left-8 right-8 lg:left-auto lg:w-64 h-16 bg-red-600 text-white rounded-3xl font-black uppercase tracking-[2px] text-xs shadow-2xl flex items-center justify-center gap-3 active:scale-95 z-[11000] border-4 border-white"
+                className="fixed top-8 left-8 right-8 lg:left-auto lg:w-64 h-16 bg-red-600 text-white rounded-3xl font-black uppercase tracking-[2px] text-sm shadow-2xl flex items-center justify-center gap-3 active:scale-95 z-[11000] border-4 border-white"
             >
                 <X size={20} />
                 CERRAR PANTALLA COMPLETA
@@ -250,7 +250,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
             )}>
                 <div className="relative group/tabs">
                     <div className="flex items-center justify-between mb-3 px-1">
-                        <span className="text-[11px] font-black uppercase tracking-[2px] text-slate-500">Expediente Clínico</span>
+                        <span className="text-xs font-black uppercase tracking-[2px] text-slate-500">Expediente Clínico</span>
                         <div className="flex gap-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse"></div>
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse delay-75"></div>
@@ -263,10 +263,10 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as TabId)}
                                 className={cn(
-                                    "flex items-center gap-2 px-3 md:px-5 py-3 rounded-2xl text-[12px] md:text-[13px] font-bold transition-all min-w-max border-2",
+                                    "flex items-center gap-2 px-3 md:px-5 py-3 rounded-2xl text-sm md:text-[13px] font-bold transition-all min-w-max border-2",
                                     activeTab === tab.id
                                         ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20 scale-105 z-10"
-                                        : "bg-white border-slate-100 text-slate-500 hover:border-slate-200 hover:text-slate-800 hover:bg-slate-50/50 shadow-sm"
+                                        : "bg-white border-slate-300 text-slate-500 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-50/50 shadow-sm"
                                 )}
                                 style={{ animationDelay: `${index * 40}ms` }}
                             >
@@ -283,8 +283,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
             {/* Main Content */}
             <div className={cn(
-                "flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm",
-                isClinicalTab ? "border-transparent shadow-none" : ""
+                "flex-1 bg-white rounded-2xl border border-slate-300 overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm",
+                isClinicalTab ? "border-slate-300 shadow-none" : ""
             )}>
                 <div className={cn(
                     "flex-1 overflow-y-auto hide-scrollbar transition-all duration-300",
@@ -293,7 +293,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                     {isClinicalTab && (
                         <button
                             onClick={() => setIsFocusMode(true)}
-                            className="absolute top-5 right-5 z-10 w-10 h-10 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md shadow-blue-500/20 flex items-center justify-center transition-all active:scale-95"
+                            className="absolute top-5 right-5 z-10 w-11 h-11 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md shadow-blue-500/20 flex items-center justify-center transition-all active:scale-95"
                             title="Ver en Pantalla Completa"
                         >
                             <Maximize2 size={18} />
