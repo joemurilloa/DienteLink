@@ -279,7 +279,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as TabId)}
                                 className={cn(
-                                    "flex items-center gap-2 px-3 md:px-5 py-3 rounded-2xl text-sm md:text-[13px] font-bold transition-all min-w-max border-2",
+                                    "flex items-center gap-2 px-3 md:px-5 py-3 rounded-2xl text-sm md:text-[13px] font-bold transition-all min-w-max shrink-0 whitespace-nowrap border-2",
                                     activeTab === tab.id
                                         ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20 scale-105 z-10"
                                         : "bg-white border-slate-300 text-slate-500 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-50/50 shadow-sm"
