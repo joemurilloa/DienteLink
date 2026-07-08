@@ -1175,8 +1175,10 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
         )}
 
         <div className={cn("flex-1 space-y-2 relative pb-20 xl:pb-0")}>
-          {/* Quadrant Vertical Center Line */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-0 hidden md:block" />
+          <div className="overflow-x-auto custom-scrollbar pb-8 -mx-6 px-6 lg:mx-0 lg:px-0">
+            <div className="min-w-[850px] relative mx-auto">
+              {/* Quadrant Vertical Center Line */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-0 hidden md:block" />
           
           {/* Quadrant Labels */}
           <div className="absolute inset-0 pointer-events-none z-0 hidden md:block">
@@ -1196,7 +1198,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
               <span className="text-xs font-black uppercase text-slate-500 tracking-[3px]">Arcada Superior</span>
               <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
             </div>
-            <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
+            <div className="flex flex-nowrap md:flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
               {upper.map(tooth => (
                 <ToothDiagram
                   key={tooth.id}
@@ -1218,7 +1220,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
 
           {/* Lower Arch */}
           <div className="flex flex-col items-center relative z-10">
-            <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
+            <div className="flex flex-nowrap md:flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
               {/* Lower Arch Reordered to match clinical standard: Quadrant 4 (Right) | Quadrant 3 (Left) */}
               {/* FDI 48-41 (IDs 32 to 25) */}
               {[32, 31, 30, 29, 28, 27, 26, 25].map(id => {
@@ -1261,6 +1263,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
               <div className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200" />
               <span className="text-xs font-black uppercase text-slate-500 tracking-[3px]">Arcada Inferior</span>
               <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
+            </div>
+          </div>
             </div>
           </div>
 

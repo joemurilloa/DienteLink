@@ -10,11 +10,9 @@ const UpgradeBanner: React.FC = () => {
   const navigate = useNavigate();
   const [dismissed, setDismissed] = React.useState(false);
 
-  // Don't show while loading, if user is Pro, or if dismissed this session
-  if (loading || isPro || dismissed) return null;
-
-  // Don't show if subscription is pending (payment being processed)
-  if (status === 'pending') return null;
+  // TODO: Re-enable when ready to launch with pricing
+  // Development mode — hide all upgrade/limit banners
+  return null;
 
   // ─── Trial Active ──────────────────────────────────────────────────────────
   if (isTrial && hasAccess) {

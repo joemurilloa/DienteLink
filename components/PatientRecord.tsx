@@ -293,7 +293,11 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                         ))}
                     </nav>
                     {/* Subtle Gradient to indicate scroll */}
-                    <div className="absolute right-0 top-[40px] bottom-4 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none opacity-0 group-hover/tabs:opacity-100 transition-opacity"></div>
+                    <div className="absolute right-0 top-[40px] bottom-4 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none opacity-100 md:opacity-0 md:group-hover/tabs:opacity-100 transition-opacity"></div>
+                    {/* Swipe hint for mobile */}
+                    <div className="absolute -top-1 right-1 md:hidden text-[10px] font-bold text-blue-500 animate-pulse bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                        ← Desliza
+                    </div>
                 </div>
             </div>
 

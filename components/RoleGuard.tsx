@@ -29,21 +29,23 @@ export function useRoleAccess() {
   const devRole = localStorage.getItem('DEV_ROLE');
   const userRole = (devRole as UserRole) || (profile?.role as UserRole) || 'owner';
 
-  const isOwner       = userRole === 'owner';
-  const isAdmin       = userRole === 'owner' || userRole === 'admin';
-  const isAssistant   = userRole === 'assistant';
-  const isReceptionist= userRole === 'receptionist';
+  const isOwner        = userRole === 'owner';
+  const isAdmin        = userRole === 'owner' || userRole === 'admin';
+  const isAssistant    = userRole === 'assistant';
+  const isReceptionist = userRole === 'receptionist';
+  // Legacy/alternative role names that should have full clinical access (case-insensitive)
+  const isDoctor = ['doctor', 'dr', 'odontologo', 'odontólogo'].includes(userRole.toLowerCase());
 
   return {
     role: userRole,
     // Admin-level: can manage team, billing, settings
     isAdmin,
     // Clinical access: can view/edit clinical records (odontogram, perio, notes, consents, prescriptions)
-    canViewClinical : isOwner || isAdmin || isAssistant,
-    canEditClinical : isOwner || isAdmin || isAssistant,
+    canViewClinical : isOwner || isAdmin || isAssistant || isDoctor,
+    canEditClinical : isOwner || isAdmin || isAssistant || isDoctor,
     // Financial access: can view/edit budgets, payments, dashboard financials
-    canViewFinancial: isOwner || isAdmin,
-    canEditFinancial: isOwner || isAdmin,
+    canViewFinancial: isOwner || isAdmin || isDoctor,
+    canEditFinancial: isOwner || isAdmin || isDoctor,
     // Appointments: everyone can manage appointments
     canManageAppointments: true,
     // Receptionist: limited to calendar + booking requests

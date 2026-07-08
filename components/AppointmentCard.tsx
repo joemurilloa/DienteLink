@@ -10,7 +10,7 @@ import { usePatient } from '../hooks/usePatients';
 import { useAppointmentMutations } from '../hooks/useAppointments';
 import { useSubscription } from '../hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle, Play, Ban, Lock } from 'lucide-react';
+import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle, Play, Ban } from 'lucide-react';
 import { sileo } from 'sileo';
 
 interface AppointmentCardProps {
@@ -41,8 +41,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const { profile } = useAuth();
   const { patient } = usePatient(appointment.patientId);
   const { updateAppointment, deleteAppointment } = useAppointmentMutations();
-  const { canUseFeature, isTrial } = useSubscription();
-  const canSendEmail = canUseFeature('auto_email_reminders');
+  const { canUseFeature } = useSubscription();
+  const canSendEmail = true; // Dev mode: always enabled
   const navigate = useNavigate();
   
   const isToday = appointment.date === new Date().toISOString().split('T')[0];
@@ -71,17 +71,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
     e.stopPropagation();
     if (emailStatus === 'sending' || emailStatus === 'sent') return;
 
-    // Block expired/free users — guide them to billing
-    if (!canSendEmail) {
-      sileo.warning({
-        title: 'Función Pro',
-        description: 'Los recordatorios por email automáticos requieren el Plan Pro.',
-      });
-      navigate('/billing');
-      return;
-    }
-
-    // Look up patient email
+    // Look up patient email (removed billing redirect — dev mode)
     const email = patient?.identification?.email;
     if (!email) {
       sileo.warning({ title: 'Sin correo electrónico', description: 'Este paciente no tiene email registrado' });

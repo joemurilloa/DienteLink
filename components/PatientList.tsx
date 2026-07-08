@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PatientRecord } from '../types';
-import { Search, Plus, User, Phone, Calendar, ArrowRight, Filter, FileText, AlertCircle, Lock, Zap } from 'lucide-react';
+import { Search, Plus, User, Phone, Calendar, ArrowRight, FileText, AlertCircle } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { PatientCardSkeleton, generateSkeletons } from './LoadingSkeletons';
 import { useOptimizedSearch } from '../lib/PerformanceOptimizations';
-import { useSubscription, FREE_PATIENT_LIMIT } from '../hooks/useSubscription';
 import { useRoleAccess } from './RoleGuard';
 
 interface Props {
@@ -16,9 +15,7 @@ interface Props {
 
 const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
     const navigate = useNavigate();
-    const { hasAccess, isExpired, isTrial } = useSubscription();
     const { canViewFinancial } = useRoleAccess();
-    const isAtLimit = !hasAccess && patients.length >= FREE_PATIENT_LIMIT;
 
     const [search, setSearch] = useState('');
     const [filterDebt, setFilterDebt] = useState(false);
@@ -81,7 +78,6 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                 >
                     <Plus size={20} /> Agregar mi primer paciente
                 </button>
-                <p className="text-sm text-slate-500 mt-4">Gratis hasta 5 pacientes · Sin tarjeta de crédito</p>
             </div>
         );
     }
@@ -92,11 +88,6 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                 <div className="animate-in-up stagger-delay-1">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="px-3 py-1 bg-slate-100/80 text-slate-500 rounded-lg text-xs font-bold uppercase tracking-wider">{patients.length} Expedientes</div>
-                        {!hasAccess && (
-                            <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold uppercase tracking-wider">
-                                Demo Gratuita
-                            </div>
-                        )}
                     </div>
                     <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Pacientes</h1>
                 </div>
@@ -128,58 +119,17 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                             <span className="hidden sm:inline">Con Deuda</span>
                         </button>
                     )}
-                    {isAtLimit ? (
-                        <button
-                            onClick={() => navigate('/billing')}
-                            title={`Límite de ${FREE_PATIENT_LIMIT} pacientes alcanzado`}
-                            className="bg-slate-100 text-slate-500 h-[46px] md:h-12 px-3.5 md:px-5 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-bold text-[13px] border-2 border-slate-300 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all flex-shrink-0 group"
-                        >
-                            <Lock size={16} className="text-slate-500 group-hover:text-blue-500" />
-                            <span className="hidden sm:inline">Límite</span>
-                            <span className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-xs font-bold rounded-md uppercase hidden sm:inline">Pro</span>
-                        </button>
-                    ) : (
-                        <button
-                            onClick={onAdd}
-                            data-new-patient
-                            className="bg-blue-600 text-white h-[46px] md:h-12 px-4 md:px-6 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-bold text-[13px] shadow-[0_4px_16px_rgba(37,99,235,0.2)] hover:bg-blue-700 transition-all flex-shrink-0 active:scale-95"
-                        >
-                            <Plus size={16} strokeWidth={2.5} />
-                            <span className="hidden sm:inline">Nuevo Paciente</span>
-                        </button>
-                    )}
+                    <button
+                        onClick={onAdd}
+                        data-new-patient
+                        className="bg-blue-600 text-white h-[46px] md:h-12 px-4 md:px-6 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-bold text-[13px] shadow-[0_4px_16px_rgba(37,99,235,0.2)] hover:bg-blue-700 transition-all flex-shrink-0 active:scale-95"
+                    >
+                        <Plus size={16} strokeWidth={2.5} />
+                        <span className="hidden sm:inline">Nuevo Paciente</span>
+                    </button>
                 </div>
             </header>
 
-            {/* Freemium Progress Bar (Only show if not at limit to avoid visual noise) */}
-            {!hasAccess && !isAtLimit && (
-                <div className="p-4 rounded-2xl border bg-amber-50 border-amber-200 flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-bold text-amber-800">
-                                📋 Demo Gratuita — {patients.length} de {FREE_PATIENT_LIMIT} pacientes usados
-                            </p>
-                            <span className="text-sm font-bold text-amber-600">
-                                {FREE_PATIENT_LIMIT - patients.length} restantes
-                            </span>
-                        </div>
-                        <div className="w-full h-2 bg-white/70 rounded-full overflow-hidden">
-                            <div
-                                className="h-full rounded-full transition-all duration-700 bg-amber-500"
-                                style={{ width: `${Math.min(100, (patients.length / FREE_PATIENT_LIMIT) * 100)}%` }}
-                            />
-                        </div>
-                        <p className="text-sm text-amber-600 mt-1.5">Agrega hasta {FREE_PATIENT_LIMIT} pacientes gratis. ¿Te convenciste? Activa el Plan Pro por $15/mes para pacientes ilimitados.</p>
-                    </div>
-                    <button
-                        onClick={() => navigate('/billing')}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all whitespace-nowrap flex-shrink-0 bg-amber-600 hover:bg-amber-700 shadow-md shadow-amber-500/25"
-                    >
-                        <Zap size={14} />
-                        Activar Plan Pro
-                    </button>
-                </div>
-            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {isLoading ? (

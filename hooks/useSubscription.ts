@@ -3,9 +3,9 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../services/authService';
 
 // ─── Plan Limits ──────────────────────────────────────────────────────────────
-
-export const FREE_PATIENT_LIMIT = 5;
-export const TRIAL_DAILY_EMAIL_LIMIT = 5;
+// NOTE: Limits disabled during development — set to a real number when ready to launch
+export const FREE_PATIENT_LIMIT = Infinity;
+export const TRIAL_DAILY_EMAIL_LIMIT = Infinity;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
