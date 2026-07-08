@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 // Base skeleton component with shimmer animation
 const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
@@ -8,11 +7,7 @@ const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
 
 // Patient card skeleton
 export const PatientCardSkeleton: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-300"
-  >
+  <div className="bg-white rounded-2xl p-6 border border-slate-300 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div className="flex items-center gap-4 mb-4">
       <Skeleton className="w-12 h-12 rounded-xl" />
       <div className="flex-1">
@@ -35,16 +30,12 @@ export const PatientCardSkeleton: React.FC = () => (
       <Skeleton className="h-8 w-20 rounded-lg" />
       <Skeleton className="h-8 w-16 rounded-lg" />
     </div>
-  </motion.div>
+  </div>
 );
 
 // Appointment card skeleton
 export const AppointmentCardSkeleton: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-300"
-  >
+  <div className="bg-white rounded-2xl p-6 border border-slate-300 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div className="flex items-center gap-3 mb-4">
       <Skeleton className="w-11 h-11 rounded-lg" />
       <div className="flex-1">
@@ -63,16 +54,12 @@ export const AppointmentCardSkeleton: React.FC = () => (
         <Skeleton className="h-3 w-20" />
       </div>
     </div>
-  </motion.div>
+  </div>
 );
 
 // Dashboard stats skeleton
 export const StatsCardSkeleton: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-300"
-  >
+  <div className="bg-white rounded-2xl p-6 border border-slate-300 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div className="flex items-center gap-3 mb-4">
       <Skeleton className="w-11 h-11 rounded-xl" />
       <div className="flex-1">
@@ -81,16 +68,12 @@ export const StatsCardSkeleton: React.FC = () => (
       </div>
     </div>
     <Skeleton className="h-2 w-full rounded-full" />
-  </motion.div>
+  </div>
 );
 
 // Booking request skeleton
 export const BookingRequestSkeleton: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 border border-slate-300"
-  >
+  <div className="bg-white rounded-2xl p-6 border border-slate-300 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center gap-3">
         <Skeleton className="w-12 h-12 rounded-xl" />
@@ -123,23 +106,19 @@ export const BookingRequestSkeleton: React.FC = () => (
       <Skeleton className="h-10 flex-1 rounded-xl" />
       <Skeleton className="h-10 flex-1 rounded-xl" />
     </div>
-  </motion.div>
+  </div>
 );
 
 // Simple list item skeleton
 export const ListItemSkeleton: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="flex items-center gap-3 p-3"
-  >
+  <div className="flex items-center gap-3 p-3 animate-in fade-in duration-300">
     <Skeleton className="w-11 h-11 rounded-lg" />
     <div className="flex-1">
       <Skeleton className="h-4 w-32 mb-1" />
       <Skeleton className="h-3 w-24" />
     </div>
     <Skeleton className="w-6 h-6 rounded" />
-  </motion.div>
+  </div>
 );
 
 // Calendar day skeleton
@@ -155,11 +134,7 @@ export const CalendarDaySkeleton: React.FC = () => (
 
 // Search result skeleton
 export const SearchResultSkeleton: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="p-3 hover:bg-slate-50 rounded-xl border-b border-slate-300 last:border-b-0"
-  >
+  <div className="p-3 hover:bg-slate-50 rounded-xl border-b border-slate-300 last:border-b-0 animate-in fade-in duration-300">
     <div className="flex items-center gap-3">
       <Skeleton className="w-11 h-11 rounded-lg" />
       <div className="flex-1">
@@ -168,7 +143,7 @@ export const SearchResultSkeleton: React.FC = () => (
       </div>
       <Skeleton className="w-12 h-5 rounded" />
     </div>
-  </motion.div>
+  </div>
 );
 
 // Loading state wrapper for any content

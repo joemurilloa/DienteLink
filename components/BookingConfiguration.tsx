@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { DoctorAvailability, DayAvailability, TimeSlot, PublicBookingSettings } from '../types';
 import { bookingService } from '../services/bookingService';
 import { sileo } from 'sileo';
@@ -121,9 +120,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+      <div
         className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
@@ -134,15 +131,13 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
           </div>
           <div className="flex items-center gap-3">
             {hasChanges && (
-              <motion.button
+              <button
                 onClick={handleSave}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
               >
                 <Save size={20} />
                 Guardar
-              </motion.button>
+              </button>
             )}
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
               <X size={24} />
@@ -486,7 +481,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

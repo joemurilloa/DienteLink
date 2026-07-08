@@ -1,6 +1,4 @@
-
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { PeriodontogramData, PerioToothData, PerioSite } from '../types';
 import { cn, createDefaultPeriodontogramData } from '../lib/utils';
 import { RotateCcw, Droplets, AlertTriangle, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -329,12 +327,8 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 12 }}
-      transition={{ duration: 0.15 }}
-      className="bg-white rounded-2xl border border-slate-300 p-5 shadow-lg"
+    <div
+      className="bg-white rounded-2xl border border-slate-300 p-5 shadow-lg animate-in slide-in-from-top-2 duration-150"
     >
       {/* Header with navigation */}
       <div className="flex items-center gap-3 mb-5">
@@ -402,7 +396,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -628,11 +622,9 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
             if (!tooth) return null;
             const mainDepth = tooth.buccal[1].depth; // center buccal as "main" depth
             return (
-              <motion.div
+              <div
                 key={tid}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.02 }}
+                className="animate-in slide-in-from-top-2 duration-300"
               >
                 <ToothProbe
                   toothData={tooth}
@@ -641,16 +633,15 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
                   onUpdateDepth={(d) => handleQuickDepth(tid, d)}
                   currentDepth={mainDepth}
                 />
-              </motion.div>
+              </div>
             );
           })}
         </div>
       </div>
 
       {/* Detail panel */}
-      <AnimatePresence mode="wait">
-        {selectedTooth && (
-          <div className="mt-4">
+      {selectedTooth && (
+          <div className="mt-4 animate-in fade-in duration-200">
             <DetailPanel
               key={selectedTooth.toothId}
               tooth={selectedTooth}
@@ -661,7 +652,6 @@ const Periodontogram: React.FC<PeriodontogramProps> = ({ data: rawData, onUpdate
             />
           </div>
         )}
-      </AnimatePresence>
 
       {/* Stats */}
       <SummaryStats data={data} />

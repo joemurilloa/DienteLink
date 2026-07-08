@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+
 import {
   ArrowLeft, Clock, User, Calendar, Check, X,
   Settings, Share2, Copy, Eye, Plus, Trash2, Save, Globe,
@@ -325,12 +325,9 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
             ) : (
               <div className="space-y-3">
                 {filteredRequests.map((req, i) => (
-                  <motion.div
+                  <div
                     key={req.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="group bg-white rounded-2xl p-5 hover:bg-slate-50/50 transition-colors border border-slate-300 hover:border-slate-300 flex flex-col md:flex-row gap-5 items-start md:items-center relative"
+                    className="group bg-white rounded-2xl p-5 hover:bg-slate-50/50 transition-colors border border-slate-300 hover:border-slate-300 flex flex-col md:flex-row gap-5 items-start md:items-center relative animate-in fade-in slide-in-from-top-1 duration-300"
                   >
                     {/* Status Dot */}
                     <div className={cn("w-2 h-2 rounded-full mt-1.5 md:mt-0 flex-shrink-0", statusColor(req.status))} />
@@ -356,7 +353,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity w-full md:w-auto justify-end border-t border-slate-300 md:border-0 pt-4 md:pt-0">
+                    <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t border-slate-300 md:border-0 pt-4 md:pt-0">
                       {req.status === 'pending' && (
                         <>
                            <button onClick={() => handleApprove(req.id)} className="px-5 py-2.5 bg-slate-900 text-white rounded-[10px] text-[13px] font-bold hover:bg-slate-800 transition-all">Aprobar</button>
@@ -370,7 +367,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                         <button onClick={() => handleChangeStatus(req.id, 'approved')} className="px-4 py-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg text-sm font-bold transition-all">Re-Aprobar</button>
                       )}
                       <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block" />
-                      <button onClick={() => setDeleteTarget(req.id)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                      <button title="Eliminar solicitud" onClick={() => setDeleteTarget(req.id)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -378,7 +375,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     <div className="absolute right-5 top-5 md:hidden text-xs uppercase font-bold text-slate-400">
                       {req.status}
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}

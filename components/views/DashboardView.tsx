@@ -268,7 +268,13 @@ const Dashboard: React.FC = () => {
                       <CalendarIcon size={32} className="text-slate-500" />
                     </div>
                     <h3 className="text-[20px] lg:text-[22px] font-semibold text-slate-900 mb-2 tracking-tight">Todo despejado</h3>
-                    <p className="text-slate-500 text-[14px] lg:text-[15px] max-w-[250px]">No tienes citas programadas hoy. ¡Disfruta tu día!</p>
+                    <p className="text-slate-500 text-[14px] lg:text-[15px] max-w-[250px] mb-5">No tienes citas programadas hoy. ¡Disfruta tu día!</p>
+                    <button
+                      onClick={() => navigate('/calendar')}
+                      className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2"
+                    >
+                      + Programar Cita
+                    </button>
                  </div>
               ) : (
                 <div className="space-y-8 lg:space-y-10">

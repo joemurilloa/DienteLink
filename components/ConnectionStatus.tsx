@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { WifiOff, Wifi } from 'lucide-react';
 
 const ConnectionStatus: React.FC = () => {
@@ -41,13 +40,8 @@ const ConnectionStatus: React.FC = () => {
   // Offline banner — persists while offline
   if (!isOnline) {
     return (
-      <AnimatePresence>
-        <motion.div
+              <div
           key="offline"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="overflow-hidden"
         >
           <div className="flex items-center gap-2.5 px-4 py-2 bg-slate-800 text-white text-sm font-semibold">
@@ -61,30 +55,23 @@ const ConnectionStatus: React.FC = () => {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
             </span>
           </div>
-        </motion.div>
-      </AnimatePresence>
-    );
+        </div>
+          );
   }
 
   // "Restored" banner — auto-disappears after 3s
   if (showRestored) {
     return (
-      <AnimatePresence>
-        <motion.div
+              <div
           key="restored"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="overflow-hidden"
         >
           <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold">
             <Wifi size={14} className="flex-shrink-0" />
             <span>¡Conexión restaurada!</span>
           </div>
-        </motion.div>
-      </AnimatePresence>
-    );
+        </div>
+          );
   }
 
   return null;

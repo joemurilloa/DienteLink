@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Clock, AlertTriangle, FileText, CheckCircle, Activity, LayoutGrid, Save, Loader2, Pill, Plus, Trash2, User, Play
 } from 'lucide-react';
@@ -479,14 +478,10 @@ const PatientConsultationView: React.FC = () => {
       )}
 
       {/* Confirmation Modal */}
-      <AnimatePresence>
         {showConfirm && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md"
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div 
+              className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md animate-in zoom-in-95 duration-200"
             >
               <div className="p-8">
                 <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -518,10 +513,9 @@ const PatientConsultationView: React.FC = () => {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
     </div>
   );
 };

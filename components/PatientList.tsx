@@ -149,7 +149,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                                 <User size={20} strokeWidth={2.5} />
                             </div>
                             <div className="overflow-hidden">
-                                <h4 className="font-bold text-[15px] text-slate-900 truncate leading-tight tracking-tight group-hover:text-blue-600 transition-colors">{patient.identification.fullName}</h4>
+                                <h4 className="font-bold text-[15px] text-slate-900 truncate leading-tight tracking-tight group-hover:text-blue-600 transition-colors capitalize">{patient.identification.fullName}</h4>
                                 <p className="text-[13px] text-slate-500 font-medium mt-0.5 truncate">{patient.identification.occupation || 'Sin ocupación'}</p>
                             </div>
                         </div>
@@ -176,8 +176,8 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                                 <span className="text-[13px] font-semibold text-slate-600">{patient.identification.phone || 'Sin teléfono'}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="w-7 h-7 flex items-center justify-center bg-slate-50 rounded-lg text-slate-500"><FileText size={12} /></div>
-                                <span className="text-[13px] font-medium text-slate-500 truncate">Ver expediente completo</span>
+                                <div className="w-7 h-7 flex items-center justify-center bg-slate-50 rounded-lg text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all"><FileText size={12} /></div>
+                                <span className="text-[13px] font-semibold text-blue-600 truncate">Ver expediente completo →</span>
                             </div>
                         </div>
 

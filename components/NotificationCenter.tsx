@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Calendar, CreditCard, CheckCheck, Trash2, BookOpen } from 'lucide-react';
 import { useNotifications, AppNotification, NotificationType } from '../hooks/useNotifications';
 import { useAppointments } from '../hooks/useAppointments';
@@ -57,12 +56,8 @@ const NotificationRow: React.FC<{
   };
 
   return (
-    <motion.div
+    <div
       layout
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
-      transition={{ duration: 0.2 }}
       onClick={handleClick}
       className={cn(
         'flex items-start gap-3 p-3.5 rounded-2xl transition-all cursor-pointer select-none',
@@ -95,7 +90,7 @@ const NotificationRow: React.FC<{
       {!notification.read && (
         <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
       )}
-    </motion.div>
+    </div>
   );
 };
 
@@ -201,15 +196,9 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ compact = false
   );
 
   // ── Dropdown panel ──────────────────────────────────────────────────────────
-  const panel = (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
+  const panel = isOpen && (
+        <div
           ref={panelRef}
-          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.96 }}
-          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
             'absolute z-[100] bg-white border border-slate-300/60 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.12)] overflow-hidden',
             compact
@@ -270,8 +259,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ compact = false
               </div>
             ) : (
               <div className="p-2 space-y-1">
-                <AnimatePresence initial={false}>
-                  {notifications.map((n) => (
+                                  {notifications.map((n) => (
                     <NotificationRow
                       key={n.id}
                       notification={n}
@@ -279,14 +267,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ compact = false
                       onNavigate={handleNavigate}
                     />
                   ))}
-                </AnimatePresence>
-              </div>
+                              </div>
             )}
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+        </div>
+      );
 
   return (
     <div className="relative">

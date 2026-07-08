@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { PatientRecord as PatientRecordType } from '../types';
@@ -23,10 +23,10 @@ import {
     FlaskConical,
     Shield
 } from 'lucide-react';
-import Odontogram from './Odontogram';
-import Periodontogram from './Periodontogram';
-import ConsentManager from './ConsentManager';
-import PrescriptionManager from './PrescriptionManager';
+const Odontogram = lazy(() => import('./Odontogram'));
+const Periodontogram = lazy(() => import('./Periodontogram'));
+const ConsentManager = lazy(() => import('./ConsentManager'));
+const PrescriptionManager = lazy(() => import('./PrescriptionManager'));
 import { useRoleAccess } from './RoleGuard';
 
 // ─── Extracted tab components ───
@@ -326,7 +326,14 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                             canViewFinancial={canViewFinancial}
                         />
                     )}
-                    {renderTabContent()}
+                    <Suspense fallback={
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-slate-400">
+                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <p className="text-sm font-medium">Cargando módulo...</p>
+                        </div>
+                    }>
+                        {renderTabContent()}
+                    </Suspense>
                 </div>
             </div>
         </div>

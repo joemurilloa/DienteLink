@@ -5,7 +5,6 @@ import { cn, getInitials } from '../lib/utils';
 import { LayoutDashboard, Users, Calendar as CalendarIcon, Settings, Bell, Menu, CreditCard, LogOut } from 'lucide-react';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
-import { motion, AnimatePresence } from 'framer-motion';
 import NotificationCenter from './NotificationCenter';
 import { sileo } from 'sileo';
 
@@ -163,16 +162,12 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
 
       {/* Doctor Profile */}
       <div className="mt-auto pt-4 border-t border-slate-300 relative" ref={dropdownRef}>
-        <AnimatePresence>
-          {isDropdownOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        {isDropdownOpen && (
+            <div
               className={cn(
                 "absolute bottom-full mb-2 bg-white/90 backdrop-blur-md border border-slate-300/50 rounded-2xl p-1 z-50 flex flex-col gap-0.5 min-w-[190px]",
                 "shadow-[0_12px_36px_-6px_rgba(0,0,0,0.08),_0_4px_12px_-2px_rgba(0,0,0,0.03)]",
+                "animate-in slide-in-from-bottom-2 fade-in duration-200",
                 isCollapsed ? "left-0" : "left-0 right-0 lg:left-3 lg:right-3"
               )}
             >
@@ -217,9 +212,8 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
                 <LogOut size={15} className="text-red-500" />
                 <span>Cerrar sesión</span>
               </button>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
 
         <div
           className={cn(

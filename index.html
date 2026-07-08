@@ -26,8 +26,7 @@
 
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
-    <link rel="apple-touch-icon" href="/icon.svg">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/pwa-192x192.png">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -107,16 +106,7 @@
             }
         });
     </script>
-    <script>
-        // PWA Service Worker Registration (production only)
-        if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then((reg) => console.log('DienteLink SW registered:', reg.scope))
-                    .catch((err) => console.log('SW registration failed:', err));
-            });
-        }
-    </script>
+
 </body>
 
 </html>

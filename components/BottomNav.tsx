@@ -5,7 +5,6 @@ import { cn } from '../lib/utils';
 import { LayoutDashboard, Calendar, Users, Bell, Menu as MenuIcon, Settings, CreditCard, LogOut, X } from 'lucide-react';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
-import { motion, AnimatePresence } from 'framer-motion';
 import NotificationCenter from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { sileo } from 'sileo';
@@ -108,23 +107,15 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
     </nav>
       
       {/* Mobile Bottom Sheet Menu */}
-      <AnimatePresence>
         {isMenuOpen && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <div 
               onClick={() => setIsMenuOpen(false)}
-              className="md:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[55]"
+              className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[50] md:hidden animate-in fade-in duration-200"
             />
-            <motion.div
+            <div
               ref={menuRef}
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="md:hidden fixed bottom-[72px] left-2 right-2 bg-white rounded-3xl p-2 z-[60] shadow-[0_10px_40px_rgba(0,0,0,0.2)]"
+              className="md:hidden fixed bottom-[72px] left-2 right-2 bg-white rounded-3xl p-2 z-[60] shadow-[0_10px_40px_rgba(0,0,0,0.2)] animate-in slide-in-from-bottom-12 duration-300"
             >
               <div className="p-3">
                 <div className="flex items-center justify-between mb-4">
@@ -202,10 +193,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
     </>
   );
 });

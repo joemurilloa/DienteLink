@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ToothData, SurfaceData, ToothSurface, ClinicalCondition, OdontogramSnapshot } from '../types';
 import { cn } from '../lib/utils';
 import { sileo } from 'sileo';
@@ -555,30 +554,22 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
           <ChevronUp size={16} className={cn("text-slate-500 transition-transform", mobileOpen && "rotate-180")} />
         </button>
 
-        <AnimatePresence>
-          {mobileOpen && (
+        {mobileOpen && (
             <>
               {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/20 z-[-1]"
+              <div
+                className="fixed inset-0 bg-black/20 z-[-1] animate-in fade-in duration-200"
                 onClick={() => setMobileOpen(false)}
               />
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: 'auto' }}
-                exit={{ height: 0 }}
-                className="overflow-hidden bg-white border-t border-slate-300"
+              <div
+                className="overflow-hidden bg-white border-t border-slate-300 animate-in slide-in-from-bottom-2 duration-300"
               >
                 <div className="max-h-[50vh] overflow-y-auto p-4 pb-6">
                   {panelContent}
                 </div>
-              </motion.div>
+              </div>
             </>
           )}
-        </AnimatePresence>
       </div>
     </>
   );
@@ -665,14 +656,9 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
         </div>
       </button>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="border-t border-slate-300 overflow-hidden"
+      {expanded && (
+          <div
+            className="border-t border-slate-300 overflow-hidden animate-in slide-in-from-top-2 duration-300"
           >
             <div className="p-5 space-y-5">
               {/* Stats grid */}
@@ -681,12 +667,12 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
                   <p className="text-[9px] font-black uppercase tracking-[1px] text-slate-500 mb-1">Integridad</p>
                   <div className="text-2xl font-black text-slate-900 tabular-nums">{stats.integrity}%</div>
                   <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden mt-2">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: stats.integrity > 70 ? '#3b82f6' : stats.integrity > 40 ? '#F59E0B' : '#EF4444' }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${stats.integrity}%` }}
-                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{ 
+                        backgroundColor: stats.integrity > 70 ? '#3b82f6' : stats.integrity > 40 ? '#F59E0B' : '#EF4444',
+                        width: `${stats.integrity}%` 
+                      }}
                     />
                   </div>
                 </div>
@@ -767,9 +753,8 @@ const ClinicalSummaryPanel: React.FC<{ teeth: ToothData[] }> = React.memo(({ tee
                 {copied ? 'Copiado al portapapeles' : 'Exportar resumen como texto'}
               </button>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 });
@@ -871,13 +856,9 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
       )}
 
       {/* Compare selectors */}
-      <AnimatePresence>
-        {compareMode && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-slate-300 overflow-hidden"
+      {compareMode && (
+          <div
+            className="border-t border-slate-300 overflow-hidden animate-in slide-in-from-top-2 duration-300"
           >
             <div className="p-5">
               <div className="flex flex-col md:flex-row items-center gap-4">
@@ -948,19 +929,13 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
                 })}
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* Snapshot list */}
-      <AnimatePresence>
-        {listExpanded && snapshots.length > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="border-t border-slate-300 overflow-hidden"
+      {listExpanded && snapshots.length > 0 && (
+          <div
+            className="border-t border-slate-300 overflow-hidden animate-in slide-in-from-top-2 duration-300"
           >
             <div className="p-5 space-y-2 max-h-48 overflow-y-auto hide-scrollbar">
               {snapshots.map((snap, i) => {
@@ -999,9 +974,8 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
                 );
               })}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 });
