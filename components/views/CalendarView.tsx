@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppointments, useAppointmentMutations } from '../../hooks/useAppointments';
 import { usePatients } from '../../hooks/usePatients';
@@ -432,9 +433,9 @@ const CalendarView: React.FC = () => {
         </div>
       </div>
 
-      {isAdding && (
+      {isAdding && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/30 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[28px] sm:rounded-[32px] shadow-2xl w-[95%] sm:w-full sm:max-w-lg md:max-w-xl max-h-[90vh] flex flex-col border border-slate-300/80 animate-in zoom-in-95 duration-300 overflow-hidden">
+          <div className="bg-white rounded-[28px] sm:rounded-[32px] shadow-2xl w-[95%] sm:w-full sm:max-w-lg md:max-w-xl max-h-[85dvh] flex flex-col border border-slate-300/80 animate-in zoom-in-95 duration-300 overflow-hidden">
             {/* Header */}
             <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-3.5 flex items-center justify-between border-b border-slate-50 flex-shrink-0">
               <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Agendar Cita</h3>
@@ -662,7 +663,8 @@ const CalendarView: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmModal

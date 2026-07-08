@@ -342,12 +342,12 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                       </div>
                       <div className="min-w-0">
                         <h4 className="font-bold text-[15px] text-slate-900 truncate">{req.patientName}</h4>
-                        <div className="flex items-center gap-2 mt-0.5 text-[13px] font-medium text-slate-500">
-                          <span className="capitalize">{formatAppDate(req.requestedDate)}</span>
-                          <span className="w-1 h-1 rounded-full bg-slate-300"/>
-                          <span className="font-semibold text-slate-700">{fmtTime(req.requestedTime)}</span>
-                          <span className="w-1 h-1 rounded-full bg-slate-300"/>
-                          <span>{req.appointmentType}</span>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px] font-medium text-slate-500 leading-tight">
+                          <span className="capitalize whitespace-nowrap">{formatAppDate(req.requestedDate)}</span>
+                          <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"/>
+                          <span className="font-semibold text-slate-700 whitespace-nowrap">{fmtTime(req.requestedTime)}</span>
+                          <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"/>
+                          <span className="whitespace-nowrap">{req.appointmentType}</span>
                         </div>
                         {req.message && (
                           <p className="mt-2 text-[13px] text-slate-600 bg-white border border-slate-300 p-2.5 rounded-lg">"{req.message}"</p>

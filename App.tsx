@@ -103,7 +103,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden sm:pt-0 pt-[env(safe-area-inset-top)] bg-slate-50">
       <OnboardingWizard />
       {/* Skip link for accessibility */}
       <a 
