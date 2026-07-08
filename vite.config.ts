@@ -59,36 +59,7 @@ export default defineConfig({
     minify: 'esbuild',
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // React core — tiny, loaded first, always cached
-          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
-            return 'vendor-react';
-          }
-          // Router — small, separate cache entry
-          if (id.includes('node_modules/react-router')) {
-            return 'vendor-router';
-          }
-          // Framer Motion — heavy animation lib, separate so it caches independently
-          if (id.includes('node_modules/framer-motion')) {
-            return 'vendor-framer';
-          }
-          // Supabase — network client, changes rarely
-          if (id.includes('node_modules/@supabase')) {
-            return 'vendor-supabase';
-          }
-          // React Query + state management
-          if (id.includes('node_modules/@tanstack')) {
-            return 'vendor-query';
-          }
-          // Lucide icons — large icon set
-          if (id.includes('node_modules/lucide-react')) {
-            return 'vendor-lucide';
-          }
-          // Everything else in node_modules → shared vendor chunk
-          if (id.includes('node_modules/')) {
-            return 'vendor-misc';
-          }
-        },
+        // manualChunks removed to prevent execution order issues with React and framer-motion
       },
     },
   },
