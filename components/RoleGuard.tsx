@@ -13,8 +13,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles, fa
 
   if (loading) return null;
 
-  const devRole = localStorage.getItem('DEV_ROLE');
-  const userRole = (devRole as UserRole) || (profile?.role as UserRole) || 'owner';
+  const userRole = (profile?.role as UserRole) || 'receptionist';
 
   if (!allowedRoles.includes(userRole)) {
     return <>{fallback}</>;
@@ -26,8 +25,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles, fa
 // Hooks for more granular logic
 export function useRoleAccess() {
   const { profile } = useAuth();
-  const devRole = localStorage.getItem('DEV_ROLE');
-  const userRole = (devRole as UserRole) || (profile?.role as UserRole) || 'owner';
+  const userRole = (profile?.role as UserRole) || 'receptionist';
 
   const isOwner        = userRole === 'owner';
   const isAdmin        = userRole === 'owner' || userRole === 'admin';

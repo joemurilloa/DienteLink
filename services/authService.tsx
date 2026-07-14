@@ -49,53 +49,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Fetch doctor profile from profiles table
   const fetchProfile = async (userId: string, email?: string, isNewAccount?: boolean) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (!error && data) {
-      // Only try to redeem an invitation if:
-      // 1. The user has no clinic_id (not yet linked to a clinic)
-      // 2. AND this is a newly created account (to avoid querying team_invitations on every owner login)
-      if (!data.clinic_id && email && isNewAccount) {
-        const redeemed = await redeemPendingInvitation(userId, email);
-        if (redeemed) {
-          // Re-fetch to get updated clinic_id + role
-          const { data: updatedData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-          if (updatedData) {
-            const prof: DoctorProfile = {
-              ...updatedData as DoctorProfile,
-              currency: updatedData.currency || 'HNL',
-              locale: updatedData.locale || 'es-HN',
-              theme_color: updatedData.theme_color || 'blue',
-              has_completed_onboarding: updatedData.has_completed_onboarding || false,
-            };
-            document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
-            setProfile(prof);
-            setCurrencyConfig(prof.currency, prof.locale);
-            return;
-          }
-        }
+      if (error) {
+        console.error("Supabase profile error:", error);
+        return; // Profile will remain null, UI should handle it or user can log out
       }
 
-      const prof: DoctorProfile = {
-        ...data as DoctorProfile,
-        currency: data.currency || 'HNL',
-        locale: data.locale || 'es-HN',
-        theme_color: data.theme_color || 'blue',
-        has_completed_onboarding: data.has_completed_onboarding || false,
-      };
+      if (data) {
+        // 1. The user has no clinic_id (not yet linked to a clinic)
+        // 2. AND this is a newly created account (to avoid querying team_invitations on every owner login)
+        if (!data.clinic_id && email && isNewAccount) {
+          try {
+            const redeemed = await redeemPendingInvitation(userId, email);
+            if (redeemed) {
+              // Re-fetch to get updated clinic_id + role
+              const { data: updatedData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+              if (updatedData) {
+                const prof: DoctorProfile = {
+                  ...updatedData as DoctorProfile,
+                  currency: updatedData.currency || 'HNL',
+                  locale: updatedData.locale || 'es-HN',
+                  theme_color: updatedData.theme_color || 'blue',
+                  has_completed_onboarding: updatedData.has_completed_onboarding || false,
+                };
+                document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
+                setProfile(prof);
+                setCurrencyConfig(prof.currency, prof.locale);
+                return;
+              }
+            }
+          } catch (redeemErr) {
+            console.error("Error in redeemPendingInvitation:", redeemErr);
+          }
+        }
 
-      document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
+        const prof: DoctorProfile = {
+          ...data as DoctorProfile,
+          currency: data.currency || 'HNL',
+          locale: data.locale || 'es-HN',
+          theme_color: data.theme_color || 'blue',
+          has_completed_onboarding: data.has_completed_onboarding || false,
+        };
 
-      setProfile(prof);
-      setCurrencyConfig(prof.currency, prof.locale);
+        document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
+
+        setProfile(prof);
+        setCurrencyConfig(prof.currency, prof.locale);
+      }
+    } catch (err) {
+      console.error("Unexpected error in fetchProfile:", err);
     }
   };
 

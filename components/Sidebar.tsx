@@ -26,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   };
   const { profile, signOut } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
-  const doctorRole = profile?.role || 'owner';
+  const doctorRole = profile?.role || 'receptionist';
   const doctorInitials = getInitials(doctorName, 'DR');
   const { canViewFinancial, isAdmin, role: activeRole } = useRoleAccess();
 
@@ -37,7 +37,6 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
     receptionist: { label: 'Recepcionista',     color: 'text-sky-600' },
   };
   const roleDisplay = ROLE_DISPLAY[activeRole] || { label: activeRole, color: 'text-slate-500' };
-  const devRole = localStorage.getItem('DEV_ROLE');
 
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -190,19 +189,6 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
                 <span>Ajustes</span>
               </button>
 
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    navigate('/billing');
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-slate-700 hover:bg-slate-100/60 active:bg-slate-200/40 transition-colors duration-200 text-left"
-                >
-                  <CreditCard size={15} className="text-slate-500" />
-                  <span>Facturación</span>
-                </button>
-              )}
-
               <div className="h-px bg-slate-100/80 my-1" />
 
               <button
@@ -233,7 +219,6 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
             <p className="text-[13px] font-bold text-slate-900 truncate leading-tight group-hover:text-blue-600 transition-colors duration-200">{doctorName}</p>
             <p className={`text-[11px] font-bold uppercase tracking-wider leading-tight mt-0.5 ${roleDisplay.color}`}>
               {roleDisplay.label}
-              {devRole && <span className="ml-1 text-amber-500">(simulando)</span>}
             </p>
           </div>
         </div>

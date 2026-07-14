@@ -230,8 +230,10 @@ export function usePatientMutations() {
             const syncSubTable = async (tableName: string, items: any[], mapFn: (i: any) => any) => {
                 const doctorId = clinicId;
                 
+                if (!items) return; // Safeguard contra undefined para evitar borrado accidental
+
                 // A. Upsert all current items
-                if (items && items.length > 0) {
+                if (items.length > 0) {
                     const mapped = items.map(mapFn);
                     
                     const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });

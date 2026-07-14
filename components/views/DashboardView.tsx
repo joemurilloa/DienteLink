@@ -75,13 +75,24 @@ const Dashboard: React.FC = () => {
   const pulseMetrics = useMemo(() => {
     const todayApts = allAppointments.filter(a => a.date === today);
     const totalToday = todayApts.length;
-    const totalDebt = allPatients.reduce((totalAcc, p) => {
-        const totalBudget = p.budget?.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
-        const totalPaid = (p.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
-        return totalAcc + Math.max(0, totalBudget - totalPaid);
-    }, 0);
+    
+    let totalOverdueDebt = 0;
+    let totalActiveBudget = 0;
 
-    return { totalToday, totalDebt };
+    allPatients.forEach(p => {
+        const totalPaid = (p.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
+        const completedBudget = p.budget?.filter(i => i.status === 'completed').reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
+        const pendingBudget = p.budget?.filter(i => i.status !== 'completed').reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
+        
+        const debt = Math.max(0, completedBudget - totalPaid);
+        totalOverdueDebt += debt;
+
+        const surplus = Math.max(0, totalPaid - completedBudget);
+        const active = Math.max(0, pendingBudget - surplus);
+        totalActiveBudget += active;
+    });
+
+    return { totalToday, totalOverdueDebt, totalActiveBudget };
   }, [allAppointments, allPatients, today]);
 
   const { groupedAppointments, isShowingUpcoming } = useMemo(() => {
@@ -223,15 +234,30 @@ const Dashboard: React.FC = () => {
             <p className="text-xs text-slate-500 font-medium mt-0.5">expedientes activos</p>
           </div>
           {canViewFinancial && (
-            <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
-                  <DollarSign size={15} className="text-amber-600" />
+            <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+                      <DollarSign size={15} className="text-amber-600" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Deuda Vencida</span>
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Deuda</span>
+                <p className={cn("text-2xl font-bold", pulseMetrics.totalOverdueDebt > 0 ? "text-amber-600" : "text-slate-900")}>
+                  {formatCurrency(pulseMetrics.totalOverdueDebt)}
+                </p>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">por tratamientos finalizados</p>
               </div>
-              <p className={cn("text-2xl font-bold", pulseMetrics.totalDebt > 0 ? "text-amber-600" : "text-slate-900")}>{formatCurrency(pulseMetrics.totalDebt)}</p>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">saldo pendiente</p>
+              
+              {pulseMetrics.totalActiveBudget > 0 && (
+                <div className="mt-3 pt-3 border-t border-slate-200/60">
+                  <p className="text-xs text-slate-500 font-medium flex justify-between">
+                    <span>Presupuesto activo:</span>
+                    <span className="font-bold text-slate-700">{formatCurrency(pulseMetrics.totalActiveBudget)}</span>
+                  </p>
+                </div>
+              )}
             </div>
           )}
           {isAdmin && (

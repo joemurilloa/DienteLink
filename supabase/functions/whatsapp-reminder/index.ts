@@ -9,10 +9,16 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-}
+const getCorsHeaders = (req: Request) => {
+  const ALLOWED_ORIGINS = ["https://diente-link.vercel.app", "http://localhost:3000", "http://localhost:5173"];
+  const origin = req.headers.get("origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Vary": "Origin"
+  };
+};
 
 /**
  * Sanitize phone number for WhatsApp API.
@@ -31,7 +37,7 @@ function sanitizePhone(raw: string): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
+    return new Response("ok", { headers: getCorsHeaders(req) })
   }
 
   try {
@@ -47,7 +53,7 @@ Deno.serve(async (req) => {
       console.error("Missing secrets: WHATSAPP_PERMANENT_TOKEN or WHATSAPP_PHONE_NUMBER_ID")
       return new Response(
         JSON.stringify({ error: "WHATSAPP_PERMANENT_TOKEN o WHATSAPP_PHONE_NUMBER_ID no configurados en Supabase Secrets." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       )
     }
 
@@ -74,7 +80,7 @@ Deno.serve(async (req) => {
     if (!appointments || appointments.length === 0) {
       return new Response(
         JSON.stringify({ message: "No hay recordatorios pendientes por enviar." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
       )
     }
 
@@ -195,13 +201,13 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ processed: results }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     })
   } catch (err) {
     console.error("Unexpected error:", err)
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     })
   }
 })

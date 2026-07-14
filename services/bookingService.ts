@@ -87,7 +87,10 @@ export class BookingService {
   }
 
   private uid(): string {
-    if (!this.userId) throw new Error('BookingService not initialized');
+    if (!this.userId) {
+      console.warn('BookingService not initialized. Returning empty ID.');
+      return '';
+    }
     return this.userId;
   }
 

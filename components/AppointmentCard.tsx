@@ -8,7 +8,6 @@ import { emailReminderService } from '../services/emailReminderService';
 import { useAuth } from '../services/authService';
 import { usePatient } from '../hooks/usePatients';
 import { useAppointmentMutations } from '../hooks/useAppointments';
-import { useSubscription } from '../hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle, Play, Ban } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -41,7 +40,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const { profile } = useAuth();
   const { patient } = usePatient(appointment.patientId);
   const { updateAppointment, deleteAppointment } = useAppointmentMutations();
-  const { canUseFeature } = useSubscription();
   const canSendEmail = true; // Dev mode: always enabled
   const navigate = useNavigate();
   

@@ -3,6 +3,11 @@
 -- Run this in Supabase SQL Editor to enable secure public booking
 -- =============================================================
 
+DROP FUNCTION IF EXISTS get_public_doctor_availability(UUID);
+DROP FUNCTION IF EXISTS get_public_booking_settings(UUID);
+DROP FUNCTION IF EXISTS get_public_appointments(UUID);
+DROP FUNCTION IF EXISTS get_public_appointment_requests(UUID);
+
 -- 1. Get Doctor Availability for Public Page
 -- Returns the configuration but runs as SECURITY DEFINER so anonymous users
 -- can execute it even if the table has RLS restricting SELECT.
@@ -27,14 +32,16 @@ $$;
 -- ONLY returns date and time to prevent exposing patient names or data.
 -- Used to calculate occupied time slots.
 CREATE OR REPLACE FUNCTION get_public_appointments(p_doctor_id UUID)
-RETURNS TABLE (date TEXT, time TEXT)
+RETURNS TABLE ("date" TEXT, "time" TEXT)
 LANGUAGE sql
 SECURITY DEFINER
 AS $$
-  SELECT date, time 
-  FROM appointments 
-  WHERE doctor_id = p_doctor_id 
-    AND status IN ('Programada', 'Completada');
+  SELECT a.date, a.time 
+  FROM appointments a
+  JOIN booking_settings b ON b.doctor_id = a.doctor_id
+  WHERE a.doctor_id = p_doctor_id 
+    AND a.status IN ('Programada', 'Completada')
+    AND b.is_active = true;
 $$;
 
 -- 4. Get Pending Appointment Requests for Public Page
@@ -44,10 +51,12 @@ RETURNS TABLE (id UUID, requested_date TEXT, requested_time TEXT, status TEXT, a
 LANGUAGE sql
 SECURITY DEFINER
 AS $$
-  SELECT id, requested_date, requested_time, status, appointment_type 
-  FROM appointment_requests 
-  WHERE doctor_id = p_doctor_id 
-    AND status IN ('pending', 'approved');
+  SELECT ar.id, ar.requested_date, ar.requested_time, ar.status, ar.appointment_type 
+  FROM appointment_requests ar
+  JOIN booking_settings b ON b.doctor_id = ar.doctor_id
+  WHERE ar.doctor_id = p_doctor_id 
+    AND ar.status IN ('pending', 'approved')
+    AND b.is_active = true;
 $$;
 
 -- Set correct permissions so unauthenticated (anon) users can execute these functions

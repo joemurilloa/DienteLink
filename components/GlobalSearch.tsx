@@ -13,8 +13,10 @@ interface GlobalSearchProps {
     onClose: () => void;
 }
 
+const EMPTY_ARRAY: PatientRecord[] = [];
+
 const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
-    const { data: allPatients = [] } = usePatients();
+    const { data: allPatients = EMPTY_ARRAY } = usePatients();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<PatientRecord[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -30,19 +32,24 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
 
     useEffect(() => {
         if (query.length < 2) {
-            setResults([]);
-            setSelectedIndex(-1);
+            setResults(prev => prev.length === 0 ? prev : []);
+            setSelectedIndex(prev => prev === -1 ? prev : -1);
             return;
         }
-        const filtered = allPatients.filter(p =>
-            p.identification.fullName.toLowerCase().includes(query.toLowerCase()) ||
-            p.identification.phone.includes(query) ||
-            p.id.includes(query)
-        );
-        setResults(filtered.slice(0, 5));
-        // Results are shown in the dropdown, no need for toast noise during typing
-        setSelectedIndex(filtered.length > 0 ? 0 : -1);
-    }, [query]);
+
+        const timerId = setTimeout(() => {
+            const filtered = allPatients.filter(p =>
+                p.identification.fullName.toLowerCase().includes(query.toLowerCase()) ||
+                p.identification.phone.includes(query) ||
+                p.id.includes(query)
+            );
+            setResults(filtered.slice(0, 5));
+            // Results are shown in the dropdown, no need for toast noise during typing
+            setSelectedIndex(filtered.length > 0 ? 0 : -1);
+        }, 300);
+
+        return () => clearTimeout(timerId);
+    }, [query, allPatients]);
 
     const handleSelect = (patientId: string) => {
         const patient = results.find(p => p.id === patientId);

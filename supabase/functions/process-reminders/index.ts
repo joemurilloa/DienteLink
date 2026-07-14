@@ -17,15 +17,21 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
 const TRIAL_DAILY_EMAIL_LIMIT = 5;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const getCorsHeaders = (req: Request) => {
+  const ALLOWED_ORIGINS = ["https://diente-link.vercel.app", "http://localhost:3000", "http://localhost:5173"];
+  const origin = req.headers.get("origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Vary": "Origin"
+  };
+};;
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -128,7 +134,7 @@ async function sendEmailReminder(payload: {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
   try {
@@ -180,13 +186,7 @@ serve(async (req: Request) => {
       .select("id, full_name, clinic_name")
       .in("id", doctorIds);
 
-    const { data: subscriptions } = await supabase
-      .from("subscriptions")
-      .select("clinic_id, status, current_period_end")
-      .in("clinic_id", doctorIds);
-
     const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
-    const subMap = new Map((subscriptions || []).map((s) => [s.clinic_id, s]));
 
     // Track emails sent per doctor (for trial daily limit)
     const emailsSentByDoctor: Record<string, number> = {};
@@ -206,28 +206,7 @@ serve(async (req: Request) => {
     let skipped = 0;
 
     for (const apt of appointments) {
-      const sub = subMap.get(apt.doctor_id);
       const profile = profileMap.get(apt.doctor_id);
-
-      // Check subscription — only active or trial with valid period
-      const isActive = sub?.status === "active" && sub?.current_period_end && new Date(sub.current_period_end) > now;
-      const isTrial = sub?.status === "trial" && sub?.current_period_end && new Date(sub.current_period_end) > now;
-
-      if (!isActive && !isTrial) {
-        // Free/expired user — skip
-        skipped++;
-        continue;
-      }
-
-      // Trial users: enforce daily email limit
-      if (isTrial) {
-        const count = emailsSentByDoctor[apt.doctor_id] || 0;
-        if (count >= TRIAL_DAILY_EMAIL_LIMIT) {
-          skipped++;
-          continue;
-        }
-      }
-
       // Get patient email
       const patientEmail = patientEmailMap.get(apt.patient_id);
       if (!patientEmail) {

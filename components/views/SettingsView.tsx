@@ -180,8 +180,8 @@ const SettingsView: React.FC = () => {
           )}
         </div>
 
-        {/* Team Settings */}
-        <TeamSettings />
+        {/* Team Settings (Oculto en la Beta Pública para simplificar la UX) */}
+        {/* <TeamSettings /> */}
 
         {/* Exportar Datos */}
         <div className="card-premium p-6">
@@ -255,46 +255,6 @@ const SettingsView: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">{isGeneratingReport ? 'Generando...' : 'Reporte Mensual'}</p>
                 <p className="text-xs text-slate-500">Resumen en PDF del mes actual</p>
               </div>
-            </button>
-          </div>
-        </div>
-
-        {/* DEV SIMULATOR */}
-        <div className="card-premium p-6 mt-8 border-dashed border-violet-300 bg-violet-50/50">
-          <h3 className="text-sm font-bold text-violet-900 mb-1">Modo de Prueba — Simulador de Roles</h3>
-          <p className="text-sm text-violet-700 mb-4">Simula cómo ve la app cada tipo de usuario sin crear cuentas adicionales.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <button
-              onClick={() => { localStorage.removeItem('DEV_ROLE'); window.location.reload(); }}
-              className="px-3 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold border border-indigo-500 shadow-sm hover:bg-indigo-700 transition-all text-left"
-            >
-              <div className="text-base mb-1">👩‍⚕️</div>
-              <div>Propietario</div>
-              <div className="font-normal opacity-75 text-[10px] mt-0.5">Acceso total</div>
-            </button>
-            <button
-              onClick={() => { localStorage.setItem('DEV_ROLE', 'admin'); window.location.reload(); }}
-              className="px-3 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-bold border border-violet-500 shadow-sm hover:bg-violet-700 transition-all text-left"
-            >
-              <div className="text-base mb-1">🛡️</div>
-              <div>Administrador</div>
-              <div className="font-normal opacity-75 text-[10px] mt-0.5">Sin billing</div>
-            </button>
-            <button
-              onClick={() => { localStorage.setItem('DEV_ROLE', 'assistant'); window.location.reload(); }}
-              className="px-3 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold border border-emerald-500 shadow-sm hover:bg-emerald-700 transition-all text-left"
-            >
-              <div className="text-base mb-1">🧬</div>
-              <div>Asistente</div>
-              <div className="font-normal opacity-75 text-[10px] mt-0.5">Sin finanzas</div>
-            </button>
-            <button
-              onClick={() => { localStorage.setItem('DEV_ROLE', 'receptionist'); window.location.reload(); }}
-              className="px-3 py-2.5 bg-sky-600 text-white rounded-xl text-xs font-bold border border-sky-500 shadow-sm hover:bg-sky-700 transition-all text-left"
-            >
-              <div className="text-base mb-1">💻</div>
-              <div>Recepcionista</div>
-              <div className="font-normal opacity-75 text-[10px] mt-0.5">Solo citas</div>
             </button>
           </div>
         </div>
