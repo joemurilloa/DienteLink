@@ -9,6 +9,8 @@ import GlobalSearch from './components/GlobalSearch';
 import OnboardingWizard from './components/OnboardingWizard';
 import InstallPrompt from './components/InstallPrompt';
 import ConnectionStatus from './components/ConnectionStatus';
+import TrialBanner from './components/TrialBanner';
+import { useSubscription } from './hooks/useSubscription';
 import { sileo, Toaster } from 'sileo';
 import 'sileo/styles.css';
 
@@ -23,6 +25,7 @@ const PublicBookingPage = lazy(() => import('./components/PublicBookingPage'));
 const BookingManagementView = lazy(() => import('./components/BookingManagementView'));
 const AuthPage = lazy(() => import('./components/AuthPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
+const SubscriptionPage = lazy(() => import('./components/views/SubscriptionPage'));
 
 // Booking Wrapper Components
 const BookingManagementWrapper: React.FC = () => {
@@ -32,7 +35,7 @@ const BookingManagementWrapper: React.FC = () => {
 
 import ErrorBoundary from './components/ErrorBoundary';
 
-const Layout: React.FC = () => {
+const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = ({ subscription }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -115,6 +118,7 @@ const Layout: React.FC = () => {
             role="main"
             aria-label="Contenido principal"
           >
+            <TrialBanner subscription={subscription} />
             <InstallPrompt />
             <ConnectionStatus />
             <Suspense fallback={
@@ -133,6 +137,7 @@ const Layout: React.FC = () => {
                 <Route path="/calendar" element={<CalendarView />} />
                 <Route path="/booking/manage" element={<BookingManagementWrapper />} />
                 <Route path="/settings" element={<SettingsView />} />
+                <Route path="/subscription" element={<SubscriptionPage />} />
                 <Route path="*" element={<Dashboard />} />
               </Routes>
             </Suspense>
@@ -149,7 +154,8 @@ const Layout: React.FC = () => {
 
 // Auth guard — shows login when not authenticated
 const AuthGuard: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, clinicId } = useAuth();
+  const subscription = useSubscription(clinicId);
 
   if (loading) {
     return (
@@ -164,7 +170,7 @@ const AuthGuard: React.FC = () => {
 
   if (!user) return <Navigate to="/welcome" replace />;
 
-  return <Layout />;
+  return <Layout subscription={subscription} />;
 };
 
 const App: React.FC = () => (

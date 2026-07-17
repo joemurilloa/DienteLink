@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authService';
 import { useAppointments } from '../../hooks/useAppointments';
 import { usePatients } from '../../hooks/usePatients';
@@ -9,6 +10,7 @@ import { useSettingsTip } from '../ContextualTips';
 import { generateMonthlyReportPDF } from '../../lib/reportsGenerator';
 import { FileText } from 'lucide-react';
 import TeamSettings from './Settings/TeamSettings';
+import { useSubscription } from '../../hooks/useSubscription';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -32,12 +34,14 @@ const CURRENCY_OPTIONS = [
 ];
 
 const SettingsView: React.FC = () => {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, clinicId } = useAuth();
+  const navigate = useNavigate();
   const { data: allAppointments = [] } = useAppointments();
   const { data: allPatients = [] } = usePatients();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const subscription = useSubscription(clinicId);
 
   // Contextual tip (show once)
   useSettingsTip();
@@ -258,6 +262,41 @@ const SettingsView: React.FC = () => {
             </button>
           </div>
         </div>
+        {/* Subscription Section — only for owners */}
+        {(!profile?.clinic_id || profile.clinic_id === profile?.id) && (
+          <div className="card-premium p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Suscripción</h3>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {subscription.isTrial
+                    ? `Período de prueba — ${subscription.daysLeft} día${subscription.daysLeft === 1 ? '' : 's'} restantes`
+                    : subscription.isActive
+                    ? `Plan activo — vence ${subscription.expiresAt?.toLocaleDateString('es-HN') ?? ''}`
+                    : 'Suscripción requerida para continuar'}
+                </p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                subscription.isActive
+                  ? subscription.isTrial
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {subscription.isTrial ? '🎁 Trial' : subscription.isActive ? '✅ Activa' : '⛔ Expirada'}
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/subscription')}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all"
+            >
+              💳 Activar / Ver instrucciones de pago →
+            </button>
+            <p className="text-xs text-slate-400 text-center mt-3">
+              🔒 Tus datos se conservan siempre, sin importar el estado de tu suscripción.
+            </p>
+          </div>
+        )}
 
       </div>
     </div>
