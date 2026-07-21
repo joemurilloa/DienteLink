@@ -4,6 +4,7 @@ import { Appointment } from '../types';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import { emailReminderService } from '../services/emailReminderService';
+import { DEMO_APPOINTMENTS } from '../lib/demoData';
 
 
 // Map DB row to UI model
@@ -23,11 +24,14 @@ function dbToAppointment(a: any): Appointment {
 }
 
 export function useAppointments() {
-  const { user, clinicId } = useAuth();
+  const { user, clinicId, isGuest } = useAuth();
   
   return useQuery({
     queryKey: ['appointments', clinicId],
     queryFn: async () => {
+      // Guest mode: return demo data without hitting Supabase
+      if (isGuest) return DEMO_APPOINTMENTS;
+
       if (!clinicId) return [];
       const { data, error } = await supabase
         .from('appointments')
@@ -48,10 +52,22 @@ export function useAppointments() {
 
 export function useAppointmentMutations() {
   const queryClient = useQueryClient();
-  const { user, profile, clinicId } = useAuth();
+  const { user, profile, clinicId, isGuest } = useAuth();
+
+  // In guest mode: mutations update the local query cache only (no Supabase)
+  const guestMutate = async (updater: (prev: Appointment[]) => Appointment[]) => {
+    const prev = queryClient.getQueryData<Appointment[]>(['appointments', 'demo']) || DEMO_APPOINTMENTS;
+    queryClient.setQueryData(['appointments', 'demo'], updater(prev));
+  };
 
   const createMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
+      // Guest mode: just update local state
+      if (isGuest) {
+        await guestMutate(prev => [appointment, ...prev]);
+        return appointment;
+      }
+
       if (!clinicId) throw new Error('No doctor/clinic mapped');
 
       // Calculate reminder_scheduled_at: 24 hours before the appointment
@@ -142,6 +158,14 @@ export function useAppointmentMutations() {
 
   const deleteMutation = useMutation({
     mutationFn: async (appointmentId: string) => {
+      // Guest mode: just update local state
+      if (isGuest) {
+        await guestMutate(prev => prev.map(a =>
+          a.id === appointmentId ? { ...a, status: 'Eliminada' as const, deletedAt: new Date().toISOString() } : a
+        ));
+        return appointmentId;
+      }
+
       if (!clinicId) throw new Error('No doctor/clinic mapped');
       const deletedAt = new Date().toISOString();
       const { error } = await supabase
@@ -179,6 +203,12 @@ export function useAppointmentMutations() {
 
   const updateMutation = useMutation({
     mutationFn: async (appointment: Appointment) => {
+      // Guest mode: just update local state
+      if (isGuest) {
+        await guestMutate(prev => prev.map(a => a.id === appointment.id ? appointment : a));
+        return appointment;
+      }
+
       if (!clinicId) throw new Error('No doctor/clinic mapped');
 
       // Recalculate reminder_scheduled_at when date/time change

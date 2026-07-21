@@ -50,6 +50,7 @@ export class BookingService {
   }
 
   private setupRealtime(userId: string) {
+    if (!userId || userId === 'demo') return;
     if (this.realtimeChannel) {
       try {
         supabase.removeChannel(this.realtimeChannel);

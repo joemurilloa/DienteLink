@@ -5,6 +5,7 @@ import { queryClient } from '../lib/queryClient';
 import { bookingService } from './bookingService';
 import { redeemPendingInvitation } from '../hooks/useTeam';
 import type { User, Session } from '@supabase/supabase-js';
+import { DEMO_PROFILE } from '../lib/demoData';
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +13,9 @@ interface AuthContextType {
   profile: DoctorProfile | null;
   clinicId: string | null;
   loading: boolean;
+  isGuest: boolean;
+  enterGuestMode: () => void;
+  exitGuestMode: () => void;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -46,6 +50,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<DoctorProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
+
+  const enterGuestMode = () => {
+    setIsGuest(true);
+    setProfile(DEMO_PROFILE);
+    setCurrencyConfig(DEMO_PROFILE.currency, DEMO_PROFILE.locale);
+    document.documentElement.setAttribute('data-theme', DEMO_PROFILE.theme_color || 'blue');
+  };
+
+  const exitGuestMode = () => {
+    setIsGuest(false);
+    setProfile(null);
+  };
 
   // Fetch doctor profile from profiles table
   const fetchProfile = async (userId: string, email?: string, isNewAccount?: boolean) => {
@@ -224,10 +241,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Single-user clinic namespace. If user is invited, use their clinic_id.
-  const clinicId = profile?.clinic_id || profile?.id || null;
+  // In guest mode, always use 'demo' as clinicId so hooks can detect it.
+  const clinicId = isGuest ? 'demo' : (profile?.clinic_id || profile?.id || null);
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, clinicId, loading, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, session, profile, clinicId, loading, isGuest, enterGuestMode, exitGuestMode, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

@@ -27,6 +27,26 @@ const AuthPage = lazy(() => import('./components/AuthPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
 const SubscriptionPage = lazy(() => import('./components/views/SubscriptionPage'));
 
+// Enters guest/demo mode and redirects to the dashboard
+const DemoRoute: React.FC = () => {
+  const { enterGuestMode, isGuest } = useAuth();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (!isGuest) enterGuestMode();
+    navigate('/', { replace: true });
+  }, []);
+
+  return (
+    <div className="flex items-center justify-center h-screen bg-slate-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+        <p className="text-sm text-slate-400 font-medium">Preparando demo...</p>
+      </div>
+    </div>
+  );
+};
+
 // Booking Wrapper Components
 const BookingManagementWrapper: React.FC = () => {
   const navigate = useNavigate();
@@ -39,7 +59,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
   const location = useLocation();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { user, clinicId } = useAuth();
+  const { user, clinicId, isGuest } = useAuth();
   const [servicesReady, setServicesReady] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -47,13 +67,20 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
   useEffect(() => {
     if (!clinicId) { setServicesReady(false); return; }
 
+    // Guest mode: skip Supabase booking service init
+    if (isGuest) {
+      setServicesReady(true);
+      setPendingCount(0);
+      return;
+    }
+
     const initServices = async () => {
       await bookingService.init(clinicId);
       setPendingCount(bookingService.getPendingRequests().length);
       setServicesReady(true);
     };
     initServices().catch(console.error);
-  }, [clinicId]);
+  }, [clinicId, isGuest]);
 
   // Keep pending count in sync when requests change
   useEffect(() => {
@@ -154,7 +181,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
 
 // Auth guard — shows login when not authenticated
 const AuthGuard: React.FC = () => {
-  const { user, loading, clinicId } = useAuth();
+  const { user, loading, clinicId, isGuest } = useAuth();
   const subscription = useSubscription(clinicId);
 
   if (loading) {
@@ -168,7 +195,8 @@ const AuthGuard: React.FC = () => {
     );
   }
 
-  if (!user) return <Navigate to="/welcome" replace />;
+  // Allow both authenticated users and guests through
+  if (!user && !isGuest) return <Navigate to="/welcome" replace />;
 
   return <Layout subscription={subscription} />;
 };
@@ -188,6 +216,9 @@ const App: React.FC = () => (
             
             {/* Auth Page */}
             <Route path="/login" element={<AuthPage />} />
+
+            {/* Demo / guest mode — enters guest mode and redirects to dashboard */}
+            <Route path="/demo" element={<DemoRoute />} />
             
             {/* Main app with auth guard */}
             <Route path="/*" element={<AuthGuard />} />

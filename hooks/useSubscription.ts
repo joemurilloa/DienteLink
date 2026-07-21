@@ -37,6 +37,23 @@ export function useSubscription(clinicId: string | null): SubscriptionState {
       return;
     }
 
+    // Guest/demo mode: return a fully active subscription (no Supabase call)
+    if (clinicId === 'demo') {
+      setState({
+        status: 'active',
+        isActive: true,
+        isTrial: false,
+        isExpired: false,
+        daysLeft: 999,
+        expiresSoon: false,
+        expiresAt: null,
+        trialStartedAt: null,
+        loading: false,
+        error: null,
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('subscription_status')

@@ -4,6 +4,7 @@ import { PatientRecord, ToothData, SurfaceData, OdontogramSnapshot } from '../ty
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import { ensurePeriodontogramData } from '../lib/utils';
+import { DEMO_PATIENTS } from '../lib/demoData';
 
 // ===================== Helpers =====================
 function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
@@ -100,11 +101,14 @@ function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [
 }
 
 export function usePatients() {
-    const { user, clinicId } = useAuth();
+    const { user, clinicId, isGuest } = useAuth();
 
     return useQuery({
         queryKey: ['patients', clinicId],
         queryFn: async () => {
+            // Guest mode: return demo data
+            if (isGuest) return DEMO_PATIENTS;
+
             if (!clinicId) return [];
 
             // Lightweight query for the list view (Lazy Loading strategy)
@@ -145,11 +149,16 @@ export function usePatients() {
 }
 
 export function usePatient(patientId?: string) {
-    const { clinicId } = useAuth();
+    const { clinicId, isGuest } = useAuth();
     
     const { data: patient, ...rest } = useQuery({
         queryKey: ['patient', patientId, clinicId],
         queryFn: async () => {
+            // Guest mode: find patient in demo data
+            if (isGuest) {
+                return DEMO_PATIENTS.find(p => p.id === patientId);
+            }
+
             if (!patientId || !clinicId) return undefined;
             
             // Full details query with PostgREST embeds (Joins)
@@ -186,7 +195,7 @@ export function usePatient(patientId?: string) {
                 data.lab_works || []
             );
         },
-        enabled: !!patientId && !!clinicId,
+        enabled: isGuest ? !!patientId : (!!patientId && !!clinicId),
     });
 
     return { patient, ...rest };
@@ -194,10 +203,28 @@ export function usePatient(patientId?: string) {
 
 export function usePatientMutations() {
     const queryClient = useQueryClient();
-    const { user, clinicId } = useAuth();
+    const { user, clinicId, isGuest } = useAuth();
+
+    // Guest mode: local cache update only
+    const guestPatientsUpdate = async (updater: (prev: PatientRecord[]) => PatientRecord[]) => {
+        const prev = queryClient.getQueryData<PatientRecord[]>(['patients', 'demo']) || DEMO_PATIENTS;
+        queryClient.setQueryData(['patients', 'demo'], updater(prev));
+    };
 
     const saveMutation = useMutation({
         mutationFn: async (patient: PatientRecord) => {
+            // Guest mode: update local cache only
+            if (isGuest) {
+                await guestPatientsUpdate(prev => {
+                    const idx = prev.findIndex(p => p.id === patient.id);
+                    const next = [...prev];
+                    if (idx !== -1) next[idx] = { ...patient, updatedAt: new Date().toISOString() };
+                    else next.unshift({ ...patient, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+                    return next;
+                });
+                return patient;
+            }
+
             if (!clinicId) throw new Error('No doctor/clinic mapped');
             const doctorId = clinicId;
 
@@ -332,6 +359,12 @@ export function usePatientMutations() {
 
     const deleteMutation = useMutation({
         mutationFn: async (patientId: string) => {
+            // Guest mode: update local cache only
+            if (isGuest) {
+                await guestPatientsUpdate(prev => prev.filter(p => p.id !== patientId));
+                return patientId;
+            }
+
             if (!clinicId) throw new Error('No doctor/clinic mapped');
             const { error: pErr } = await supabase.from('patients').delete().eq('id', patientId).eq('doctor_id', clinicId);
             if (pErr) throw pErr;

@@ -5,6 +5,10 @@ import { getCache, setCache, delCache } from '../lib/simpleCache';
 // and centralize error handling for DB access.
 
 export async function fetchDoctorInitData(doctorId: string) {
+  if (!doctorId || doctorId === 'demo') {
+    return { availabilityRow: null, settingsRow: null, requestRows: [] };
+  }
+
   const [availRes, settingsRes, reqRes] = await Promise.all([
     supabase.from('doctor_availability').select('*').eq('doctor_id', doctorId).maybeSingle(),
     supabase.from('booking_settings').select('*').eq('doctor_id', doctorId).maybeSingle(),
@@ -19,18 +23,21 @@ export async function fetchDoctorInitData(doctorId: string) {
 }
 
 export async function upsertDoctorAvailability(doctorId: string, payload: any) {
+  if (!doctorId || doctorId === 'demo') return;
   const { error } = await supabase.from('doctor_availability').upsert({ doctor_id: doctorId, ...payload }, { onConflict: 'doctor_id' });
   if (error) throw error;
   try { delCache(`public_availability:${doctorId}`); } catch (e) {}
 }
 
 export async function upsertBookingSettings(doctorId: string, payload: any) {
+  if (!doctorId || doctorId === 'demo') return;
   const { error } = await supabase.from('booking_settings').upsert({ doctor_id: doctorId, ...payload }, { onConflict: 'doctor_id' });
   if (error) throw error;
   try { delCache(`public_booking_settings:${doctorId}`); } catch (e) {}
 }
 
 export async function fetchAppointmentRequests(doctorId: string) {
+  if (!doctorId || doctorId === 'demo') return [];
   const { data, error } = await supabase
     .from('appointment_requests')
     .select('*')
