@@ -101,6 +101,13 @@ export function useAppointmentMutations() {
         throw error;
       }
 
+      // Automatically trigger WhatsApp immediate confirmation
+      if (appointment.status === 'Programada') {
+        supabase.functions.invoke('whatsapp-confirmation', {
+          body: { appointment_id: data.id }
+        }).catch(err => console.error('WhatsApp confirmation failed to trigger:', err));
+      }
+
       // Automatically trigger email reminder if status is 'Programada'
       if (appointment.status === 'Programada' && appointment.patientId) {
         const { data: patientData } = await supabase

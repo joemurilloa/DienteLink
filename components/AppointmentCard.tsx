@@ -9,8 +9,16 @@ import { useAuth } from '../services/authService';
 import { usePatient } from '../hooks/usePatients';
 import { useAppointmentMutations } from '../hooks/useAppointments';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Send, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Activity, Mail, CheckCircle, Smartphone, AlertTriangle, Play, Ban } from 'lucide-react';
+import { Clock, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Mail, Play, Ban, Zap } from 'lucide-react';
 import { sileo } from 'sileo';
+
+// WhatsApp SVG icon — matches official brand color #25D366
+const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.561 4.14 1.535 5.875L0 24l6.322-1.505A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.722.886.93-3.618-.234-.372A9.818 9.818 0 0 1 12 2.182c5.42 0 9.818 4.398 9.818 9.818s-4.398 9.818-9.818 9.818z"/>
+  </svg>
+);
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -143,20 +151,21 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
         <button
           onClick={handleSendReminder}
-          title={appointment.reminderStatus === 'sent' ? 'Recordatorio ya enviado' : 'Abrir WhatsApp con recordatorio'}
+          title={appointment.reminderStatus === 'sent' ? 'Recordatorio ya enviado' : 'Enviar recordatorio por WhatsApp'}
           className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center transition-all flex-shrink-0",
+            "w-11 h-11 rounded-xl flex items-center justify-center transition-all flex-shrink-0 active:scale-95",
             appointment.reminderStatus === 'sent'
-              ? "bg-blue-100 text-blue-600"
-              : "bg-slate-50 text-slate-500 hover:bg-blue-600 hover:text-white"
+              ? "bg-emerald-100 text-emerald-600"
+              : "text-white shadow-md shadow-[#25D366]/30 hover:shadow-lg hover:shadow-[#25D366]/40 hover:-translate-y-0.5"
           )}
+          style={appointment.reminderStatus !== 'sent' ? { backgroundColor: '#25D366' } : {}}
         >
           {appointment.reminderStatus === 'sending' ? (
             <Loader2 size={16} className="animate-spin" />
           ) : appointment.reminderStatus === 'sent' ? (
             <CheckCircle2 size={16} />
           ) : (
-            <Send size={14} />
+            <WhatsAppIcon size={17} />
           )}
         </button>
       </div>
@@ -255,27 +264,41 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
             {/* Footer Actions */}
             <div className="px-5 pb-5 pt-2 space-y-2">
-              <div className="flex gap-2.5">
+              {/* WhatsApp reminder button */}
               <button
                 onClick={(e) => handleSendReminder(e)}
                 disabled={appointment.reminderStatus === 'sending' || appointment.reminderStatus === 'sent'}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                  "w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-[0.98]",
                   appointment.reminderStatus === 'sent'
                     ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                     : appointment.reminderStatus === 'sending'
                     ? "bg-slate-100 text-slate-500"
-                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+                    : "text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                 )}
+                style={appointment.reminderStatus === 'idle' || !appointment.reminderStatus
+                  ? { backgroundColor: '#25D366', boxShadow: '0 4px 14px rgba(37,211,102,0.35)' }
+                  : {}}
               >
                 {appointment.reminderStatus === 'sending' ? (
-                  <><Loader2 size={14} className="animate-spin" /> Enviando...</>
+                  <><Loader2 size={15} className="animate-spin" /> Abriendo WhatsApp...</>
                 ) : appointment.reminderStatus === 'sent' ? (
-                  <><CheckCircle2 size={14} /> Enviado</>
+                  <><CheckCircle2 size={15} /> ¡Recordatorio enviado!</>
                 ) : (
-                  <><Send size={14} /> WhatsApp</>
+                  <><WhatsAppIcon size={18} /> Enviar recordatorio por WhatsApp</>
                 )}
               </button>
+
+              {/* "próxima versión" hint */}
+              {appointment.reminderStatus !== 'sent' && (
+                <p className="text-center text-[11px] text-slate-400 flex items-center justify-center gap-1 pt-0.5">
+                  <Zap size={10} className="text-amber-400" />
+                  Próxima versión: envío automático programado
+                </p>
+              )}
+
+              {/* Email button */}
+              <div className="flex gap-2.5 pt-1">
               <button
                 onClick={(e) => handleSendEmail(e)}
                 disabled={emailStatus === 'sending' || emailStatus === 'sent'}
@@ -295,10 +318,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                   <><Loader2 size={14} className="animate-spin" /> Enviando...</>
                 ) : emailStatus === 'sent' ? (
                   <><CheckCircle2 size={14} /> Email enviado</>
-                ) : !canSendEmail ? (
-                  <><Lock size={13} /> Email <span className="px-1 py-0.5 bg-blue-100 text-blue-600 text-[9px] font-bold rounded uppercase">Pro</span></>
                 ) : (
-                  <><Mail size={14} /> Email</>
+                  <><Mail size={14} /> Recordatorio por Email</>
                 )}
               </button>
               </div>

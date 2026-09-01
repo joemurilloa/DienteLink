@@ -366,7 +366,15 @@ export function usePatientMutations() {
             }
 
             if (!clinicId) throw new Error('No doctor/clinic mapped');
-            const { error: pErr } = await supabase.from('patients').delete().eq('id', patientId).eq('doctor_id', clinicId);
+
+            // SOFT DELETE — never permanently erase clinical records.
+            // Supabase RLS filters `deleted_at IS NULL` so the patient disappears
+            // from all queries while the 10+ years of data remain intact in the DB.
+            const { error: pErr } = await supabase
+                .from('patients')
+                .update({ deleted_at: new Date().toISOString() })
+                .eq('id', patientId)
+                .eq('doctor_id', clinicId);
             if (pErr) throw pErr;
             return patientId;
         },
