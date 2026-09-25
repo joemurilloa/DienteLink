@@ -8,6 +8,7 @@ import { useAppointmentMutations } from '../hooks/useAppointments';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, X, User, Phone, Calendar, Tag, Play, Ban, MessageCircle } from 'lucide-react';
 import { sileo } from 'sileo';
+import { whatsappService } from '../services/whatsappService';
 
 
 // WhatsApp SVG icon — matches official brand color #25D366
@@ -42,7 +43,35 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient, showDate }) => {
   const [showDetail, setShowDetail] = useState(false);
   const { deleteAppointment } = useAppointmentMutations();
+  const { profile } = useAuth();
   const navigate = useNavigate();
+
+  const handleSendWhatsApp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!appointment.phoneNumber) {
+      sileo.warning({
+        title: 'Sin teléfono',
+        description: `El paciente ${appointment.patientName} no tiene un número registrado.`
+      });
+      return;
+    }
+
+    const result = whatsappService.sendAppointmentReminder(appointment, profile?.clinic_name);
+    if (result.success) {
+      if (onReminderSent) {
+        onReminderSent(appointment.id, 'sent');
+      }
+      sileo.success({
+        title: 'WhatsApp Abierto',
+        description: `Mensaje de recordatorio preparado para ${appointment.patientName}.`
+      });
+    } else {
+      sileo.error({
+        title: 'Error de WhatsApp',
+        description: result.error || 'No se pudo abrir WhatsApp para este paciente.'
+      });
+    }
+  };
 
   const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-emerald-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
@@ -92,22 +121,32 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
           </div>
         </div>
 
-        {/* WhatsApp reminder status badge */}
-        <div
-          title={appointment.reminderStatus === 'sent' ? 'Recordatorio de WhatsApp enviado' : 'Recordatorio se enviará automáticamente 24h antes'}
-          className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
+        {/* Botón directo para enviar WhatsApp Web */}
+        <button
+          type="button"
+          onClick={handleSendWhatsApp}
+          title={
             appointment.reminderStatus === 'sent'
-              ? "bg-emerald-100 text-emerald-600"
-              : "bg-slate-100 text-slate-400"
+              ? 'Recordatorio ya enviado por WhatsApp. Clic para reenviar.'
+              : 'Enviar recordatorio directo por WhatsApp Web al paciente'
+          }
+          className={cn(
+            "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer active:scale-95",
+            appointment.reminderStatus === 'sent'
+              ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200 shadow-sm"
+              : "bg-[#25D366] hover:bg-[#20ba5a] text-white shadow-md hover:shadow-emerald-500/25"
           )}
+          aria-label="Enviar recordatorio por WhatsApp"
         >
           {appointment.reminderStatus === 'sent' ? (
-            <CheckCircle2 size={16} />
+            <div className="relative flex items-center justify-center">
+              <WhatsAppIcon size={18} />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+            </div>
           ) : (
-            <MessageCircle size={16} />
+            <WhatsAppIcon size={19} />
           )}
-        </div>
+        </button>
       </div>
 
       {/* Appointment Detail Modal */}
@@ -218,19 +257,24 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
             {/* Footer Actions */}
             <div className="px-5 pb-5 pt-2 space-y-2">
-              {/* WhatsApp reminder status */}
-              <div className={cn(
-                "w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm",
-                appointment.reminderStatus === 'sent'
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-slate-50 text-slate-500 border border-slate-200"
-              )}>
-                {appointment.reminderStatus === 'sent' ? (
-                  <><CheckCircle2 size={15} /> Recordatorio WhatsApp enviado</>
-                ) : (
-                  <><MessageCircle size={15} /> Recordatorio automático 24h antes</>
+              {/* WhatsApp Web direct sender button */}
+              <button
+                type="button"
+                onClick={handleSendWhatsApp}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2.5 py-3 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer active:scale-[0.98]",
+                  appointment.reminderStatus === 'sent'
+                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                    : "bg-[#25D366] hover:bg-[#20ba5a] text-white shadow-md shadow-emerald-500/20"
                 )}
-              </div>
+              >
+                <WhatsAppIcon size={18} />
+                {appointment.reminderStatus === 'sent' ? (
+                  <span>Recordatorio enviado • Clic para reenviar por WhatsApp</span>
+                ) : (
+                  <span>Enviar recordatorio por WhatsApp</span>
+                )}
+              </button>
 
               <div className="flex gap-2.5 mt-2 pt-2 border-t border-slate-300">
                 {appointment.status === 'Programada' && (

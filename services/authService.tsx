@@ -94,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (updatedData) {
                 const prof: DoctorProfile = {
                   ...updatedData as DoctorProfile,
+                  role: updatedData.role || 'owner',
                   currency: updatedData.currency || 'HNL',
                   locale: updatedData.locale || 'es-HN',
                   theme_color: updatedData.theme_color || 'blue',
@@ -112,6 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const prof: DoctorProfile = {
           ...data as DoctorProfile,
+          role: data.role || 'owner',
           currency: data.currency || 'HNL',
           locale: data.locale || 'es-HN',
           theme_color: data.theme_color || 'blue',

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import AppointmentCard from '../AppointmentCard';
 import GlobalSearch from '../GlobalSearch';
 import NewAppointmentModal from '../NewAppointmentModal';
-import { useRoleAccess } from '../RoleGuard';
 
 import { bookingService } from '../../services/bookingService';
 import { useAppointments, useAppointmentMutations } from '../../hooks/useAppointments';

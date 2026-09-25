@@ -13,40 +13,42 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles, fa
 
   if (loading) return null;
 
-  const userRole = (profile?.role as UserRole) || 'receptionist';
+  // Por defecto, cualquier usuario registrado es propietario/doctor con acceso total
+  const userRole = (profile?.role as UserRole) || 'owner';
+  const isFullAccess = ['owner', 'admin', 'doctor', 'dr', 'odontologo', 'odontólogo'].includes(userRole.toLowerCase());
 
-  if (!allowedRoles.includes(userRole)) {
-    return <>{fallback}</>;
+  if (isFullAccess || allowedRoles.includes(userRole)) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return <>{fallback}</>;
 };
 
 // Hooks for more granular logic
 export function useRoleAccess() {
   const { profile } = useAuth();
-  const userRole = (profile?.role as UserRole) || 'receptionist';
+  // Por defecto el usuario es propietario con acceso completo (Opción A)
+  const userRole = (profile?.role as UserRole) || 'owner';
 
-  const isOwner        = userRole === 'owner';
-  const isAdmin        = userRole === 'owner' || userRole === 'admin';
   const isAssistant    = userRole === 'assistant';
   const isReceptionist = userRole === 'receptionist';
-  // Legacy/alternative role names that should have full clinical access (case-insensitive)
-  const isDoctor = ['doctor', 'dr', 'odontologo', 'odontólogo'].includes(userRole.toLowerCase());
+
+  // Si no es explícitamente recepcionista o asistente invitado, tiene acceso total a clínica, finanzas y administración
+  const hasFullAccess  = !isAssistant && !isReceptionist;
 
   return {
     role: userRole,
-    // Admin-level: can manage team, billing, settings
-    isAdmin,
-    // Clinical access: can view/edit clinical records (odontogram, perio, notes, consents, prescriptions)
-    canViewClinical : isOwner || isAdmin || isAssistant || isDoctor,
-    canEditClinical : isOwner || isAdmin || isAssistant || isDoctor,
-    // Financial access: can view/edit budgets, payments, dashboard financials
-    canViewFinancial: isOwner || isAdmin || isDoctor,
-    canEditFinancial: isOwner || isAdmin || isDoctor,
-    // Appointments: everyone can manage appointments
+    // Admin-level: puede gestionar equipo, facturación y ajustes
+    isAdmin: hasFullAccess,
+    // Clinical access: odontograma, periodontograma, notas, recetas, etc.
+    canViewClinical : hasFullAccess || isAssistant,
+    canEditClinical : hasFullAccess || isAssistant,
+    // Financial access: presupuestos, pagos, métricas financieras
+    canViewFinancial: hasFullAccess,
+    canEditFinancial: hasFullAccess,
+    // Citas: todos pueden agendar y ver la agenda
     canManageAppointments: true,
-    // Receptionist: limited to calendar + booking requests
+    // Indicadores específicos
     isReceptionist,
     isAssistant,
   };
