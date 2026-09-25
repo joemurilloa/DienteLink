@@ -14,10 +14,12 @@ import {
     BarChart3,
     X,
     Maximize2,
+    Minimize2,
     Calendar,
     DollarSign,
     Shield
 } from 'lucide-react';
+import DentalLogo from './DentalLogo';
 const Odontogram = lazy(() => import('./Odontogram'));
 const Periodontogram = lazy(() => import('./Periodontogram'));
 import { useRoleAccess } from './RoleGuard';
@@ -37,46 +39,57 @@ type TabId = 'id' | 'odontogram' | 'periodontogram' | 'history' | 'documents' | 
 
 // ─── Wow Banner (shows on first open after patient creation) ──────────────────
 const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => void; canViewFinancial: boolean }> = ({ onNavigate, onDismiss, canViewFinancial }) => (
-    <div className="mb-6 p-5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-500/25 animate-in slide-in-from-top-4 duration-700">
+    <div className="mb-6 p-4 sm:p-5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-lg shadow-blue-500/20 animate-in slide-in-from-top-4 duration-500">
         <div className="flex items-start justify-between mb-3">
-            <div>
-                <h3 className="font-extrabold text-lg tracking-tight">¡Expediente creado! 🎉</h3>
-                <p className="text-blue-200 text-sm mt-0.5">¿Qué quieres hacer ahora con este paciente?</p>
+            <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                    <DentalLogo size={18} variant="white" />
+                </div>
+                <div>
+                    <h3 className="font-bold text-base tracking-tight">Expediente creado</h3>
+                    <p className="text-blue-200 text-xs mt-0.5">Siguientes pasos recomendados para este paciente:</p>
+                </div>
             </div>
-            <button onClick={onDismiss} className="p-1.5 rounded-lg hover:bg-white/20 transition-all text-blue-200 hover:text-white">
+            <button onClick={onDismiss} className="p-1 rounded-lg hover:bg-white/20 transition-all text-blue-200 hover:text-white" title="Cerrar sugerencia">
                 <X size={16} />
             </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button
                 onClick={() => { onNavigate('odontogram'); onDismiss(); }}
-                className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
+                className="flex items-center gap-2.5 p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-left group"
             >
-                <span className="text-2xl">🦷</span>
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <LayoutGrid size={16} className="text-blue-100" />
+                </div>
                 <div>
-                    <p className="font-bold text-sm">Pintar Odontograma</p>
-                    <p className="text-xs text-blue-200">Marca las piezas que necesitan trabajo</p>
+                    <p className="font-bold text-xs sm:text-sm">Odontograma</p>
+                    <p className="text-[11px] text-blue-200 line-clamp-1">Diagnóstico visual de piezas</p>
                 </div>
             </button>
             <button
                 onClick={() => { onNavigate('history'); onDismiss(); }}
-                className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
+                className="flex items-center gap-2.5 p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-left group"
             >
-                <span className="text-2xl">📅</span>
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <Calendar size={16} className="text-blue-100" />
+                </div>
                 <div>
-                    <p className="font-bold text-sm">Historial y Primera Cita</p>
-                    <p className="text-xs text-blue-200">Cronología clínica y agenda</p>
+                    <p className="font-bold text-xs sm:text-sm">Agendar Cita</p>
+                    <p className="text-[11px] text-blue-200 line-clamp-1">Cronología y citas</p>
                 </div>
             </button>
             {canViewFinancial && (
             <button
                 onClick={() => { onNavigate('budget'); onDismiss(); }}
-                className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
+                className="flex items-center gap-2.5 p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all text-left group"
             >
-                <span className="text-2xl">💰</span>
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <DollarSign size={16} className="text-blue-100" />
+                </div>
                 <div>
-                    <p className="font-bold text-sm">Crear Presupuesto</p>
-                    <p className="text-xs text-blue-200">Cuánto cuesta el tratamiento</p>
+                    <p className="font-bold text-xs sm:text-sm">Presupuesto</p>
+                    <p className="text-[11px] text-blue-200 line-clamp-1">Plan de tratamiento y costos</p>
                 </div>
             </button>
             )}
@@ -95,14 +108,21 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [isExporting, setIsExporting] = useState(false);
     const { canViewClinical, canViewFinancial, canEditClinical, role: userRole } = useRoleAccess();
 
-    // Show wow banner for brand-new patients (created less than 3 minutes ago)
-    const isNew = (() => {
+    // Show wow banner only once for newly created patients (< 3 minutes)
+    const [showWow, setShowWow] = useState(() => {
         try {
+            if (localStorage.getItem(`dientelink_wow_dismissed_${patient.id}`)) return false;
             const created = new Date(patient.createdAt).getTime();
             return Date.now() - created < 3 * 60 * 1000;
         } catch { return false; }
-    })();
-    const [showWow, setShowWow] = useState(isNew);
+    });
+
+    const handleDismissWow = () => {
+        setShowWow(false);
+        try {
+            localStorage.setItem(`dientelink_wow_dismissed_${patient.id}`, 'true');
+        } catch {}
+    };
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab === 'citas') {
@@ -123,10 +143,16 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isFocusMode]);
 
+// ─── Feature Flags ─────────────────────────────────────────────────────────────
+// Cambiar a true cuando desees volver a activar el módulo de Periodontograma
+const ENABLE_PERIODONTOGRAM = false;
+
     const tabs = [
         { id: 'id',             label: 'Ficha y Anamnesis',    labelShort: 'Ficha',       icon: User,        allowed: true },
         { id: 'odontogram',     label: 'Odontograma',          labelShort: 'Odonto',      icon: LayoutGrid,  allowed: canViewClinical },
-        { id: 'periodontogram', label: 'Periodonto',            labelShort: 'Perio',       icon: BarChart3,   allowed: canViewClinical },
+        ...(ENABLE_PERIODONTOGRAM ? [
+            { id: 'periodontogram', label: 'Periodonto',       labelShort: 'Perio',       icon: BarChart3,   allowed: canViewClinical },
+        ] : []),
         { id: 'history',        label: 'Historial y Citas',     labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
         { id: 'budget',         label: 'Finanzas',              labelShort: 'Finanzas',    icon: DollarSign,  allowed: canViewFinancial },
     ].filter(t => t.allowed);
@@ -145,7 +171,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         }
     };
 
-    const isClinicalTab = ['odontogram', 'periodontogram'].includes(activeTab);
+    const isClinicalTab = (ENABLE_PERIODONTOGRAM ? ['odontogram', 'periodontogram'] : ['odontogram']).includes(activeTab);
 
     // Access denied screen for role-restricted content
     const AccessDenied: React.FC<{ message?: string }> = ({ message }) => (
@@ -186,7 +212,20 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                 return (
                     <div className="space-y-8">
                         <PatientIdTab patient={patient} onUpdate={onUpdate} onExportPDF={handleExportPDF} isExporting={isExporting} />
-                        <hr className="border-slate-300" />
+                        
+                        {/* Section Divider with Badge */}
+                        <div className="relative py-4 my-2">
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                <div className="w-full border-t border-slate-200" />
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-slate-500 border border-slate-200 shadow-xs flex items-center gap-2">
+                                    <Activity size={14} className="text-blue-600" />
+                                    Historia Clínica & Anamnesis
+                                </span>
+                            </div>
+                        </div>
+
                         <AnamnesisTab patient={patient} onUpdate={onUpdate} />
                     </div>
                 );
@@ -213,18 +252,26 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     };
 
     const FocusModeContent = (
-        <div className="fixed inset-0 z-[10000] bg-white flex flex-col p-6 lg:p-12 animate-in fade-in duration-300 overflow-y-auto overflow-x-hidden">
-            <button
-                onClick={() => setIsFocusMode(false)}
-                className="fixed top-8 left-8 right-8 lg:left-auto lg:w-64 h-16 bg-red-600 text-white rounded-3xl font-black uppercase tracking-[2px] text-sm shadow-2xl flex items-center justify-center gap-3 active:scale-95 z-[11000] border-4 border-white"
-            >
-                <X size={20} />
-                CERRAR PANTALLA COMPLETA
-            </button>
-            <div className="flex-1 mt-20 lg:mt-0">
-                <h3 className="text-4xl font-black text-slate-900 tracking-tighter mb-12 text-center lg:text-left italic">
-                    {activeTab === 'odontogram' ? 'Odontograma' : activeTab === 'periodontogram' ? 'Periodontograma' : 'Plan de Tratamiento'}
-                </h3>
+        <div className="fixed inset-0 z-[10000] bg-slate-50 flex flex-col animate-in fade-in duration-200 overflow-y-auto overflow-x-hidden">
+            {/* Minimal top bar */}
+            <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 flex-shrink-0">
+                <div className="flex items-center gap-2.5">
+                    <DentalLogo size={20} variant="blue" />
+                    <span className="font-bold text-sm text-slate-700">
+                        {activeTab === 'odontogram' ? 'Odontograma' : activeTab === 'periodontogram' ? 'Periodontograma' : 'Plan de Tratamiento'}
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium hidden sm:inline">— Pantalla Completa</span>
+                </div>
+                <button
+                    onClick={() => setIsFocusMode(false)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-lg text-xs font-semibold transition-all"
+                    title="Salir de Pantalla Completa (Esc)"
+                >
+                    <Minimize2 size={14} />
+                    <span className="hidden sm:inline">Salir</span>
+                </button>
+            </div>
+            <div className="flex-1 p-4 lg:p-8">
                 {renderClinicalContent()}
             </div>
         </div>
@@ -236,43 +283,31 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 
             {/* Top Horizontal Tabs */}
             <div className={cn(
-                "w-full shrink-0 mb-6 transition-all duration-500 z-10",
+                "w-full shrink-0 mb-5 transition-all duration-300 z-10",
                 isFocusMode ? "h-0 opacity-0 pointer-events-none mb-0 overflow-hidden" : "opacity-100"
             )}>
-                <div className="relative group/tabs">
-                    <div className="flex items-center justify-between mb-3 px-1">
-                        <span className="text-xs font-black uppercase tracking-[2px] text-slate-500">Expediente Clínico</span>
-                        <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse delay-75"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse delay-150"></div>
-                        </div>
+                <div className="relative">
+                    <div className="flex items-center justify-between mb-2.5 px-0.5">
+                        <span className="text-[11px] font-bold uppercase tracking-[1.5px] text-slate-500">Expediente Clínico</span>
                     </div>
-                    <nav className="flex flex-row gap-2 overflow-x-auto pb-4 pt-1 hide-scrollbar -mx-1 px-1">
-                        {tabs.map((tab, index) => (
+                    <nav className="flex flex-row gap-2 overflow-x-auto pb-1 pt-0.5 hide-scrollbar">
+                        {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as TabId)}
                                 className={cn(
-                                    "flex items-center gap-2 px-3 md:px-5 py-3 rounded-2xl text-sm md:text-[13px] font-bold transition-all min-w-max shrink-0 whitespace-nowrap border-2",
+                                    "flex items-center gap-2 px-3.5 md:px-5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all min-w-max shrink-0 whitespace-nowrap border cursor-pointer",
                                     activeTab === tab.id
-                                        ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20 scale-105 z-10"
-                                        : "bg-white border-slate-300 text-slate-500 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-50/50 shadow-sm"
+                                        ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50/80 shadow-xs"
                                 )}
-                                style={{ animationDelay: `${index * 40}ms` }}
                             >
-                                <tab.icon size={16} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
+                                <tab.icon size={15} strokeWidth={activeTab === tab.id ? 2.2 : 1.8} />
                                 <span className="md:hidden">{tab.labelShort}</span>
                                 <span className="hidden md:inline">{tab.label}</span>
                             </button>
                         ))}
                     </nav>
-                    {/* Subtle Gradient to indicate scroll */}
-                    <div className="absolute right-0 top-[40px] bottom-4 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none opacity-100 md:opacity-0 md:group-hover/tabs:opacity-100 transition-opacity"></div>
-                    {/* Swipe hint for mobile */}
-                    <div className="absolute -top-1 right-1 md:hidden text-[10px] font-bold text-blue-500 animate-pulse bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                        ← Desliza
-                    </div>
                 </div>
             </div>
 
@@ -297,7 +332,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                     {showWow && !isClinicalTab && (
                         <WowBanner
                             onNavigate={(tab) => setActiveTab(tab)}
-                            onDismiss={() => setShowWow(false)}
+                            onDismiss={handleDismissWow}
                             canViewFinancial={canViewFinancial}
                         />
                     )}

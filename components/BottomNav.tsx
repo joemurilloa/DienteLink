@@ -2,10 +2,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Home, Calendar, Users, Bell, Menu as MenuIcon, Settings, CreditCard, LogOut, X } from 'lucide-react';
+import { Home, Calendar, Users, Bell, Menu as MenuIcon, Settings, CreditCard, LogOut, X, Plus } from 'lucide-react';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 import NotificationCenter from './NotificationCenter';
+import NewAppointmentModal from './NewAppointmentModal';
 import { useNotifications } from '../hooks/useNotifications';
 import { sileo } from 'sileo';
 
@@ -52,59 +53,91 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
     }
   };
 
-  const items: Array<{
-    id: string;
-    icon: React.ElementType;
-    label: string;
-    path?: string;
-    action?: () => void;
-  }> = [
-    { id: 'dashboard',   icon: Home,            label: 'Inicio',      path: '/' },
-    { id: 'patients',    icon: Users,           label: 'Pacientes',   path: '/patients' },
-    { id: 'calendar',    icon: Calendar,        label: 'Agenda',      path: '/calendar' },
-    { id: 'solicitudes', icon: Bell,            label: 'Solicitudes', path: '/booking/manage' },
-    { id: 'menu',        icon: MenuIcon,        label: 'Menú',        action: () => setIsMenuOpen(true) },
+  const [isNewAptOpen, setIsNewAptOpen] = useState(false);
+
+  // Core tabs: Inicio, Pacientes, [FAB], Agenda, Menú
+  const coreItems: Array<{ id: string; icon: React.ElementType; label: string; path?: string; action?: () => void }> = [
+    { id: 'dashboard',   icon: Home,     label: 'Inicio',    path: '/' },
+    { id: 'patients',    icon: Users,    label: 'Pacientes', path: '/patients' },
+    { id: 'calendar',    icon: Calendar, label: 'Agenda',    path: '/calendar' },
+    { id: 'menu',        icon: MenuIcon, label: 'Menú',      action: () => setIsMenuOpen(true) },
   ];
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-300 rounded-t-2xl safe-bottom z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
-      <div className="flex items-center justify-around h-18 px-4">
-        {items.map((item) => {
-          const isActive = activePath === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => item.action ? item.action() : navigate(item.path)}
-              aria-label={item.label}
-              className={cn(
-                "flex flex-col items-center justify-center transition-all flex-1 h-full tap-effect py-2",
-                isActive || (item.id === 'menu' && isMenuOpen) ? "text-blue-600" : "text-slate-500"
-              )}
-            >
-              <div className="flex flex-col items-center group relative">
-                <item.icon 
-                  size={22} 
-                  strokeWidth={isActive || (item.id === 'menu' && isMenuOpen) ? 2.5 : 2} 
-                  className={cn("mb-1 transition-transform", (isActive || (item.id === 'menu' && isMenuOpen)) ? "scale-110" : "active:scale-95")} 
-                />
-                {item.id === 'solicitudes' && pendingRequestsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                    {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
-                  </span>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 rounded-t-2xl safe-bottom z-50 shadow-[0_-2px_20px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-around px-2" style={{ height: '64px' }}>
+          {coreItems.slice(0, 2).map((item) => {
+            const isActive = activePath === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => item.action ? item.action() : navigate(item.path!)}
+                aria-label={item.label}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all",
+                  isActive ? "text-blue-600" : "text-slate-500"
                 )}
-                <span className={cn(
-                  "text-xs font-semibold transition-opacity tracking-tight", 
-                  isActive || (item.id === 'menu' && isMenuOpen) ? "opacity-100" : "opacity-60"
-                )}>
+              >
+                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "scale-110" : ""} />
+                <span className={cn("text-[10px] font-semibold tracking-tight", isActive ? "opacity-100" : "opacity-60")}>
                   {item.label}
                 </span>
-              </div>
+              </button>
+            );
+          })}
+
+          {/* Central FAB — Nueva Cita */}
+          <div className="flex flex-col items-center justify-center flex-1 relative" style={{ marginTop: '-20px' }}>
+            {/* Solicitudes badge sits above FAB when there are pending requests */}
+            {pendingRequestsCount > 0 && (
+              <button
+                onClick={() => navigate('/booking/manage')}
+                className="absolute -top-2 right-1 bg-amber-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow-sm border-2 border-white"
+                aria-label={`${pendingRequestsCount} solicitudes`}
+              >
+                {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+              </button>
+            )}
+            <button
+              onClick={() => setIsNewAptOpen(true)}
+              aria-label="Nueva Cita"
+              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 active:scale-95 transition-all"
+            >
+              <Plus size={26} strokeWidth={2.5} />
             </button>
-          );
-        })}
-      </div>
-    </nav>
+            <span className="text-[10px] font-semibold text-slate-500 mt-0.5">Nueva</span>
+          </div>
+
+          {coreItems.slice(2).map((item) => {
+            const isActive = activePath === item.id || (item.id === 'menu' && isMenuOpen);
+            return (
+              <button
+                key={item.id}
+                onClick={() => item.action ? item.action() : navigate(item.path!)}
+                aria-label={item.label}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all",
+                  isActive ? "text-blue-600" : "text-slate-500"
+                )}
+              >
+                <div className="relative">
+                  <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "scale-110" : ""} />
+                  {item.id === 'menu' && (unreadCount > 0 || pendingRequestsCount > 0) && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                  )}
+                </div>
+                <span className={cn("text-[10px] font-semibold tracking-tight", isActive ? "opacity-100" : "opacity-60")}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* New Appointment Modal */}
+      <NewAppointmentModal isOpen={isNewAptOpen} onClose={() => setIsNewAptOpen(false)} />
       
       {/* Mobile Bottom Sheet Menu */}
         {isMenuOpen && (
@@ -129,6 +162,27 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                 </div>
                 
                 <div className="space-y-1">
+                  {/* Solicitudes shortcut — always accessible from menu */}
+                  <button
+                    onClick={() => { setIsMenuOpen(false); navigate('/booking/manage'); }}
+                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-amber-50 active:bg-amber-100 transition-colors text-left"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 relative">
+                      <Bell size={20} />
+                      {pendingRequestsCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                          {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-bold text-slate-700 text-[15px] flex-1">Solicitudes de Cita</span>
+                    {pendingRequestsCount > 0 && (
+                      <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                        {pendingRequestsCount} pendiente{pendingRequestsCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </button>
+
                   {/* Notification entry in mobile menu */}
                   <div className="relative">
                     <button

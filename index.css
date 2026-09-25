@@ -15,8 +15,13 @@
    PROFESSIONAL APP STYLING
    ================================ */
 
-/* Disable text selection globally for professional app feel */
-* {
+/* Interactive control selection restrictions (allow clinical content to be copied freely) */
+button,
+[role="button"],
+.no-select,
+nav,
+aside,
+.tab-button {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -25,11 +30,21 @@
   -webkit-touch-callout: none;
 }
 
-/* Re-enable selection for text inputs and editable content */
+/* Ensure clinical content and form controls are always selectable */
 input,
 textarea,
 [contenteditable="true"],
-.selectable-text {
+.selectable-text,
+p,
+span,
+td,
+th,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
@@ -41,7 +56,7 @@ button,
 [role="button"],
 .clickable,
 .card-premium {
-  -webkit-tap-highlight-color: rgba(20, 184, 166, 0.1);
+  -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
   touch-action: manipulation;
 }
 
@@ -53,7 +68,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Smooth tactile physics for buttons and interactive controls (Banco Atlántida / native feel) */
+/* Smooth tactile physics for buttons and interactive controls */
 button,
 [role="button"],
 .clickable {
@@ -115,7 +130,7 @@ button:focus-visible,
 [role="button"]:focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
 }
 
 /* Enhanced focus for form elements */
@@ -124,7 +139,7 @@ textarea:focus-visible,
 select:focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 1px;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 /* Skip link for screen readers */

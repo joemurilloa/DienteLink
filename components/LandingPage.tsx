@@ -6,6 +6,7 @@ import {
   Calendar, Activity, CreditCard, Shield, 
   CheckCircle2, ArrowRight
 } from 'lucide-react';
+import DentalLogo from './DentalLogo';
 
 
 const LandingPage: React.FC = () => {
@@ -43,8 +44,8 @@ const LandingPage: React.FC = () => {
       {/* Navbar */}
       <nav className="relative z-50 max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden bg-white shadow-lg shadow-blue-500/10 border border-slate-300">
-            <span className="relative z-10 text-2xl">🦷</span>
+          <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center overflow-hidden bg-white shadow-lg shadow-blue-500/10 border border-slate-200">
+            <DentalLogo size={24} variant="blue" />
           </div>
           <span className="text-2xl font-extrabold tracking-tighter text-slate-800">DienteLink</span>
         </div>
@@ -284,7 +285,7 @@ const LandingPage: React.FC = () => {
       <footer className="border-t border-slate-300 bg-white relative z-10">
         <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🦷</span>
+            <DentalLogo size={22} variant="blue" />
             <span className="font-extrabold tracking-tight text-slate-800">DienteLink</span>
           </div>
           <p className="text-slate-500 text-sm font-bold">

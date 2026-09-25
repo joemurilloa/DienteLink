@@ -127,18 +127,20 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                         />
 
                         <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">Género</label>
-                            <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-300">
+                            <div className="flex items-center justify-between ml-1 h-4">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Género</label>
+                            </div>
+                            <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-200 h-11 items-center">
                                 {['Masculino', 'Femenino', 'Otro'].map(g => (
                                     <button
                                         key={g}
                                         type="button"
                                         onClick={() => setFormData(p => ({ ...p, gender: g as PatientIdentification['gender'] }))}
                                         className={cn(
-                                            "flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all",
+                                            "flex-1 h-full rounded-lg text-xs md:text-sm font-semibold transition-all flex items-center justify-center cursor-pointer",
                                             formData.gender === g
-                                                ? "bg-white text-blue-600 shadow-sm border border-slate-300"
-                                                : "text-slate-500 hover:text-slate-600"
+                                                ? "bg-white text-blue-600 shadow-xs border border-slate-200 font-bold"
+                                                : "text-slate-500 hover:text-slate-700"
                                         )}
                                     >
                                         {g}
@@ -217,12 +219,14 @@ const InputField: React.FC<{
     required?: boolean;
     error?: string;
 }> = ({ icon: Icon, label, value, onChange, type = "text", name, placeholder, required, error }) => (
-    <div className="space-y-1.5 group">
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1 group-focus-within:text-blue-500 transition-colors">
-            {label} {required && <span className="text-red-400">*</span>}
-        </label>
+    <div className="space-y-2 group">
+        <div className="flex items-center justify-between ml-1 h-4">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-focus-within:text-blue-500 transition-colors">
+                {label} {required && <span className="text-red-400">*</span>}
+            </label>
+        </div>
         <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none">
                 <Icon size={16} strokeWidth={2} />
             </div>
             <input
@@ -232,12 +236,12 @@ const InputField: React.FC<{
                 onChange={e => onChange(e.target.value)}
                 placeholder={placeholder}
                 className={cn(
-                    "w-full pl-11 pr-4 py-3.5 md:py-3 bg-slate-50 border rounded-xl text-base md:text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400",
-                    error ? "border-red-300 bg-red-50/50" : "border-slate-300"
+                    "w-full h-11 pl-11 pr-4 bg-slate-50 border rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-400",
+                    error ? "border-red-300 bg-red-50/50" : "border-slate-200"
                 )}
             />
         </div>
-        {error && <p className="text-sm text-red-500 font-medium ml-1">{error}</p>}
+        {error && <p className="text-xs text-red-500 font-medium ml-1">{error}</p>}
     </div>
 );
 

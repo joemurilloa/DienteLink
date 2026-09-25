@@ -6,6 +6,7 @@ import { cn, formatCurrency } from '../lib/utils';
 import { PatientCardSkeleton, generateSkeletons } from './LoadingSkeletons';
 import { useOptimizedSearch } from '../lib/PerformanceOptimizations';
 import { useRoleAccess } from './RoleGuard';
+import DentalLogo from './DentalLogo';
 
 interface Props {
     patients: PatientRecord[];
@@ -45,8 +46,8 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
     if (!isLoading && patients.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4 animate-in fade-in zoom-in-95 duration-700">
-                <div className="w-20 h-20 mb-6 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-[2rem] flex items-center justify-center rotate-3 shadow-xl shadow-blue-500/30">
-                    <span className="text-4xl -rotate-3">🦷</span>
+                <div className="w-20 h-20 mb-6 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-[2rem] flex items-center justify-center rotate-3 shadow-xl shadow-blue-500/25">
+                    <DentalLogo size={42} variant="white" className="-rotate-3" />
                 </div>
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">Tu clínica digital te espera</h2>
                 <p className="text-slate-500 max-w-sm mx-auto mb-8 leading-relaxed text-sm">
@@ -56,7 +57,9 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                 {/* Feature preview cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto mb-8">
                     <div className="p-4 bg-white border border-slate-300 rounded-2xl shadow-sm text-left">
-                        <div className="text-2xl mb-2">🦷</div>
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+                            <DentalLogo size={18} variant="blue" />
+                        </div>
                         <p className="font-bold text-slate-800 text-sm">Odontograma digital</p>
                         <p className="text-sm text-slate-500 mt-1">Pinta las piezas de cada paciente con un toque</p>
                     </div>
@@ -94,12 +97,12 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
 
                 <div className="flex items-center gap-2 md:gap-4 animate-in-up stagger-delay-2 w-full md:w-auto">
                     <div className="relative group flex-1 md:flex-none">
-                        <Search className="absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                        <Search className="absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none" size={16} />
                         <input
                             autoFocus
                             type="text"
                             placeholder="Buscar paciente..."
-                            className="pl-9 md:pl-11 pr-4 md:pr-5 py-3 md:py-3.5 bg-slate-50 border border-slate-300 rounded-[12px] md:rounded-[14px] w-full md:w-80 outline-none text-[14px] md:text-[15px] font-semibold text-slate-900 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:font-medium placeholder:text-slate-500"
+                            className="pl-9 md:pl-11 pr-4 md:pr-5 h-[46px] md:h-12 bg-slate-50 border border-slate-200 rounded-[12px] md:rounded-[14px] w-full md:w-80 outline-none text-[14px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition-all placeholder:font-normal placeholder:text-slate-400"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
@@ -108,21 +111,21 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                         <button
                             onClick={() => setFilterDebt(!filterDebt)}
                             className={cn(
-                                "h-[46px] md:h-12 px-3.5 md:px-5 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-bold text-[13px] border-2 transition-all flex-shrink-0",
+                                "h-[46px] md:h-12 px-3.5 md:px-5 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-semibold text-[13px] border transition-all flex-shrink-0 cursor-pointer",
                                 filterDebt 
-                                    ? "bg-amber-50 border-amber-500 text-amber-700 shadow-sm" 
-                                    : "bg-white border-slate-300 text-slate-500 hover:bg-slate-50 hover:border-slate-300"
+                                    ? "bg-amber-50 border-amber-500 text-amber-700 shadow-xs" 
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-xs"
                             )}
                             title="Pacientes con saldo pendiente"
                         >
-                            <AlertCircle size={16} className={filterDebt ? "text-amber-500" : "text-slate-500"} />
+                            <AlertCircle size={16} className={filterDebt ? "text-amber-500" : "text-slate-400"} />
                             <span className="hidden sm:inline">Con Deuda</span>
                         </button>
                     )}
                     <button
                         onClick={onAdd}
                         data-new-patient
-                        className="bg-blue-600 text-white h-[46px] md:h-12 px-4 md:px-6 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-bold text-[13px] shadow-[0_4px_16px_rgba(37,99,235,0.2)] hover:bg-blue-700 transition-all flex-shrink-0 active:scale-95"
+                        className="bg-blue-600 text-white h-[46px] md:h-12 px-4 md:px-6 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-semibold text-[13px] shadow-sm shadow-blue-600/20 hover:bg-blue-700 transition-all flex-shrink-0 active:scale-95 cursor-pointer"
                     >
                         <Plus size={16} strokeWidth={2.5} />
                         <span className="hidden sm:inline">Nuevo Paciente</span>

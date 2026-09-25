@@ -86,54 +86,61 @@ const DateInput: React.FC<DateInputProps> = ({ value, onChange, error, required,
 
     return (
         <div className="space-y-2 group">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1 group-focus-within:text-blue-500 transition-colors">
-                {label} {required && <span className="text-red-400">*</span>}
-            </label>
+            <div className="flex items-center justify-between ml-1 h-4">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-focus-within:text-blue-500 transition-colors">
+                    {label} {required && <span className="text-red-400">*</span>}
+                </label>
+            </div>
             
             <div className={cn(
-                "flex items-center gap-2 p-1.5 bg-slate-50 border rounded-xl transition-all",
-                error ? "border-red-300 bg-red-50/50" : "border-slate-300 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10"
+                "relative flex items-center h-11 px-4 bg-slate-50 border rounded-xl transition-all",
+                error 
+                    ? "border-red-300 bg-red-50/50" 
+                    : "border-slate-200 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10"
             )}>
-                <div className="pl-3 pr-1 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                <div className="text-slate-400 group-focus-within:text-blue-500 transition-colors mr-3 shrink-0 pointer-events-none">
                     <Calendar size={16} strokeWidth={2} />
                 </div>
                 
-                <div className="flex items-center flex-1 gap-1">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
                     <input
                         ref={dRef}
                         type="text"
                         inputMode="numeric"
                         placeholder="DD"
+                        maxLength={2}
                         value={d}
                         onChange={handleDTyping}
                         onKeyDown={e => handleKeyDown(e, 'd')}
-                        className="w-10 text-center bg-transparent outline-none text-sm font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium"
+                        className="w-7 text-center bg-transparent outline-none font-medium text-slate-800 placeholder:text-slate-400"
                     />
-                    <span className="text-slate-400 font-light">/</span>
+                    <span className="text-slate-300 select-none font-normal">/</span>
                     <input
                         ref={mRef}
                         type="text"
                         inputMode="numeric"
                         placeholder="MM"
+                        maxLength={2}
                         value={m}
                         onChange={handleMTyping}
                         onKeyDown={e => handleKeyDown(e, 'm')}
-                        className="w-10 text-center bg-transparent outline-none text-sm font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium"
+                        className="w-7 text-center bg-transparent outline-none font-medium text-slate-800 placeholder:text-slate-400"
                     />
-                    <span className="text-slate-400 font-light">/</span>
+                    <span className="text-slate-300 select-none font-normal">/</span>
                     <input
                         ref={yRef}
                         type="text"
                         inputMode="numeric"
                         placeholder="AAAA"
+                        maxLength={4}
                         value={y}
                         onChange={handleYTyping}
                         onKeyDown={e => handleKeyDown(e, 'y')}
-                        className="w-16 text-center bg-transparent outline-none text-sm font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium"
+                        className="w-12 text-center bg-transparent outline-none font-medium text-slate-800 placeholder:text-slate-400"
                     />
                 </div>
             </div>
-            {error && <p className="text-sm text-red-500 font-medium ml-1">{error}</p>}
+            {error && <p className="text-xs text-red-500 font-medium ml-1">{error}</p>}
         </div>
     );
 };

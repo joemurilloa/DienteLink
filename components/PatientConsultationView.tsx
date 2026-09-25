@@ -39,6 +39,7 @@ const PatientConsultationView: React.FC = () => {
   const [timer, setTimer] = useState(0);
   
   const [viewMode, setViewMode] = useState<'form' | 'expediente'>('form');
+  const [mobileTab, setMobileTab] = useState<'form' | 'context'>('form');
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
@@ -247,74 +248,115 @@ const PatientConsultationView: React.FC = () => {
           </div>
         </div>
       ) : (
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* Left Column: Context Area */}
-        <aside className="w-[320px] bg-white border-r border-slate-300 flex flex-col overflow-y-auto hide-scrollbar">
-          <div className="p-6 space-y-6">
-            
-            {/* Patient Identity */}
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-2xl mb-4 shadow-sm">
-                {getInitials(patient.identification.fullName)}
-              </div>
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">{patient.identification.fullName}</h2>
-              <p className="text-sm font-medium text-slate-500 mt-1">
-                {new Date().getFullYear() - new Date(patient.identification.birthDate).getFullYear()} años
-              </p>
-            </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile View Switcher (Tabs) */}
+        <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-around gap-2 flex-shrink-0 z-10 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setMobileTab('form')}
+            className={cn(
+              "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+              mobileTab === 'form' ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+            )}
+          >
+            Nota de Consulta
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('context')}
+            className={cn(
+              "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+              mobileTab === 'context' ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+            )}
+          >
+            Ficha y Alergias
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'odontogram' });
+              setViewMode('expediente');
+            }}
+            className="flex-1 py-2 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition-all flex items-center justify-center gap-1 border border-slate-200"
+          >
+            <LayoutGrid size={13} className="text-blue-500" />
+            Odontograma
+          </button>
+        </div>
 
-            <hr className="border-slate-300" />
-
-            {/* Critical Info */}
-            <div className="space-y-4">
-              {patient.clinicalHistory.allergies.length > 0 && (
-                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
-                  <div className="flex items-center gap-2 text-red-700 font-bold text-sm uppercase tracking-wider mb-2">
-                    <AlertTriangle size={14} /> Alergias
-                  </div>
-                  <p className="text-sm font-semibold text-red-900">{patient.clinicalHistory.allergies.join(', ')}</p>
-                </div>
-              )}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Column: Context Area */}
+          <aside className={cn(
+            "w-full lg:w-[320px] bg-white border-r border-slate-300 flex-col overflow-y-auto hide-scrollbar flex-shrink-0",
+            mobileTab === 'context' ? "flex" : "hidden lg:flex"
+          )}>
+            <div className="p-6 space-y-6">
               
-              <div className="bg-blue-50/50 border border-blue-100/50 p-4 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2 text-blue-700 font-bold text-sm uppercase tracking-wider">
-                  <Activity size={14} /> Último Trat.
+              {/* Patient Identity */}
+              <div className="flex flex-col items-center text-center">
+                <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-2xl mb-4 shadow-sm">
+                  {getInitials(patient.identification.fullName)}
                 </div>
-                <p className="text-sm font-medium text-blue-900 leading-snug">
-                  {getLastTreatment(patient)}
+                <h2 className="text-lg font-bold text-slate-900 leading-tight">{patient.identification.fullName}</h2>
+                <p className="text-sm font-medium text-slate-500 mt-1">
+                  {new Date().getFullYear() - new Date(patient.identification.birthDate).getFullYear()} años
                 </p>
               </div>
+
+              <hr className="border-slate-300" />
+
+              {/* Critical Info */}
+              <div className="space-y-4">
+                {patient.clinicalHistory.allergies.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 p-4 rounded-2xl">
+                    <div className="flex items-center gap-2 text-red-700 font-bold text-sm uppercase tracking-wider mb-2">
+                      <AlertTriangle size={14} /> Alergias
+                    </div>
+                    <p className="text-sm font-semibold text-red-900">{patient.clinicalHistory.allergies.join(', ')}</p>
+                  </div>
+                )}
+                
+                <div className="bg-blue-50/50 border border-blue-100/50 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center gap-2 text-blue-700 font-bold text-sm uppercase tracking-wider">
+                    <Activity size={14} /> Último Trat.
+                  </div>
+                  <p className="text-sm font-medium text-blue-900 leading-snug">
+                    {getLastTreatment(patient)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Nav (Inline toggle) */}
+              <div className="pt-4 space-y-3">
+                <button 
+                  onClick={() => {
+                    setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'odontogram' });
+                    setViewMode('expediente');
+                  }}
+                  className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-300 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-blue-200 transition-all active:scale-95 shadow-sm"
+                >
+                  <LayoutGrid size={18} className="text-blue-500" /> Ver Odontograma
+                </button>
+                <button 
+                  onClick={() => {
+                    setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'id' });
+                    setViewMode('expediente');
+                  }}
+                  className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-300 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-indigo-200 transition-all active:scale-95 shadow-sm"
+                >
+                  <User size={18} className="text-indigo-500" /> Expediente Completo
+                </button>
+              </div>
+
             </div>
+          </aside>
 
-            {/* Quick Nav (Inline toggle) */}
-            <div className="pt-4 space-y-3">
-              <button 
-                onClick={() => {
-                  setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'odontogram' });
-                  setViewMode('expediente');
-                }}
-                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-300 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-blue-200 transition-all active:scale-95 shadow-sm"
-              >
-                <LayoutGrid size={18} className="text-blue-500" /> Ver Odontograma
-              </button>
-              <button 
-                onClick={() => {
-                  setSearchParams({ patientId: patientId || '', appointmentId: appointmentId || '', tab: 'id' });
-                  setViewMode('expediente');
-                }}
-                className="w-full h-14 flex items-center justify-center gap-3 bg-white border-2 border-slate-300 text-slate-700 text-sm font-bold rounded-[20px] hover:bg-slate-50 hover:border-indigo-200 transition-all active:scale-95 shadow-sm"
-              >
-                <User size={18} className="text-indigo-500" /> Expediente Completo
-              </button>
-            </div>
-
-          </div>
-        </aside>
-
-        {/* Right Column: Active Form */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6 sm:p-10 hide-scrollbar">
-          <div className="max-w-3xl mx-auto space-y-8">
+          {/* Right Column: Active Form */}
+          <main className={cn(
+            "flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6 lg:p-10 hide-scrollbar",
+            mobileTab === 'form' ? "block" : "hidden lg:block"
+          )}>
+            <div className="max-w-3xl mx-auto space-y-8">
             
             <div className="bg-white p-8 rounded-[32px] border border-slate-300 shadow-sm space-y-8">
               
@@ -474,7 +516,7 @@ const PatientConsultationView: React.FC = () => {
 
           </div>
         </main>
-
+        </div>
       </div>
       )}
 

@@ -114,10 +114,10 @@ const CalendarView: React.FC = () => {
         {/* Superior Minimalist Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 flex-shrink-0">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-1">
               <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Calendario</h1>
             </div>
-            <p className="text-slate-500 font-medium pl-11">Organiza tu clínica fácilmente.</p>
+            <p className="text-slate-500 font-medium text-sm">Organiza tu clínica fácilmente.</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -127,8 +127,8 @@ const CalendarView: React.FC = () => {
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all",
-                    viewMode === mode ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : "text-slate-500 hover:text-slate-700"
+                    "px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer",
+                    viewMode === mode ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-700"
                   )}
                 >
                   {label}
@@ -137,7 +137,7 @@ const CalendarView: React.FC = () => {
             </div>
             <button
                onClick={() => setIsAdding(true)}
-               className="h-10 px-5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-[0_4px_12px_rgba(37,99,235,0.2)] hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95"
+               className="h-10 px-5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-sm shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
             >
               <Plus size={16} /> <span className="hidden sm:inline">Nueva Cita</span>
             </button>
@@ -145,19 +145,19 @@ const CalendarView: React.FC = () => {
         </header>
 
         {/* Date Navigation Strip */}
-        <div className="flex items-center justify-between border-y border-slate-300 py-3 px-2 flex-shrink-0">
-          <button onClick={handleToday} className="px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+        <div className="flex items-center justify-between border-y border-slate-200 py-3 px-2 flex-shrink-0">
+          <button onClick={handleToday} className="px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer">
             Hoy
           </button>
           
           <div className="flex items-center gap-8">
-            <button onClick={handlePrev} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+            <button onClick={handlePrev} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer" title="Anterior">
               <ChevronLeft size={20} />
             </button>
             <h2 className="text-lg font-bold text-slate-900 tracking-tight min-w-[200px] text-center">
               {headerLabel}
             </h2>
-            <button onClick={handleNext} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+            <button onClick={handleNext} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer" title="Siguiente">
               <ChevronRight size={20} />
             </button>
           </div>
@@ -214,19 +214,25 @@ const CalendarView: React.FC = () => {
                       )}>{d}</span>
                     </div>
 
-                    <div className="flex-1 space-y-1 px-0.5 overflow-y-auto hide-scrollbar">
-                      {dayApts.map(a => (
+                    <div className="flex-1 space-y-1 px-0.5 overflow-hidden">
+                      {dayApts.slice(0, 2).map(a => (
                         <div 
                           key={a.id} 
                           onClick={(e) => { e.stopPropagation(); if (a.patientId) navigate(`/patient/${a.patientId}`); }}
-                          className="px-1.5 py-1 bg-blue-100/60 border border-blue-200/60 rounded-md flex items-center justify-between group/apt cursor-pointer hover:bg-blue-200/60 transition-colors"
+                          className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200/70 rounded-md flex items-center justify-between group/apt cursor-pointer transition-colors"
+                          title={`${a.time} - ${a.patientName} (${a.type})`}
                         >
-                          <span className="text-[9px] sm:text-xs font-bold text-blue-700 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-blue-300 hover:text-red-500 opacity-0 group-hover/apt:opacity-100 flex-shrink-0">
+                          <span className="text-[10px] font-semibold text-blue-800 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-blue-400 hover:text-red-500 opacity-0 group-hover/apt:opacity-100 flex-shrink-0 ml-1">
                             <Trash2 size={10} />
                           </button>
                         </div>
                       ))}
+                      {dayApts.length > 2 && (
+                        <div className="text-[10px] font-bold text-slate-500 hover:text-blue-600 px-1 py-0.5 text-right transition-colors">
+                          +{dayApts.length - 2} más
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

@@ -41,74 +41,111 @@ const AnamnesisTab: React.FC<Props> = ({ patient, onUpdate }) => {
                 <p className="text-slate-500 text-sm mt-1">Antecedentes clínicos y médicos</p>
             </div>
 
-            {/* Allergies */}
-            <div className="p-5 bg-red-50 rounded-2xl border border-red-100">
-                <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-11 h-11 bg-red-600 text-white rounded-xl flex items-center justify-center"><Activity size={16} /></div>
-                    <label className="text-sm font-semibold uppercase tracking-wider text-red-600">Alergias Conocidas</label>
+            {/* Allergies — red ONLY when the patient actually has allergies */}
+            {(() => {
+                const hasAllergies = hist.allergies.length > 0;
+                return (
+                <div className={cn(
+                    "p-5 rounded-2xl border transition-all",
+                    hasAllergies
+                        ? "bg-red-50 border-red-200 ring-1 ring-red-200"
+                        : "bg-slate-50 border-slate-200"
+                )}>
+                    <div className="flex items-center gap-2.5 mb-4">
+                        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center transition-all",
+                            hasAllergies ? "bg-red-600 text-white" : "bg-slate-200 text-slate-500"
+                        )}><Activity size={16} /></div>
+                        <div>
+                            <label className={cn("text-sm font-semibold uppercase tracking-wider", hasAllergies ? "text-red-600" : "text-slate-500")}>
+                                Alergias Conocidas
+                            </label>
+                            {hasAllergies && (
+                                <p className="text-xs text-red-500 font-medium mt-0.5">⚠ Verificar antes de administrar anestesia o medicamentos</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center mb-3">
+                        {hist.allergies.map(a => (
+                            <span key={a} className="px-3 py-1.5 bg-white text-red-700 rounded-lg text-sm font-semibold border border-red-200 flex items-center gap-1.5 shadow-sm">
+                                {a}
+                                <button onClick={() => onUpdate({ ...patient, clinicalHistory: { ...hist, allergies: hist.allergies.filter(al => al !== a) } })} className="text-red-400 hover:text-red-700 transition-colors"><X size={12} /></button>
+                            </span>
+                        ))}
+                        {!hasAllergies && <span className="text-slate-400 text-sm">Ninguna alergia registrada</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                        {COMMON_ALLERGIES.map(a => (
+                            <button key={a} type="button"
+                                onClick={() => { if (!hist.allergies.includes(a)) onUpdate({ ...patient, clinicalHistory: { ...hist, allergies: [...hist.allergies, a] } }); }}
+                                disabled={hist.allergies.includes(a)}
+                                className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border",
+                                    hist.allergies.includes(a) ? "bg-red-100 text-red-300 border-red-100 cursor-default" : "bg-white text-slate-600 border-slate-200 hover:bg-red-600 hover:text-white hover:border-red-600 active:scale-95"
+                                )}>
+                                + {a}
+                            </button>
+                        ))}
+                    </div>
+                    <form onSubmit={(e) => { e.preventDefault(); const v = allergyInput.trim(); if (v && !hist.allergies.includes(v)) { onUpdate({ ...patient, clinicalHistory: { ...hist, allergies: [...hist.allergies, v] } }); setAllergyInput(''); } }} className="flex items-center gap-1.5">
+                        <input value={allergyInput} onChange={e => setAllergyInput(e.target.value)} placeholder="Agregar otra alergia..." className="flex-1 px-3 py-2 rounded-lg text-sm border border-slate-200 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/10 bg-white transition-all" />
+                        <button type="submit" className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all"><Plus size={12} /></button>
+                    </form>
                 </div>
-                <div className="flex flex-wrap gap-2 items-center mb-3">
-                    {hist.allergies.map(a => (
-                        <span key={a} className="px-3 py-1.5 bg-white text-red-600 rounded-lg text-sm font-semibold border border-red-100 flex items-center gap-1.5">
-                            {a}
-                            <button onClick={() => onUpdate({ ...patient, clinicalHistory: { ...hist, allergies: hist.allergies.filter(al => al !== a) } })} className="text-red-400 hover:text-red-700 transition-colors"><X size={12} /></button>
-                        </span>
-                    ))}
-                    {hist.allergies.length === 0 && <span className="text-red-300 text-sm">Ninguna alergia registrada</span>}
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                    {COMMON_ALLERGIES.map(a => (
-                        <button key={a} type="button"
-                            onClick={() => { if (!hist.allergies.includes(a)) onUpdate({ ...patient, clinicalHistory: { ...hist, allergies: [...hist.allergies, a] } }); }}
-                            disabled={hist.allergies.includes(a)}
-                            className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border",
-                                hist.allergies.includes(a) ? "bg-red-100 text-red-300 border-red-100 cursor-default" : "bg-white text-red-500 border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600 active:scale-95"
-                            )}>
-                            + {a}
-                        </button>
-                    ))}
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); const v = allergyInput.trim(); if (v && !hist.allergies.includes(v)) { onUpdate({ ...patient, clinicalHistory: { ...hist, allergies: [...hist.allergies, v] } }); setAllergyInput(''); } }} className="flex items-center gap-1.5">
-                    <input value={allergyInput} onChange={e => setAllergyInput(e.target.value)} placeholder="Otra alergia..." className="flex-1 px-3 py-2 rounded-lg text-sm border border-red-200 outline-none focus:border-red-400 bg-white" />
-                    <button type="submit" className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all"><Plus size={12} /></button>
-                </form>
-            </div>
+                );
+            })()}
 
-            {/* Medications */}
-            <div className="p-5 bg-purple-50 rounded-2xl border border-purple-100">
-                <div className="flex items-center gap-2.5 mb-3">
-                    <div className="w-11 h-11 bg-purple-600 text-white rounded-xl flex items-center justify-center"><Zap size={16} /></div>
-                    <label className="text-sm font-semibold uppercase tracking-wider text-purple-600">Medicamentos Actuales</label>
+            {/* Medications — purple only when medications exist */}
+            {(() => {
+                const hasMeds = !!(hist.medications && hist.medications.trim());
+                return (
+                <div className={cn("p-5 rounded-2xl border transition-all", hasMeds ? "bg-purple-50 border-purple-200" : "bg-slate-50 border-slate-200")}>
+                    <div className="flex items-center gap-2.5 mb-3">
+                        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center transition-all",
+                            hasMeds ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-500"
+                        )}><Zap size={16} /></div>
+                        <label className={cn("text-sm font-semibold uppercase tracking-wider", hasMeds ? "text-purple-600" : "text-slate-500")}>
+                            Medicamentos Actuales
+                        </label>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                        {COMMON_MEDICATIONS.map(m => (
+                            <button key={m} type="button"
+                                onClick={() => appendToField('medications', m)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all active:scale-95">
+                                + {m}
+                            </button>
+                        ))}
+                    </div>
+                    <InputGroup label="" icon={Zap} value={hist.medications} onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...hist, medications: val } })} placeholder="Ej: Losartan 50mg, Metformina 850mg..." />
                 </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                    {COMMON_MEDICATIONS.map(m => (
-                        <button key={m} type="button"
-                            onClick={() => appendToField('medications', m)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white text-purple-500 border border-purple-200 hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all active:scale-95">
-                            + {m}
-                        </button>
-                    ))}
-                </div>
-                <InputGroup label="" icon={Zap} value={hist.medications} onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...hist, medications: val } })} placeholder="Ej: Losartan 50mg, Metformina 850mg..." />
-            </div>
+                );
+            })()}
 
-            {/* Diseases */}
-            <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
-                <div className="flex items-center gap-2.5 mb-3">
-                    <div className="w-11 h-11 bg-orange-500 text-white rounded-xl flex items-center justify-center"><Activity size={16} /></div>
-                    <label className="text-sm font-semibold uppercase tracking-wider text-orange-600">Enfermedades Previas</label>
+            {/* Diseases — orange only when diseases are recorded */}
+            {(() => {
+                const hasDiseases = !!(hist.previousDiseases && hist.previousDiseases.trim());
+                return (
+                <div className={cn("p-5 rounded-2xl border transition-all", hasDiseases ? "bg-orange-50 border-orange-200" : "bg-slate-50 border-slate-200")}>
+                    <div className="flex items-center gap-2.5 mb-3">
+                        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center transition-all",
+                            hasDiseases ? "bg-orange-500 text-white" : "bg-slate-200 text-slate-500"
+                        )}><Activity size={16} /></div>
+                        <label className={cn("text-sm font-semibold uppercase tracking-wider", hasDiseases ? "text-orange-600" : "text-slate-500")}>
+                            Enfermedades Previas
+                        </label>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                        {COMMON_DISEASES.map(d => (
+                            <button key={d} type="button"
+                                onClick={() => appendToField('previousDiseases', d)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all active:scale-95">
+                                + {d}
+                            </button>
+                        ))}
+                    </div>
+                    <InputGroup label="" icon={Activity} value={hist.previousDiseases} onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...hist, previousDiseases: val } })} placeholder="Ej: Diabetes tipo 2, Hipertensión..." />
                 </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                    {COMMON_DISEASES.map(d => (
-                        <button key={d} type="button"
-                            onClick={() => appendToField('previousDiseases', d)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white text-orange-500 border border-orange-200 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all active:scale-95">
-                            + {d}
-                        </button>
-                    ))}
-                </div>
-                <InputGroup label="" icon={Activity} value={hist.previousDiseases} onChange={(val) => onUpdate({ ...patient, clinicalHistory: { ...hist, previousDiseases: val } })} placeholder="Ej: Diabetes tipo 2, Hipertensión..." />
-            </div>
+                );
+            })()}
 
             {/* Family history + Habits */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

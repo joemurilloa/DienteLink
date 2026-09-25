@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
+import DentalLogo from './DentalLogo';
 
 const AuthPage: React.FC = () => {
   const { user, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
@@ -117,8 +118,8 @@ const AuthPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
-            <span className="text-3xl">🦷</span>
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
+            <DentalLogo size={36} variant="white" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">DienteLink</h1>
           <p className="text-sm text-slate-500 font-semibold mt-1">Gestión Dental Profesional</p>

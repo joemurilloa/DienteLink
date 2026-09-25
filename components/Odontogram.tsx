@@ -10,6 +10,7 @@ import {
   Square, Hexagon, Diamond, Star, Target,
   X as XIcon, Check, Copy, ArrowLeftRight, Info
 } from 'lucide-react';
+import ToothDetailModal from './ToothDetailModal';
 
 /* ================================================================
    TOOTH INFORMATION DATABASE
@@ -178,13 +179,14 @@ interface ToothDiagramProps {
   selectedCondition: ClinicalCondition;
   onSurfaceClick: (toothId: number, surface: ToothSurface) => void;
   onClearSurface: (toothId: number, surface: ToothSurface) => void;
+  onToothClick?: (toothId: number) => void;
   size?: number;
   highlight?: boolean;
   readOnly?: boolean;
 }
 
 const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
-  tooth, selectedCondition, onSurfaceClick, onClearSurface,
+  tooth, selectedCondition, onSurfaceClick, onClearSurface, onToothClick,
   size = 54, highlight = false, readOnly = false,
 }) => {
   const [hoveredSurface, setHoveredSurface] = useState<ToothSurface | null>(null);
@@ -247,11 +249,13 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
   if (isAbsent) {
     return (
       <div
-        className="flex flex-col items-center gap-0.5 relative group"
+        className="flex flex-col items-center gap-0.5 relative group cursor-pointer"
+        onClick={() => onToothClick?.(tooth.id)}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
+        title="Toca para ver o restaurar pieza"
       >
-        <div style={{ width: toothW, height: toothH }} className="relative flex items-center justify-center opacity-30">
+        <div style={{ width: toothW, height: toothH }} className="relative flex items-center justify-center opacity-30 hover:opacity-50 transition-opacity">
           <svg viewBox="0 0 100 140" width={toothW} height={toothH}>
             <path d={outlinePath} fill="#CBD5E1" stroke="#94A3B8" strokeWidth="2.5" />
             <line x1="25" y1="20" x2="75" y2="120" stroke="#64748B" strokeWidth="3" />
@@ -265,7 +269,7 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
             <div className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs whitespace-nowrap shadow-2xl min-w-[140px]">
               <p className="font-black text-sm mb-0.5">{info?.name}</p>
               <p className="text-slate-500 text-[9px] mb-1">Universal: {tooth.id} | FDI: {info?.fdi}</p>
-              <p className="text-slate-500 italic border-t border-slate-700 pt-1">Ausente / Extraído</p>
+              <p className="text-slate-500 italic border-t border-slate-700 pt-1">Ausente / Extraído (Toca para editar)</p>
             </div>
           </div>
         )}
@@ -295,8 +299,13 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
         <div className="absolute inset-0 rounded-lg border-2 border-dashed border-blue-400 z-20 pointer-events-none" />
       )}
 
-      {/* Anatomical tooth silhouette */}
-      <div style={{ width: toothW, height: toothH }} className="relative">
+      {/* Anatomical tooth silhouette (clickable to open Lupa/Detail Modal) */}
+      <div
+        style={{ width: toothW, height: toothH }}
+        className="relative cursor-pointer hover:scale-105 active:scale-95 transition-all"
+        onClick={() => onToothClick?.(tooth.id)}
+        title="Toca para abrir Lupa Clínica de la Pieza"
+      >
         <svg viewBox="0 0 100 140" width={toothW} height={toothH} className="drop-shadow-sm">
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -352,10 +361,14 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
       </div>
 
       {/* Tooth number */}
-      <span className={cn(
-        "text-xs font-black tabular-nums transition-colors leading-tight",
-        readOnly ? "text-slate-400" : "text-slate-500 group-hover:text-blue-600"
-      )}>
+      <span
+        onClick={() => onToothClick?.(tooth.id)}
+        className={cn(
+          "text-xs font-black tabular-nums transition-colors leading-tight cursor-pointer hover:underline",
+          readOnly ? "text-slate-400" : "text-slate-500 group-hover:text-blue-600"
+        )}
+        title="Toca para abrir detalle de pieza"
+      >
         {tooth.id}
       </span>
 
@@ -412,12 +425,13 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
         </div>
       )}
 
-      {/* For special whole-tooth conditions, the tooth itself is clickable */}
+      {/* For special whole-tooth conditions, clicking the overlay opens detail modal */}
       {hasSpecial && !readOnly && (
         <div
           className="absolute inset-0 cursor-pointer z-10"
-          onClick={(e) => { e.stopPropagation(); handleClick('oclusal'); }}
+          onClick={(e) => { e.stopPropagation(); onToothClick ? onToothClick(tooth.id) : handleClick('oclusal'); }}
           onContextMenu={(e) => handleContextMenu(e, 'oclusal')}
+          title="Toca para editar condición especial"
         />
       )}
 
@@ -989,6 +1003,24 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
   const [compareMode, setCompareMode] = useState(false);
   const [compareA, setCompareA] = useState<string>('current');
   const [compareB, setCompareB] = useState<string>(snapshots[0]?.id || '');
+  const [selectedToothForDetail, setSelectedToothForDetail] = useState<number | null>(null);
+
+  const handleClearWholeTooth = useCallback((toothId: number) => {
+    const toothInfo = TOOTH_INFO[toothId];
+    const updated = teeth.map(t => t.id === toothId ? { ...t, surfaces: [] } : t);
+    onUpdate(updated);
+    sileo.success({ title: `${toothInfo?.name || 'Pieza'} marcada como sana`, description: 'Superficies restauradas sin hallazgos' });
+  }, [teeth, onUpdate]);
+
+  const handleSetWholeToothCondition = useCallback((toothId: number, condition: ClinicalCondition) => {
+    const toothInfo = TOOTH_INFO[toothId];
+    const updated = teeth.map(t => {
+      if (t.id !== toothId) return t;
+      return { ...t, surfaces: [{ surface: 'oclusal' as ToothSurface, condition }] };
+    });
+    onUpdate(updated);
+    sileo.info({ title: `Condición aplicada a ${toothInfo?.name || 'Pieza'}`, description: conditionThemes[condition]?.label || condition });
+  }, [teeth, onUpdate]);
 
   // Teeth to display (current or from snapshot)
   const displayTeeth = useMemo(() => {
@@ -1116,12 +1148,14 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
         </div>
       </div>
 
-      {/* Mobile Disclaimer */}
-      <div className="md:hidden mb-4 p-3 bg-blue-50/80 border border-blue-200/50 rounded-xl flex items-start gap-2.5">
-        <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
-        <p className="text-xs font-medium text-blue-800 leading-snug">
-          Para una experiencia óptima al marcar piezas dentales, te recomendamos usar una <span className="font-bold">Tablet o Computadora</span>.
-        </p>
+      {/* Mobile Ergonomics Tip */}
+      <div className="md:hidden mb-4 p-3 bg-blue-50/80 border border-blue-200/50 rounded-xl flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <Info size={16} className="text-blue-500 flex-shrink-0" />
+          <p className="text-xs font-medium text-blue-800 leading-snug">
+            💡 Toca cualquier pieza para abrir la <span className="font-bold">Lupa de Pieza</span> y marcar caras con facilidad táctil.
+          </p>
+        </div>
       </div>
 
       {/* Read-only banner when viewing snapshot */}
@@ -1180,6 +1214,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
                   selectedCondition={selectedCondition}
                   onSurfaceClick={handleSurfaceClick}
                   onClearSurface={handleClearSurface}
+                  onToothClick={(id) => setSelectedToothForDetail(id)}
                   highlight={compareMode && changedTeeth.has(tooth.id)}
                   readOnly={isReadOnly}
                 />
@@ -1207,6 +1242,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
                     selectedCondition={selectedCondition}
                     onSurfaceClick={handleSurfaceClick}
                     onClearSurface={handleClearSurface}
+                    onToothClick={(tId) => setSelectedToothForDetail(tId)}
                     highlight={compareMode && changedTeeth.has(tooth.id)}
                     readOnly={isReadOnly}
                   />
@@ -1227,6 +1263,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
                     selectedCondition={selectedCondition}
                     onSurfaceClick={handleSurfaceClick}
                     onClearSurface={handleClearSurface}
+                    onToothClick={(tId) => setSelectedToothForDetail(tId)}
                     highlight={compareMode && changedTeeth.has(tooth.id)}
                     readOnly={isReadOnly}
                   />
@@ -1263,6 +1300,24 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
           )}
         </div>
       </div>
+
+      {/* Tooth Detail & Touch Precision Modal (Lupa Clínica) */}
+      {selectedToothForDetail !== null && (
+        <ToothDetailModal
+          isOpen={true}
+          onClose={() => setSelectedToothForDetail(null)}
+          toothId={selectedToothForDetail}
+          teeth={displayTeeth}
+          selectedCondition={selectedCondition}
+          onSelectCondition={setSelectedCondition}
+          onSurfaceClick={handleSurfaceClick}
+          onClearSurface={handleClearSurface}
+          onClearWholeTooth={handleClearWholeTooth}
+          onSetWholeToothCondition={handleSetWholeToothCondition}
+          onNavigateTooth={(nextId) => setSelectedToothForDetail(nextId)}
+          readOnly={isReadOnly}
+        />
+      )}
     </div>
   );
 };

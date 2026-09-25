@@ -7,6 +7,7 @@ import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 import NotificationCenter from './NotificationCenter';
 import { sileo } from 'sileo';
+import DentalLogo from './DentalLogo';
 
 interface SidebarProps {
   activePath: string;
@@ -88,8 +89,8 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
           )}
           onClick={() => navigate('/')}
         >
-          <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[12px] flex items-center justify-center text-white text-lg shadow-sm group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300 flex-shrink-0">
-            🦷
+          <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[12px] flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300 flex-shrink-0">
+            <DentalLogo size={24} variant="white" />
           </div>
           <div className={cn("overflow-hidden transition-all duration-300 whitespace-nowrap hidden lg:block", isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
             <h1 className="text-[15px] font-bold text-slate-900 tracking-tight leading-none">DienteLink</h1>
@@ -100,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
         {/* Toggle inside Header */}
         <button 
           onClick={handleToggle}
-          className="hidden lg:flex p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
+          className="hidden lg:flex p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
           title={isCollapsed ? "Expandir menú" : "Contraer menú"}
         >
           <Menu size={18} />
@@ -117,10 +118,10 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
               onClick={() => navigate(item.path)}
               title={isCollapsed ? item.label : undefined}
               className={cn(
-                "w-full flex items-center gap-0 lg:gap-3 py-2.5 rounded-xl transition-all duration-300 text-[13px] font-medium relative group overflow-hidden",
+                "w-full flex items-center gap-0 lg:gap-3 py-2.5 rounded-xl transition-all duration-300 text-[13px] font-medium relative group overflow-hidden cursor-pointer",
                 isCollapsed ? "justify-center px-0" : "justify-center lg:justify-start px-0 lg:px-3",
                 isActive
-                  ? "shadow-lg shadow-blue-500/30 text-white"
+                  ? "shadow-sm shadow-blue-500/25 text-white"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
               )}
               style={isActive ? { backgroundColor: '#2563eb', color: 'white' } : {}}

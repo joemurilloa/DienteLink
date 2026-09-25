@@ -45,21 +45,23 @@ const PatientIdTab: React.FC<Props> = ({ patient, onUpdate, onExportPDF, isExpor
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <InputGroup label="Nombre Completo" icon={User} value={id.fullName} onChange={(val) => onUpdate({ ...patient, identification: { ...id, fullName: val } })} placeholder="Nombre del paciente" />
+                <InputGroup label="Nombre Completo" icon={User} value={id.fullName} onChange={(val) => onUpdate({ ...patient, identification: { ...id, fullName: val } })} placeholder="Nombre del paciente" showAutoSave />
                 <DateInput label="Fecha de Nacimiento" value={id.birthDate} onChange={(val) => onUpdate({ ...patient, identification: { ...id, birthDate: val } })} />
                 <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">Género</label>
-                    <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-300">
+                    <div className="flex items-center justify-between ml-1 h-4">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Género</label>
+                    </div>
+                    <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-200 h-11 items-center">
                         {['Masculino', 'Femenino', 'Otro'].map(g => (
                             <button
                                 key={g}
                                 type="button"
                                 onClick={() => onUpdate({ ...patient, identification: { ...id, gender: g as PatientIdentification['gender'] } })}
                                 className={cn(
-                                    "flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all",
+                                    "flex-1 h-full rounded-lg text-xs md:text-sm font-semibold transition-all flex items-center justify-center cursor-pointer",
                                     id.gender === g
-                                        ? "bg-white text-blue-600 shadow-sm border border-slate-300"
-                                        : "text-slate-500 hover:text-slate-600"
+                                        ? "bg-white text-blue-600 shadow-xs border border-slate-200 font-bold"
+                                        : "text-slate-500 hover:text-slate-700"
                                 )}
                             >
                                 {g}
@@ -67,11 +69,11 @@ const PatientIdTab: React.FC<Props> = ({ patient, onUpdate, onExportPDF, isExpor
                         ))}
                     </div>
                 </div>
-                <InputGroup label="Ocupación / Oficio" icon={Briefcase} value={id.occupation} onChange={(val) => onUpdate({ ...patient, identification: { ...id, occupation: val } })} placeholder="Ej. Arquitecto" />
-                <InputGroup label="Teléfono Móvil" icon={Phone} value={id.phone} onChange={(val) => onUpdate({ ...patient, identification: { ...id, phone: val } })} placeholder="+504 0000-0000" />
-                <InputGroup label="Correo Electrónico" icon={Mail} value={id.email} onChange={(val) => onUpdate({ ...patient, identification: { ...id, email: val } })} placeholder="correo@ejemplo.com" />
+                <InputGroup label="Ocupación / Oficio" icon={Briefcase} value={id.occupation} onChange={(val) => onUpdate({ ...patient, identification: { ...id, occupation: val } })} placeholder="Ej. Arquitecto" showAutoSave />
+                <InputGroup label="Teléfono Móvil" icon={Phone} value={id.phone} onChange={(val) => onUpdate({ ...patient, identification: { ...id, phone: val } })} placeholder="+504 0000-0000" showAutoSave />
+                <InputGroup label="Correo Electrónico" icon={Mail} value={id.email} onChange={(val) => onUpdate({ ...patient, identification: { ...id, email: val } })} placeholder="correo@ejemplo.com" showAutoSave />
                 <div className="md:col-span-2 lg:col-span-3">
-                    <InputGroup label="Dirección de Residencia" icon={MapPin} value={id.address} onChange={(val) => onUpdate({ ...patient, identification: { ...id, address: val } })} placeholder="Colonia, Ciudad, Referencias..." />
+                    <InputGroup label="Dirección de Residencia" icon={MapPin} value={id.address} onChange={(val) => onUpdate({ ...patient, identification: { ...id, address: val } })} placeholder="Colonia, Ciudad, Referencias..." showAutoSave />
                 </div>
             </div>
         </div>
