@@ -9,8 +9,6 @@ import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import {
     User,
-    History,
-    ClipboardList,
     Activity,
     LayoutGrid,
     BarChart3,
@@ -18,25 +16,17 @@ import {
     Maximize2,
     Calendar,
     DollarSign,
-    FileCheck,
-    Pill,
-    FlaskConical,
     Shield
 } from 'lucide-react';
 const Odontogram = lazy(() => import('./Odontogram'));
 const Periodontogram = lazy(() => import('./Periodontogram'));
-const ConsentManager = lazy(() => import('./ConsentManager'));
-const PrescriptionManager = lazy(() => import('./PrescriptionManager'));
 import { useRoleAccess } from './RoleGuard';
 
 // ─── Extracted tab components ───
 import PatientIdTab from './patient-record/PatientIdTab';
 import AnamnesisTab from './patient-record/AnamnesisTab';
-import EvolutionTab from './patient-record/EvolutionTab';
-import HistoryTab from './patient-record/HistoryTab';
-import AppointmentsTab from './patient-record/AppointmentsTab';
+import UnifiedTimelineTab from './patient-record/UnifiedTimelineTab';
 import BudgetTab from './patient-record/BudgetTab';
-import LabTab from './patient-record/LabTab';
 
 interface Props {
     patient: PatientRecordType;
@@ -69,13 +59,13 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                 </div>
             </button>
             <button
-                onClick={() => { onNavigate('citas'); onDismiss(); }}
+                onClick={() => { onNavigate('history'); onDismiss(); }}
                 className="flex items-center gap-3 p-3 bg-white/15 hover:bg-white/25 rounded-xl transition-all text-left group"
             >
                 <span className="text-2xl">📅</span>
                 <div>
-                    <p className="font-bold text-sm">Agendar Primera Cita</p>
-                    <p className="text-xs text-blue-200">Programa cuándo viene a consulta</p>
+                    <p className="font-bold text-sm">Historial y Primera Cita</p>
+                    <p className="text-xs text-blue-200">Cronología clínica y agenda</p>
                 </div>
             </button>
             {canViewFinancial && (
@@ -98,7 +88,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const doctorName = profile?.full_name || 'Doctor';
     const clinicName = profile?.clinic_name || 'DienteLink';
     const [searchParams] = useSearchParams();
-    const initialTab = (searchParams.get('tab') || 'id') as TabId;
+    const initialParam = searchParams.get('tab');
+    const initialTab = ((initialParam === 'citas' ? 'history' : initialParam) || 'id') as TabId;
     const [activeTab, setActiveTab] = useState<TabId>(initialTab);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -114,7 +105,11 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const [showWow, setShowWow] = useState(isNew);
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab) setActiveTab(tab as TabId);
+        if (tab === 'citas') {
+            setActiveTab('history');
+        } else if (tab) {
+            setActiveTab(tab as TabId);
+        }
     }, [searchParams]);
 
     // Tecla ESC para cerrar Focus Mode
@@ -132,10 +127,7 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         { id: 'id',             label: 'Ficha y Anamnesis',    labelShort: 'Ficha',       icon: User,        allowed: true },
         { id: 'odontogram',     label: 'Odontograma',          labelShort: 'Odonto',      icon: LayoutGrid,  allowed: canViewClinical },
         { id: 'periodontogram', label: 'Periodonto',            labelShort: 'Perio',       icon: BarChart3,   allowed: canViewClinical },
-        { id: 'history',        label: 'Historial y Evolución', labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
-        { id: 'citas',          label: 'Agenda',                labelShort: 'Agenda',      icon: Calendar,    allowed: true },
-        { id: 'documents',      label: 'Documentos',            labelShort: 'Docs',        icon: FileCheck,   allowed: canViewClinical },
-        { id: 'lab',            label: 'Laboratorio',           labelShort: 'Lab',         icon: FlaskConical,allowed: canViewClinical },
+        { id: 'history',        label: 'Historial y Citas',     labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
         { id: 'budget',         label: 'Finanzas',              labelShort: 'Finanzas',    icon: DollarSign,  allowed: canViewFinancial },
     ].filter(t => t.allowed);
 
@@ -211,25 +203,8 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
                     </div>
                 );
             case 'history':
-                return (
-                    <div className="space-y-12 animate-in-up duration-500">
-                        <HistoryTab patient={patient} onUpdate={onUpdate} />
-                        <hr className="border-slate-300" />
-                        <EvolutionTab patient={patient} onUpdate={onUpdate} />
-                    </div>
-                );
-            case 'documents':
-                return (
-                    <div className="space-y-12 animate-in-up duration-500">
-                        <ConsentManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />
-                        <hr className="border-slate-300" />
-                        <PrescriptionManager patient={patient} onUpdate={onUpdate} doctorName={doctorName} clinicName={clinicName} />
-                    </div>
-                );
             case 'citas':
-                return <AppointmentsTab patient={patient} />;
-            case 'lab':
-                return <LabTab patient={patient} onUpdate={onUpdate} />;
+                return <UnifiedTimelineTab patient={patient} onUpdate={onUpdate} />;
             case 'budget':
                 return <BudgetTab patient={patient} onUpdate={onUpdate} />;
             default:

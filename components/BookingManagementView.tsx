@@ -220,10 +220,6 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   };
 
   const openPreview = () => window.open(publicUrl, '_blank');
-  const shareWhatsApp = () => {
-    const msg = `¡Agenda tu cita conmigo fácilmente! 📅\n\n${publicUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-  };
 
   const pendingCount = requests.filter(r => r.status === 'pending').length;
   const filteredRequests = requests.filter(r => filter === 'all' || r.status === filter);
@@ -514,14 +510,10 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                 </button>
              </div>
 
-             <div className="grid grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto">
                 <button onClick={openPreview} className="p-4 bg-white border border-slate-300 rounded-[20px] shadow-sm hover:border-slate-300 hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group">
                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition-colors"><Eye size={20} /></div>
                    <span className="text-[13px] font-bold text-slate-900">Probar como paciente</span>
-                </button>
-                <button onClick={shareWhatsApp} className="p-4 bg-white border border-slate-300 rounded-[20px] shadow-sm hover:border-green-200 hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group">
-                   <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600 group-hover:bg-green-500 group-hover:text-white transition-colors"><Share2 size={20} /></div>
-                   <span className="text-[13px] font-bold text-green-700">Enviar por WhatsApp</span>
                 </button>
              </div>
           </div>

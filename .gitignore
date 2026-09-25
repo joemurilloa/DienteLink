@@ -36,3 +36,7 @@ Thumbs.db
 # Test coverage
 coverage/
 
+test-*.mjs
+
+test-*.mjs
+test-*.js

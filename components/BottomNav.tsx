@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { LayoutDashboard, Calendar, Users, Bell, Menu as MenuIcon, Settings, CreditCard, LogOut, X } from 'lucide-react';
+import { Home, Calendar, Users, Bell, Menu as MenuIcon, Settings, CreditCard, LogOut, X } from 'lucide-react';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 import NotificationCenter from './NotificationCenter';
@@ -59,7 +59,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
     path?: string;
     action?: () => void;
   }> = [
-    { id: 'dashboard',   icon: LayoutDashboard, label: 'Inicio',      path: '/' },
+    { id: 'dashboard',   icon: Home,            label: 'Inicio',      path: '/' },
     { id: 'patients',    icon: Users,           label: 'Pacientes',   path: '/patients' },
     { id: 'calendar',    icon: Calendar,        label: 'Agenda',      path: '/calendar' },
     { id: 'solicitudes', icon: Bell,            label: 'Solicitudes', path: '/booking/manage' },

@@ -1,16 +1,14 @@
-
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Appointment, ReminderStatus } from '../types';
 import { cn, getInitials, formatAppDate } from '../lib/utils';
-import { whatsappService } from '../services/whatsappService';
-import { emailReminderService } from '../services/emailReminderService';
 import { useAuth } from '../services/authService';
 import { usePatient } from '../hooks/usePatients';
 import { useAppointmentMutations } from '../hooks/useAppointments';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle2, Loader2, X, User, Phone, Calendar, Tag, Mail, Play, Ban, Zap } from 'lucide-react';
+import { Clock, CheckCircle2, X, User, Phone, Calendar, Tag, Play, Ban, MessageCircle } from 'lucide-react';
 import { sileo } from 'sileo';
+
 
 // WhatsApp SVG icon — matches official brand color #25D366
 const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
@@ -43,67 +41,12 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient, showDate }) => {
   const [showDetail, setShowDetail] = useState(false);
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const { profile } = useAuth();
-  const { patient } = usePatient(appointment.patientId);
-  const { updateAppointment, deleteAppointment } = useAppointmentMutations();
-  const canSendEmail = true; // Dev mode: always enabled
+  const { deleteAppointment } = useAppointmentMutations();
   const navigate = useNavigate();
-  
-  const isToday = appointment.date === new Date().toISOString().split('T')[0];
+
   const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-emerald-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
   const statusInfo = statusLabels[appointment.status] || statusLabels.Programada;
-
-  const handleSendReminder = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (appointment.reminderStatus === 'sent') return;
-    if (!appointment.phoneNumber) {
-      sileo.warning({ title: 'Sin teléfono', description: 'Este paciente no tiene número registrado' });
-      return;
-    }
-    
-    // Open WhatsApp with pre-filled reminder message (manual link)
-    const result = whatsappService.sendManualAppointmentReminder(appointment);
-    
-    if (result.success) {
-      if (onReminderSent) onReminderSent(appointment.id, 'sent');
-      sileo.success({ title: 'WhatsApp abierto', description: `Recordatorio preparado para ${appointment.patientName}` });
-    }
-  };
-
-  const handleSendEmail = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (emailStatus === 'sending' || emailStatus === 'sent') return;
-
-    // Look up patient email (removed billing redirect — dev mode)
-    const email = patient?.identification?.email;
-    if (!email) {
-      sileo.warning({ title: 'Sin correo electrónico', description: 'Este paciente no tiene email registrado' });
-      return;
-    }
-
-    setEmailStatus('sending');
-    const result = await emailReminderService.sendReminder({
-      patientName: appointment.patientName,
-      patientEmail: email,
-      appointmentDate: appointment.date,
-      appointmentTime: appointment.time,
-      appointmentType: appointment.type,
-      doctorName: profile?.full_name || 'Doctor',
-      clinicName: profile?.clinic_name || '',
-    });
-
-    if (result.success) {
-      setEmailStatus('sent');
-      sileo.success({ title: `Email enviado a ${appointment.patientName}`, description: email });
-    } else {
-      setEmailStatus('error');
-      sileo.error({ title: 'Error al enviar email', description: result.error || 'Intente de nuevo' });
-    }
-  };
-
 
   const fmtTime = (t: string) => {
     if (!t) return '';
@@ -116,7 +59,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
     <>
       <div
         onClick={() => setShowDetail(true)}
-        className="card-premium p-3.5 flex items-center gap-3.5 group cursor-pointer hover:border-blue-100 transition-all duration-200"
+        className="card-premium p-3.5 flex items-center gap-3.5 group cursor-pointer hover:border-blue-300"
       >
         <div className="relative flex-shrink-0">
           <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
@@ -149,25 +92,22 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
           </div>
         </div>
 
-        <button
-          onClick={handleSendReminder}
-          title={appointment.reminderStatus === 'sent' ? 'Recordatorio ya enviado' : 'Enviar recordatorio por WhatsApp'}
+        {/* WhatsApp reminder status badge */}
+        <div
+          title={appointment.reminderStatus === 'sent' ? 'Recordatorio de WhatsApp enviado' : 'Recordatorio se enviará automáticamente 24h antes'}
           className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center transition-all flex-shrink-0 active:scale-95",
+            "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
             appointment.reminderStatus === 'sent'
               ? "bg-emerald-100 text-emerald-600"
-              : "text-white shadow-md shadow-[#25D366]/30 hover:shadow-lg hover:shadow-[#25D366]/40 hover:-translate-y-0.5"
+              : "bg-slate-100 text-slate-400"
           )}
-          style={appointment.reminderStatus !== 'sent' ? { backgroundColor: '#25D366' } : {}}
         >
-          {appointment.reminderStatus === 'sending' ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : appointment.reminderStatus === 'sent' ? (
+          {appointment.reminderStatus === 'sent' ? (
             <CheckCircle2 size={16} />
           ) : (
-            <WhatsAppIcon size={17} />
+            <MessageCircle size={16} />
           )}
-        </button>
+        </div>
       </div>
 
       {/* Appointment Detail Modal */}
@@ -199,7 +139,21 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-base font-bold text-slate-900 leading-tight truncate">{appointment.patientName}</h3>
+                  <h3 
+                    onClick={() => {
+                      if (onNavigateToPatient && appointment.patientId) {
+                        setShowDetail(false);
+                        onNavigateToPatient(appointment);
+                      }
+                    }}
+                    className={cn(
+                      "text-base font-bold text-slate-900 leading-tight truncate",
+                      onNavigateToPatient && appointment.patientId && "cursor-pointer hover:text-blue-600 transition-colors"
+                    )}
+                    title={onNavigateToPatient && appointment.patientId ? "Ver expediente" : undefined}
+                  >
+                    {appointment.patientName}
+                  </h3>
                   <span className={cn("inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-md", statusInfo.color)}>
                     {statusInfo.label}
                   </span>
@@ -264,66 +218,20 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
             {/* Footer Actions */}
             <div className="px-5 pb-5 pt-2 space-y-2">
-              {/* WhatsApp reminder button */}
-              <button
-                onClick={(e) => handleSendReminder(e)}
-                disabled={appointment.reminderStatus === 'sending' || appointment.reminderStatus === 'sent'}
-                className={cn(
-                  "w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-[0.98]",
-                  appointment.reminderStatus === 'sent'
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                    : appointment.reminderStatus === 'sending'
-                    ? "bg-slate-100 text-slate-500"
-                    : "text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                )}
-                style={appointment.reminderStatus === 'idle' || !appointment.reminderStatus
-                  ? { backgroundColor: '#25D366', boxShadow: '0 4px 14px rgba(37,211,102,0.35)' }
-                  : {}}
-              >
-                {appointment.reminderStatus === 'sending' ? (
-                  <><Loader2 size={15} className="animate-spin" /> Abriendo WhatsApp...</>
-                ) : appointment.reminderStatus === 'sent' ? (
-                  <><CheckCircle2 size={15} /> ¡Recordatorio enviado!</>
+              {/* WhatsApp reminder status */}
+              <div className={cn(
+                "w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm",
+                appointment.reminderStatus === 'sent'
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-slate-50 text-slate-500 border border-slate-200"
+              )}>
+                {appointment.reminderStatus === 'sent' ? (
+                  <><CheckCircle2 size={15} /> Recordatorio WhatsApp enviado</>
                 ) : (
-                  <><WhatsAppIcon size={18} /> Enviar recordatorio por WhatsApp</>
+                  <><MessageCircle size={15} /> Recordatorio automático 24h antes</>
                 )}
-              </button>
-
-              {/* "próxima versión" hint */}
-              {appointment.reminderStatus !== 'sent' && (
-                <p className="text-center text-[11px] text-slate-400 flex items-center justify-center gap-1 pt-0.5">
-                  <Zap size={10} className="text-amber-400" />
-                  Próxima versión: envío automático programado
-                </p>
-              )}
-
-              {/* Email button */}
-              <div className="flex gap-2.5 pt-1">
-              <button
-                onClick={(e) => handleSendEmail(e)}
-                disabled={emailStatus === 'sending' || emailStatus === 'sent'}
-                title={!canSendEmail ? 'Requiere Plan Pro' : 'Enviar recordatorio por email'}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all relative",
-                  emailStatus === 'sent'
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                    : emailStatus === 'sending'
-                    ? "bg-slate-100 text-slate-500"
-                    : !canSendEmail
-                    ? "bg-slate-100 text-slate-500 border border-slate-300 cursor-not-allowed"
-                    : "bg-violet-600 text-white hover:bg-violet-700 shadow-sm"
-                )}
-              >
-                {emailStatus === 'sending' ? (
-                  <><Loader2 size={14} className="animate-spin" /> Enviando...</>
-                ) : emailStatus === 'sent' ? (
-                  <><CheckCircle2 size={14} /> Email enviado</>
-                ) : (
-                  <><Mail size={14} /> Recordatorio por Email</>
-                )}
-              </button>
               </div>
-              
+
               <div className="flex gap-2.5 mt-2 pt-2 border-t border-slate-300">
                 {appointment.status === 'Programada' && (
                   <button

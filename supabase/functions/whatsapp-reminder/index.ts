@@ -6,6 +6,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
+// Language codes to try in order (most common for Latin America first)
+const LANG_FALLBACKS = ["es_MX", "es_ES", "es_AR", "en_US"];
+
+async function sendWhatsAppTemplate(
+  token: string,
+  phoneId: string,
+  toPhone: string,
+  templateName: string,
+  parameters: { type: string; text: string }[]
+): Promise<{ ok: boolean; data: any; lang: string }> {
+  const metaUrl = `https://graph.facebook.com/v21.0/${phoneId}/messages`;
+
+  for (const lang of LANG_FALLBACKS) {
+    const body = {
+      messaging_product: "whatsapp",
+      to: toPhone,
+      type: "template",
+      template: {
+        name: templateName,
+        language: { code: lang },
+        components: [{ type: "body", parameters }]
+      }
+    };
+
+    const response = await fetch(metaUrl, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log(`[whatsapp-reminder] Template sent with lang=${lang}`);
+      return { ok: true, data, lang };
+    }
+
+    // Error 132001 = template doesn't exist in this language → try next
+    const errorCode = data?.error?.code;
+    if (errorCode !== 132001) {
+      console.error(`[whatsapp-reminder] Non-language error (${errorCode}) with lang=${lang}:`, JSON.stringify(data));
+      return { ok: false, data, lang };
+    }
+
+    console.warn(`[whatsapp-reminder] Template not found in lang=${lang}, trying next...`);
+  }
+
+  return { ok: false, data: { error: { message: "Template not found in any supported language" } }, lang: "none" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
@@ -44,8 +94,6 @@ Deno.serve(async (req) => {
     const results = []
 
     for (const cita of appointments) {
-      const metaUrl = `https://graph.facebook.com/v21.0/${phoneId}/messages`
-      
       const profileData = cita.profiles as any
       const clinicName = profileData?.clinic_name || "Clínica Dental"
 
@@ -64,60 +112,36 @@ Deno.serve(async (req) => {
         } catch { return cita.time }
       })()
 
-      // Aseguramos que el teléfono empiece sin el + pero con código de país
       let toPhone = (cita.phone_number || cita.telefono || "").replace(/[^0-9]/g, "")
       if (toPhone.length === 8) toPhone = "504" + toPhone
       else if (toPhone.length === 10 && !toPhone.startsWith("52")) toPhone = "52" + toPhone
 
-      const whatsappBody = {
-        messaging_product: "whatsapp",
-        to: toPhone,
-        type: "template",
-        template: {
-          name: "appointment_reminder_v1",
-          language: { code: "es" },
-          components: [
-            {
-              type: "body",
-              parameters: [
-                { type: "text", text: cita.patient_name || "Paciente" },
-                { type: "text", text: clinicName },
-                { type: "text", text: dateFormatted },
-                { type: "text", text: timeFormatted }
-              ]
-            }
-          ]
-        }
-      }
+      const parameters = [
+        { type: "text", text: cita.patient_name || "Paciente" },
+        { type: "text", text: clinicName },
+        { type: "text", text: dateFormatted },
+        { type: "text", text: timeFormatted }
+      ]
 
-      const response = await fetch(metaUrl, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(whatsappBody),
-      })
+      const result = await sendWhatsAppTemplate(token, phoneId, toPhone, "appointment_reminder_v1", parameters)
 
-      const metaData = await response.json()
-
-      if (response.ok) {
+      if (result.ok) {
         await supabase
           .from("appointments")
           .update({
             reminder_status: "sent",
-            whatsapp_message_id: metaData.messages?.[0]?.id
+            whatsapp_message_id: result.data.messages?.[0]?.id
           })
           .eq("id", cita.id)
 
-        results.push({ cita_id: cita.id, status: "success" })
+        results.push({ cita_id: cita.id, status: "success", lang: result.lang })
       } else {
         await supabase
           .from("appointments")
           .update({ reminder_status: "failed" })
           .eq("id", cita.id)
 
-        results.push({ cita_id: cita.id, status: "failed", error: metaData })
+        results.push({ cita_id: cita.id, status: "failed", error: result.data })
       }
     }
 

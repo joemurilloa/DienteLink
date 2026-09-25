@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppointmentCard from '../AppointmentCard';
 import GlobalSearch from '../GlobalSearch';
+import NewAppointmentModal from '../NewAppointmentModal';
 import { useRoleAccess } from '../RoleGuard';
 
 import { bookingService } from '../../services/bookingService';
@@ -9,9 +10,8 @@ import { useAppointments, useAppointmentMutations } from '../../hooks/useAppoint
 import { usePatients } from '../../hooks/usePatients';
 import { useAuth } from '../../services/authService';
 import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
-import { cn, formatCurrency, getInitials, getLocalISODate } from '../../lib/utils';
-import { Search, Plus, Calendar as CalendarIcon, ArrowUpRight, UserPlus, TrendingUp, Clock, Users, DollarSign, Bell } from 'lucide-react';
-import { sileo } from 'sileo';
+import { cn, getLocalISODate } from '../../lib/utils';
+import { Search, Plus, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
 import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
 import { useNotifications } from '../../hooks/useNotifications';
 
@@ -22,26 +22,52 @@ function getGreeting(): string {
   return 'Buenas noches';
 }
 
+// ── Stat Pill ──────────────────────────────────────────────────────────────────
+const StatPill: React.FC<{ label: string; value: string | number; sub?: string }> = ({ label, value, sub }) => (
+  <div className="card-premium flex flex-col px-4 sm:px-5 py-3.5 sm:py-4 gap-1">
+    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+    <div className="flex items-baseline gap-1.5">
+      <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums leading-none tracking-tight">{value}</span>
+      {sub && <span className="text-xs text-slate-400 font-medium hidden sm:inline">{sub}</span>}
+    </div>
+  </div>
+);
+
+// ── Section Header ─────────────────────────────────────────────────────────────
+const SectionHeader: React.FC<{ title: string; action?: { label: string; onClick: () => void } }> = ({ title, action }) => (
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-slate-400">{title}</h2>
+    {action && (
+      <button
+        onClick={action.onClick}
+        className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-150 flex items-center gap-1 group cursor-pointer"
+      >
+        {action.label}
+        <ArrowRight size={13} className="transition-transform duration-150 group-hover:translate-x-0.5" />
+      </button>
+    )}
+  </div>
+);
+
+// ── Main Inicio / Home ────────────────────────────────────────────────────────
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
-  const doctorInitials = getInitials(doctorName, 'DR');
 
   const { data: allAppointments = [] } = useAppointments();
   const { updateAppointment } = useAppointmentMutations();
   const { data: allPatients = [] } = usePatients();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNewAptOpen, setIsNewAptOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
-  const { canViewFinancial, isAdmin } = useRoleAccess();
   const navigate = useNavigate();
 
-  // Contextual tips (show once)
   useWelcomeTip();
   useDashboardTip();
 
   const { addNotification } = useNotifications();
 
-  // ===== "Cita próxima" notifications — fire when ≤30 min away =====
+  // Upcoming appointment notifications (≤30 min)
   useEffect(() => {
     const check = () => {
       const now = new Date();
@@ -71,31 +97,17 @@ const Dashboard: React.FC = () => {
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
 
-  // ===== Daily Pulse Metrics =====
-  const pulseMetrics = useMemo(() => {
-    const todayApts = allAppointments.filter(a => a.date === today);
-    const totalToday = todayApts.length;
-    
-    let totalOverdueDebt = 0;
-    let totalActiveBudget = 0;
+  // Stats
+  const todayCount = useMemo(
+    () => allAppointments.filter(a => a.date === today && a.status !== 'Eliminada').length,
+    [allAppointments, today]
+  );
+  const pendingCount = useMemo(
+    () => allAppointments.filter(a => a.date === today && a.status === 'Programada').length,
+    [allAppointments, today]
+  );
 
-    allPatients.forEach(p => {
-        const totalPaid = (p.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
-        const completedBudget = p.budget?.filter(i => i.status === 'completed').reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
-        const pendingBudget = p.budget?.filter(i => i.status !== 'completed').reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
-        
-        const debt = Math.max(0, completedBudget - totalPaid);
-        totalOverdueDebt += debt;
-
-        const surplus = Math.max(0, totalPaid - completedBudget);
-        const active = Math.max(0, pendingBudget - surplus);
-        totalActiveBudget += active;
-    });
-
-    return { totalToday, totalOverdueDebt, totalActiveBudget };
-  }, [allAppointments, allPatients, today]);
-
-  const { groupedAppointments, isShowingUpcoming } = useMemo(() => {
+  const { groupedAppointments } = useMemo(() => {
     const relevant = allAppointments
       .filter(a => {
         if (a.status === 'Eliminada') return false;
@@ -104,10 +116,8 @@ const Dashboard: React.FC = () => {
         return true;
       })
       .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-      
+
     const groupedMap: Record<string, typeof relevant> = {};
-    
-    // Función auxiliar para agrupar
     const addToGroup = (lbl: string, apt: any) => {
       if (!groupedMap[lbl]) groupedMap[lbl] = [];
       groupedMap[lbl].push(apt);
@@ -117,7 +127,6 @@ const Dashboard: React.FC = () => {
       const dateObj = new Date(apt.date + 'T12:00:00');
       const todayObj = new Date(today + 'T12:00:00');
       const diffDays = Math.round((dateObj.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
-      
       if (apt.status === 'Completada') {
         addToGroup('Completadas Hoy', apt);
       } else if (diffDays === 0) {
@@ -134,42 +143,28 @@ const Dashboard: React.FC = () => {
       }
     });
 
-    // Definir el orden deseado de las etiquetas
     const labelOrder = ['Hoy', 'Mañana'];
-    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    days.forEach(d => labelOrder.push(`El ${d}`));
+    ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].forEach(d => labelOrder.push(`El ${d}`));
     labelOrder.push('Sig. Semana', 'Más adelante', 'Completadas Hoy');
 
-    const groups: { label: string, items: typeof relevant }[] = [];
-    
+    const groups: { label: string; items: typeof relevant }[] = [];
     labelOrder.forEach(lbl => {
-      if (groupedMap[lbl] && groupedMap[lbl].length > 0) {
-        groups.push({ label: lbl, items: groupedMap[lbl] });
-      }
+      if (groupedMap[lbl]?.length > 0) groups.push({ label: lbl, items: groupedMap[lbl] });
     });
 
-    return { 
-      groupedAppointments: groups, 
-      isShowingUpcoming: relevant.some(a => a.date > today && a.status !== 'Completada') 
-    };
+    return { groupedAppointments: groups };
   }, [allAppointments, today]);
 
   const loadPendingRequests = useCallback(async () => {
-    try { 
-      await bookingService.refreshRequests(); 
-    } catch (e) {}
+    try { await bookingService.refreshRequests(); } catch (e) {}
     setPendingRequests(bookingService.getPendingRequests());
   }, []);
 
   useEffect(() => {
     loadPendingRequests();
-
     const handleNewRequest = (event: CustomEvent) => setPendingRequests(prev => [event.detail, ...prev]);
-
     window.addEventListener('newAppointmentRequest', handleNewRequest as EventListener);
-    return () => {
-      window.removeEventListener('newAppointmentRequest', handleNewRequest as EventListener);
-    };
+    return () => window.removeEventListener('newAppointmentRequest', handleNewRequest as EventListener);
   }, [loadPendingRequests]);
 
   const handleReminderStatusUpdate = useCallback((id: string, status: ReminderStatus) => {
@@ -179,156 +174,124 @@ const Dashboard: React.FC = () => {
   }, [allAppointments, updateAppointment]);
 
   const todayDateStr = new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const firstName = doctorName.replace(/^Dr\.?\s*/i, '').split(' ')[0];
 
   return (
-    <div className="flex-1 h-full overflow-y-auto hide-scrollbar pb-32 md:pb-6 page-transition mesh-bg relative flex flex-col">
-      <div className="max-w-[1400px] w-full mx-auto p-6 lg:p-8 flex flex-col h-auto gap-6 lg:gap-8">
-        
-        {/* ===== Header ===== */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 animate-in-up stagger-delay-1 shrink-0">
+    <div className="flex-1 h-full overflow-y-auto hide-scrollbar bg-[#f5f7fa]">
+      <div className="max-w-4xl mx-auto px-5 sm:px-8 py-8 flex flex-col gap-7 pb-28 md:pb-12">
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <p className="text-slate-500 text-[13px] md:text-[15px] font-medium capitalize mb-1">{todayDateStr}</p>
-            <h1 className="text-[28px] md:text-[40px] lg:text-[48px] font-semibold text-slate-900 tracking-tight leading-tight">
-              {getGreeting()}, <span className="text-slate-900">{doctorName.replace(/^Dr\.?\s*/i, '')}</span>.
+            <p className="text-[13px] font-medium text-slate-400 capitalize mb-1 tracking-wide">{todayDateStr}</p>
+            <h1 className="text-[26px] sm:text-[32px] font-bold text-slate-900 tracking-tight leading-tight">
+              {getGreeting()}, {firstName}.
             </h1>
           </div>
-          
-          <div className="flex flex-row md:flex-col lg:flex-row items-stretch md:items-end gap-2 md:gap-3 w-full md:w-auto">
+
+          <div className="flex items-center gap-2.5">
+            {/* Search */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="bg-white/60 backdrop-blur-xl border border-white shadow-sm flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 rounded-full transition-all hover:bg-white flex-1 md:w-80 active:scale-95 cursor-text group"
+              className="flex items-center gap-2.5 px-3.5 sm:px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:border-blue-300 hover:text-slate-800 transition-all duration-200 ease-out active:scale-[0.97] shadow-sm cursor-pointer group"
             >
-              <Search size={16} className="text-slate-500 flex-shrink-0" />
-              <span className="text-[14px] font-medium text-slate-500 truncate">Buscar paciente...</span>
+              <Search size={15} className="flex-shrink-0 text-slate-400 group-hover:text-blue-500 transition-colors" />
+              <span className="text-[13px] font-medium hidden sm:inline w-36 text-left">Buscar paciente...</span>
             </button>
+
+            {/* Nueva Cita */}
             <button
-              onClick={() => navigate('/calendar?new=true')}
-              className="bg-blue-600 border border-blue-500 text-white shadow-sm flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 rounded-full transition-all hover:bg-blue-700 active:scale-95 font-bold whitespace-nowrap"
+              onClick={() => setIsNewAptOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold text-[13px] transition-all duration-200 ease-out active:scale-[0.97] shadow-sm shadow-blue-500/25 whitespace-nowrap cursor-pointer hover:shadow-md hover:shadow-blue-500/30"
             >
-              <Plus size={16} strokeWidth={2.5} />
-              <span className="text-[14px]">Nueva Cita</span>
+              <Plus size={15} strokeWidth={2.5} />
+              Nueva Cita
             </button>
           </div>
         </header>
 
-        {/* ===== Pulse Metrics ===== */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4 animate-in-up stagger-delay-2 shrink-0">
-          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
-                <CalendarIcon size={15} className="text-blue-600" />
-              </div>
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hoy</span>
-            </div>
-            <p className="text-2xl font-bold text-slate-900">{pulseMetrics.totalToday}</p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">citas programadas</p>
-          </div>
-          <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <Users size={15} className="text-emerald-600" />
-              </div>
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pacientes</span>
-            </div>
-            <p className="text-2xl font-bold text-slate-900">{allPatients.length}</p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">expedientes activos</p>
-          </div>
-          {canViewFinancial && (
-            <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex flex-col justify-between">
+        {/* ── Pending Requests Banner (Clean alert if any) ──────────────── */}
+        {pendingRequests.length > 0 && (
+          <div
+            onClick={() => navigate('/booking/manage')}
+            className="flex items-center justify-between p-3.5 sm:p-4 bg-blue-50/80 border border-blue-200 rounded-2xl cursor-pointer hover:bg-blue-100/70 transition-all duration-200 active:scale-[0.99] group shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">
+                {pendingRequests.length}
+              </span>
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
-                      <DollarSign size={15} className="text-amber-600" />
-                    </div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Deuda Vencida</span>
-                  </div>
-                </div>
-                <p className={cn("text-2xl font-bold", pulseMetrics.totalOverdueDebt > 0 ? "text-amber-600" : "text-slate-900")}>
-                  {formatCurrency(pulseMetrics.totalOverdueDebt)}
+                <p className="text-sm font-semibold text-blue-950 leading-tight">
+                  {pendingRequests.length === 1 ? '1 solicitud de cita pendiente de confirmación' : `${pendingRequests.length} solicitudes de cita pendientes de confirmación`}
                 </p>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">por tratamientos finalizados</p>
+                <p className="text-xs text-blue-600 mt-0.5">Recibidas por el enlace de reserva en línea</p>
               </div>
-              
-              {pulseMetrics.totalActiveBudget > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-200/60">
-                  <p className="text-xs text-slate-500 font-medium flex justify-between">
-                    <span>Presupuesto activo:</span>
-                    <span className="font-bold text-slate-700">{formatCurrency(pulseMetrics.totalActiveBudget)}</span>
-                  </p>
-                </div>
-              )}
             </div>
-          )}
-          {isAdmin && (
-            <div className="bg-white/60 backdrop-blur-xl border border-white rounded-2xl p-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center">
-                  <Bell size={15} className="text-violet-600" />
-                </div>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Solicitudes</span>
-              </div>
-              <p className={cn("text-2xl font-bold", pendingRequests.length > 0 ? "text-violet-600" : "text-slate-900")}>{pendingRequests.length}</p>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">reservas pendientes</p>
+            <div className="flex items-center gap-1 text-xs font-semibold text-blue-700 group-hover:translate-x-0.5 transition-transform duration-150">
+              <span className="hidden sm:inline">Revisar</span>
+              <ArrowRight size={13} />
             </div>
-          )}
+          </div>
+        )}
+
+        {/* ── Stats row ───────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <StatPill label="Citas hoy" value={todayCount} sub="agendadas" />
+          <StatPill label="Pendientes" value={pendingCount} sub="por atender" />
+          <StatPill label="Pacientes" value={allPatients.length} sub="en total" />
         </div>
 
-        {/* ===== MAIN CONTENT ===== */}
-        <div className="flex-1 flex flex-col">
-          
-          {/* Agenda */}
-          <div className="bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] p-6 sm:p-8 lg:p-10 animate-in-up stagger-delay-2 flex flex-col h-auto transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-            <div className="flex items-center justify-between mb-6 lg:mb-8 shrink-0">
-              <div>
-                <h2 className="text-[24px] lg:text-[28px] font-semibold text-slate-900 tracking-tight leading-tight">Tu Agenda</h2>
-                <p className="text-slate-500 text-[14px] lg:text-[15px] mt-1 font-medium">Próximos pacientes</p>
+        {/* ── Agenda ──────────────────────────────────────────────────────── */}
+        <section className="flex flex-col gap-3 min-w-0">
+          <SectionHeader
+            title="Tu Agenda"
+            action={{ label: 'Ver calendario completo', onClick: () => navigate('/calendar') }}
+          />
+
+          {groupedAppointments.length === 0 ? (
+            <div className="card-premium flex flex-col items-center justify-center text-center py-16 px-6">
+              <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-3.5 border border-slate-200">
+                <CalendarIcon size={24} className="text-slate-400" />
               </div>
-              <button onClick={() => navigate('/calendar')} className="text-[13px] lg:text-[14px] font-semibold text-slate-900 bg-slate-100/80 hover:bg-slate-200/80 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full transition-colors active:scale-95">Ver calendario</button>
+              <h3 className="text-[15px] font-semibold text-slate-800 mb-1">Sin citas programadas</h3>
+              <p className="text-[13px] text-slate-400 mb-5 max-w-[240px]">No hay citas pendientes para hoy. ¡Todo despejado!</p>
+              <button
+                onClick={() => setIsNewAptOpen(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[13px] font-semibold transition-all duration-200 ease-out active:scale-[0.97] shadow-sm cursor-pointer"
+              >
+                + Programar Cita
+              </button>
             </div>
-            
-            <div className="flex-1 pr-2 lg:pr-3">
-              {groupedAppointments.length === 0 ? (
-                 <div className="h-full flex flex-col items-center justify-center text-center">
-                    <div className="w-20 h-20 lg:w-24 lg:h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 ring-1 ring-slate-100">
-                      <CalendarIcon size={32} className="text-slate-500" />
-                    </div>
-                    <h3 className="text-[20px] lg:text-[22px] font-semibold text-slate-900 mb-2 tracking-tight">Todo despejado</h3>
-                    <p className="text-slate-500 text-[14px] lg:text-[15px] max-w-[250px] mb-5">No tienes citas programadas hoy. ¡Disfruta tu día!</p>
-                    <button
-                      onClick={() => navigate('/calendar')}
-                      className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2"
-                    >
-                      + Programar Cita
-                    </button>
-                 </div>
-              ) : (
-                <div className="space-y-8 lg:space-y-10">
-                  {groupedAppointments.map(group => (
-                    <div key={group.label} className="space-y-3 lg:space-y-4">
-                      <h3 className="text-sm lg:text-[13px] font-semibold uppercase tracking-widest text-slate-500 pl-1 sticky top-0 bg-white/80 backdrop-blur-xl py-2 z-10">{group.label}</h3>
-                      <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                        {group.items.map(apt => (
-                          <AppointmentCard
-                            key={apt.id}
-                            appointment={apt}
-                            showDate={group.label === 'Sig. Semana' || group.label === 'Más adelante'}
-                            onReminderSent={handleReminderStatusUpdate}
-                            onNavigateToPatient={(a) => {
-                              if (a.patientId) navigate(`/patient/${a.patientId}`);
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+          ) : (
+            <div className="space-y-6">
+              {groupedAppointments.map(group => (
+                <div key={group.label}>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-3 px-1">
+                    {group.label}
+                  </p>
+                  <div className="flex flex-col gap-2.5">
+                    {group.items.map(apt => (
+                      <AppointmentCard
+                        key={apt.id}
+                        appointment={apt}
+                        showDate={group.label === 'Sig. Semana' || group.label === 'Más adelante'}
+                        onReminderSent={handleReminderStatusUpdate}
+                        onNavigateToPatient={(a) => {
+                          if (a.patientId) navigate(`/patient/${a.patientId}`);
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-          </div>
-        </div>
+          )}
+        </section>
+
       </div>
+
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <NewAppointmentModal isOpen={isNewAptOpen} onClose={() => setIsNewAptOpen(false)} />
     </div>
   );
 };

@@ -1,123 +1,61 @@
 // @ts-nocheck
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
-
-const getCorsHeaders = (req: Request) => {
-  const ALLOWED_ORIGINS = ["https://diente-link.vercel.app", "http://localhost:3000", "http://localhost:5173"];
-  const origin = req.headers.get("origin") || "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Vary": "Origin"
-  };
-};
-
+// Use WHATSAPP_TOKEN (different token) to find production WABA and list its templates
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders(req) })
-  }
+  const token = Deno.env.get("WHATSAPP_PERMANENT_TOKEN")
+  const altToken = Deno.env.get("WHATSAPP_TOKEN")
+  const phoneId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID")
+  const TEST_PHONE = "50498053628"
 
-  try {
-    const { appointment_id } = await req.json()
-    if (!appointment_id) {
-      throw new Error("appointment_id is required")
-    }
+  const results: any = {}
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  // Try sending appointment_reminder_v1 with language "es" using BOTH tokens
+  for (const [label, tok] of [["permanent_token", token], ["whatsapp_token", altToken]]) {
+    if (!tok) { results[label] = "token not set"; continue; }
 
-    const token = Deno.env.get("WHATSAPP_PERMANENT_TOKEN")
-    const phoneId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID")
-
-    if (!token || !phoneId) {
-      throw new Error("Meta API Secrets (WHATSAPP_PERMANENT_TOKEN or WHATSAPP_PHONE_NUMBER_ID) are not configured.")
-    }
-
-    // Fetch appointment details
-    const { data: cita, error: dbError } = await supabase
-      .from("appointments")
-      .select("*, profiles:doctor_id(full_name, clinic_name)")
-      .eq("id", appointment_id)
-      .single()
-
-    if (dbError || !cita) {
-      throw new Error("Appointment not found")
-    }
-
-    let toPhone = (cita.phone_number || cita.telefono || "").replace(/[^0-9]/g, "")
-    if (!toPhone) {
-      return new Response(JSON.stringify({ skipped: true, reason: "No phone number" }), {
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" }
-      })
-    }
-
-    if (toPhone.length === 8) toPhone = "504" + toPhone
-    else if (toPhone.length === 10 && !toPhone.startsWith("52")) toPhone = "52" + toPhone
-
-    const profileData = cita.profiles as any
-    const clinicName = profileData?.clinic_name || "Clínica Dental"
-
-    const dateFormatted = (() => {
-      try {
-        const d = new Date(cita.date + "T12:00:00")
-        return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
-      } catch { return cita.date }
-    })()
-
-    const timeFormatted = (() => {
-      try {
-        const [h, m] = cita.time.split(":")
-        const d = new Date(0, 0, 0, parseInt(h), parseInt(m))
-        return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", hour12: true })
-      } catch { return cita.time }
-    })()
-
-    const metaUrl = `https://graph.facebook.com/v21.0/${phoneId}/messages`
-
-    const whatsappBody = {
+    const body = {
       messaging_product: "whatsapp",
-      to: toPhone,
+      to: TEST_PHONE,
       type: "template",
       template: {
         name: "appointment_reminder_v1",
         language: { code: "es" },
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: cita.patient_name || "Paciente" },
-            { type: "text", text: clinicName },
-            { type: "text", text: dateFormatted },
-            { type: "text", text: timeFormatted }
-          ]
-        }]
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: "Joe (Prueba)" },
+              { type: "text", text: "DienteLink" },
+              { type: "text", text: "jueves, 10 de septiembre" },
+              { type: "text", text: "09:00 a. m." }
+            ]
+          }
+        ]
       }
     }
 
-    const response = await fetch(metaUrl, {
+    const resp = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(whatsappBody)
+      headers: { "Authorization": `Bearer ${tok}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
     })
+    const data = await resp.json()
+    results[label] = { ok: resp.ok, status: resp.status, data }
 
-    const metaData = await response.json()
-
-    if (response.ok) {
-      return new Response(JSON.stringify({ success: true, message_id: metaData.messages?.[0]?.id }), {
-        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" }
-      })
-    } else {
-      throw new Error(JSON.stringify(metaData))
+    // Also try to list templates from WABA using this token
+    // Try common WABA IDs
+    for (const wabaId of ["2394648517626288", "122121505173339453"]) {
+      const tResp = await fetch(
+        `https://graph.facebook.com/v21.0/${wabaId}/message_templates?fields=name,language,status&limit=5`,
+        { headers: { "Authorization": `Bearer ${tok}` } }
+      )
+      const tData = await tResp.json()
+      if (!tData.error) {
+        results[`${label}_waba_${wabaId}_templates`] = tData.data?.map((t: any) => `${t.name}/${t.language}/${t.status}`)
+      }
     }
-
-  } catch (err) {
-    console.error("Error:", err)
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" }
-    })
   }
+
+  return new Response(JSON.stringify(results, null, 2), {
+    headers: { "Content-Type": "application/json" }
+  })
 })

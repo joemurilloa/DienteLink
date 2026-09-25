@@ -52,10 +52,6 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
     }, [query, allPatients]);
 
     const handleSelect = (patientId: string) => {
-        const patient = results.find(p => p.id === patientId);
-        if (patient) {
-            sileo.success({ title: `Abriendo expediente de ${patient.identification.fullName}`, description: '¡Listo para la consulta!' });
-        }
         navigate(`/patient/${patientId}`);
         onClose();
         setQuery('');

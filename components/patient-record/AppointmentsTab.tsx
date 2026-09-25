@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PatientRecord as PatientRecordType, Appointment } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAppointments } from '../../hooks/useAppointments';
-import { Calendar } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Calendar, Plus } from 'lucide-react';
+import NewAppointmentModal from '../NewAppointmentModal';
 
 interface Props {
     patient: PatientRecordType;
@@ -11,15 +11,11 @@ interface Props {
 
 const AppointmentsTab: React.FC<Props> = ({ patient }) => {
     const { data: allAppointments = [] } = useAppointments();
-    const navigate = useNavigate();
+    const [isNewAptOpen, setIsNewAptOpen] = useState(false);
 
     const patientAppointments = allAppointments.filter(
         apt => apt.patientId === patient.id || apt.patientName.toLowerCase().trim() === patient.identification.fullName.toLowerCase().trim()
     );
-
-    const handleNewAppointment = () => {
-        navigate(`/calendar?patient=${encodeURIComponent(patient.identification.fullName)}&id=${patient.id}`);
-    };
 
     return (
         <div className="space-y-8 animate-in-up duration-500">
@@ -29,10 +25,10 @@ const AppointmentsTab: React.FC<Props> = ({ patient }) => {
                     <p className="text-slate-500 text-sm mt-1">Seguimiento de citas programadas</p>
                 </div>
                 <button
-                    onClick={handleNewAppointment}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
+                    onClick={() => setIsNewAptOpen(true)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 active:scale-95"
                 >
-                    <Calendar size={14} /> Agendar Cita
+                    <Plus size={16} /> Agendar Cita
                 </button>
             </div>
             {patientAppointments.length === 0 ? (
@@ -42,8 +38,8 @@ const AppointmentsTab: React.FC<Props> = ({ patient }) => {
                     </div>
                     <h4 className="text-lg font-bold text-slate-700 mb-1">Sin citas programadas</h4>
                     <p className="text-slate-500 text-sm max-w-xs mx-auto mb-6">No hay citas registradas para este paciente.</p>
-                    <button onClick={handleNewAppointment} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20">
-                        Ir al Calendario
+                    <button onClick={() => setIsNewAptOpen(true)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 active:scale-95">
+                        + Agendar Primera Cita
                     </button>
                 </div>
             ) : (
@@ -76,6 +72,13 @@ const AppointmentsTab: React.FC<Props> = ({ patient }) => {
                     ))}
                 </div>
             )}
+
+            <NewAppointmentModal
+                isOpen={isNewAptOpen}
+                onClose={() => setIsNewAptOpen(false)}
+                initialPatientId={patient.id}
+                initialPatientName={patient.identification.fullName}
+            />
         </div>
     );
 };

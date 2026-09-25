@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Appointment } from '../types';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
-import { emailReminderService } from '../services/emailReminderService';
+
 import { DEMO_APPOINTMENTS } from '../lib/demoData';
 
 
@@ -108,31 +108,7 @@ export function useAppointmentMutations() {
         }).catch(err => console.error('WhatsApp confirmation failed to trigger:', err));
       }
 
-      // Automatically trigger email reminder if status is 'Programada'
-      if (appointment.status === 'Programada' && appointment.patientId) {
-        const { data: patientData } = await supabase
-          .from('patients')
-          .select('email')
-          .eq('id', appointment.patientId)
-          .single();
 
-        if (patientData?.email) {
-          emailReminderService.sendReminder({
-            patientName: appointment.patientName,
-            patientEmail: patientData.email,
-            appointmentDate: appointment.date,
-            appointmentTime: appointment.time,
-            appointmentType: appointment.type,
-            doctorName: profile?.full_name || 'Doctor',
-            clinicName: profile?.clinic_name || 'Clínica Dental'
-          }).then(res => {
-            if (res.success) {
-              // Optionally update reminder_status to 'sent' here
-              supabase.from('appointments').update({ reminder_status: 'sent' }).eq('id', appointment.id).then();
-            }
-          });
-        }
-      }
 
       return dbToAppointment(data);
     },
@@ -247,30 +223,7 @@ export function useAppointmentMutations() {
         throw error;
       }
 
-      // Automatically trigger email reminder if status changed to 'Programada' and hasn't been sent
-      if (appointment.status === 'Programada' && appointment.reminderStatus === 'not_sent' && appointment.patientId) {
-        const { data: patientData } = await supabase
-          .from('patients')
-          .select('email')
-          .eq('id', appointment.patientId)
-          .single();
 
-        if (patientData?.email) {
-          emailReminderService.sendReminder({
-            patientName: appointment.patientName,
-            patientEmail: patientData.email,
-            appointmentDate: appointment.date,
-            appointmentTime: appointment.time,
-            appointmentType: appointment.type,
-            doctorName: profile?.full_name || 'Doctor',
-            clinicName: profile?.clinic_name || 'Clínica Dental'
-          }).then(res => {
-            if (res.success) {
-              supabase.from('appointments').update({ reminder_status: 'sent' }).eq('id', appointment.id).then();
-            }
-          });
-        }
-      }
 
       return dbToAppointment(data);
     },

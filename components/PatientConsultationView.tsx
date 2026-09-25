@@ -182,8 +182,9 @@ const PatientConsultationView: React.FC = () => {
       <header className="h-16 bg-white border-b border-slate-300 px-6 flex items-center justify-between flex-shrink-0 relative z-10 shadow-sm">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => navigate('/')} 
-            className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors"
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} 
+            className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
+            title="Volver"
           >
             <ArrowLeft size={16} />
           </button>

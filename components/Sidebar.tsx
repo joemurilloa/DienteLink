@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn, getInitials } from '../lib/utils';
-import { LayoutDashboard, Users, Calendar as CalendarIcon, Settings, Bell, Menu, CreditCard, LogOut } from 'lucide-react';
+import { Home, Users, Calendar as CalendarIcon, Settings, Bell, Menu, CreditCard, LogOut } from 'lucide-react';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 import NotificationCenter from './NotificationCenter';
@@ -63,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   };
 
   const items: { id: string; label: string; icon: React.FC<any>; path: string; badge?: number; allowed: boolean }[] = [
-    { id: 'dashboard',   label: 'Dashboard',   icon: LayoutDashboard, path: '/',              allowed: canViewFinancial },
+    { id: 'dashboard',   label: 'Inicio',      icon: Home,            path: '/',              allowed: canViewFinancial },
     { id: 'patients',    label: 'Pacientes',   icon: Users,           path: '/patients',       allowed: true },
     { id: 'calendar',    label: 'Calendario',  icon: CalendarIcon,    path: '/calendar',       allowed: true },
     { id: 'solicitudes', label: 'Solicitudes', icon: Bell,            path: '/booking/manage', badge: pendingRequestsCount, allowed: true },

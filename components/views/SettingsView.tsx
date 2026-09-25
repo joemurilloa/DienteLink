@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authService';
-import { useAppointments } from '../../hooks/useAppointments';
-import { usePatients } from '../../hooks/usePatients';
-import { exportPatientsCSV, exportAppointmentsCSV } from '../../lib/utils';
-import { Download, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useSettingsTip } from '../ContextualTips';
-import { generateMonthlyReportPDF } from '../../lib/reportsGenerator';
-import { FileText } from 'lucide-react';
-import TeamSettings from './Settings/TeamSettings';
 import { useSubscription } from '../../hooks/useSubscription';
 
 const CURRENCY_OPTIONS = [
@@ -36,11 +29,8 @@ const CURRENCY_OPTIONS = [
 const SettingsView: React.FC = () => {
   const { profile, updateProfile, clinicId } = useAuth();
   const navigate = useNavigate();
-  const { data: allAppointments = [] } = useAppointments();
-  const { data: allPatients = [] } = usePatients();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const subscription = useSubscription(clinicId);
 
   // Contextual tip (show once)
@@ -187,81 +177,6 @@ const SettingsView: React.FC = () => {
         {/* Team Settings (Oculto en la Beta Pública para simplificar la UX) */}
         {/* <TeamSettings /> */}
 
-        {/* Exportar Datos */}
-        <div className="card-premium p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Download size={18} className="text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Exportar Datos</h3>
-              <p className="text-sm text-slate-500">Descarga tus datos en formato CSV (compatible con Excel)</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              onClick={() => {
-                const patients = allPatients;
-                if (patients.length === 0) { sileo.info({ title: 'No hay pacientes para exportar' }); return; }
-                exportPatientsCSV(patients);
-                sileo.success({ title: 'Pacientes exportados', description: `${patients.length} registros descargados` });
-              }}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-300 hover:border-blue-200 transition-all group"
-            >
-              <Users size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
-              <div className="text-left">
-                <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">Pacientes</p>
-                <p className="text-xs text-slate-500">Datos, presupuestos, pagos</p>
-              </div>
-            </button>
-            <button
-              onClick={() => {
-                const apts = allAppointments;
-                if (apts.length === 0) { sileo.info({ title: 'No hay citas para exportar' }); return; }
-                exportAppointmentsCSV(apts);
-                sileo.success({ title: 'Citas exportadas', description: `${apts.length} citas descargadas` });
-              }}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-300 hover:border-blue-200 transition-all group"
-            >
-              <CalendarIcon size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
-              <div className="text-left">
-                <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">Citas</p>
-                <p className="text-xs text-slate-500">Historial completo de agenda</p>
-              </div>
-            </button>
-            <button
-              onClick={async () => {
-                if (isGeneratingReport) return;
-                setIsGeneratingReport(true);
-                const now = new Date();
-                try {
-                  await generateMonthlyReportPDF(
-                    now.getMonth(),
-                    now.getFullYear(),
-                    allPatients,
-                    allAppointments,
-                    profile?.clinic_name || '',
-                    doctorName
-                  );
-                } finally {
-                  setIsGeneratingReport(false);
-                }
-              }}
-              disabled={isGeneratingReport}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-300 hover:border-blue-200 transition-all group disabled:opacity-50"
-            >
-              {isGeneratingReport ? (
-                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent animate-spin rounded-full mx-1" />
-              ) : (
-                <FileText size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
-              )}
-              <div className="text-left">
-                <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">{isGeneratingReport ? 'Generando...' : 'Reporte Mensual'}</p>
-                <p className="text-xs text-slate-500">Resumen en PDF del mes actual</p>
-              </div>
-            </button>
-          </div>
-        </div>
         {/* Subscription Section — only for owners */}
         {(!profile?.clinic_id || profile.clinic_id === profile?.id) && (
           <div className="card-premium p-6">

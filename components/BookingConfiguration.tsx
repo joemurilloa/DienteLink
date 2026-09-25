@@ -448,20 +448,7 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <button
-                  onClick={() => {
-                    const whatsappMessage = `¡Agenda tu cita conmigo de forma fácil y rápida! 📅✨\n\n${publicUrl}`;
-                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
-                    window.open(whatsappUrl, '_blank');
-                    sileo.success({ title: '¡Compartiendo en WhatsApp! 💚', description: 'Tu link de reservas está listo para compartir' });
-                  }}
-                  className="flex items-center gap-3 p-4 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors"
-                >
-                  <Share2 size={20} />
-                  <span className="font-semibold">Compartir en WhatsApp</span>
-                </button>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
                   onClick={copyPublicUrl}
                   className="flex items-center gap-3 p-4 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
