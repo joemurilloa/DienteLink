@@ -214,8 +214,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                     <Search size={16} />
                   </div>
                   <input
-                    autoFocus
-                    className="w-full pl-11 pr-12 py-3 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all border border-slate-200"
+                    className="w-full pl-11 pr-12 py-3 bg-slate-50 rounded-xl outline-none text-base font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all border border-slate-200"
                     value={newApt.patientName}
                     onChange={e => {
                       setNewApt(p => ({ ...p, patientName: e.target.value }));

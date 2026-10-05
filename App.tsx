@@ -10,6 +10,7 @@ import OnboardingWizard from './components/OnboardingWizard';
 import InstallPrompt from './components/InstallPrompt';
 import ConnectionStatus from './components/ConnectionStatus';
 import TrialBanner from './components/TrialBanner';
+import DemoBanner from './components/DemoBanner';
 import SubscriptionGate from './components/SubscriptionGate';
 import { useSubscription } from './hooks/useSubscription';
 import { sileo, Toaster } from 'sileo';
@@ -120,7 +121,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
   };
 
   return (
-    <div className="flex h-screen overflow-hidden sm:pt-0 pt-[env(safe-area-inset-top)] bg-slate-50">
+    <div className="app-shell flex h-screen overflow-hidden bg-slate-50">
       <OnboardingWizard />
       {/* Skip link for accessibility */}
       <a 
@@ -147,6 +148,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
             role="main"
             aria-label="Contenido principal"
           >
+            <DemoBanner />
             <TrialBanner subscription={subscription} />
             <InstallPrompt />
             <ConnectionStatus />

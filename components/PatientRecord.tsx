@@ -20,6 +20,7 @@ import {
     Shield
 } from 'lucide-react';
 import DentalLogo from './DentalLogo';
+import DemoBanner from './DemoBanner';
 const Odontogram = lazy(() => import('./Odontogram'));
 const Periodontogram = lazy(() => import('./Periodontogram'));
 import { useRoleAccess } from './RoleGuard';
@@ -259,7 +260,8 @@ const ENABLE_PERIODONTOGRAM = false;
     };
 
     const FocusModeContent = (
-        <div className="fixed inset-0 z-[10000] bg-slate-50 flex flex-col animate-in fade-in duration-200 overflow-y-auto overflow-x-hidden">
+        <div className="safe-screen fixed inset-0 z-[10000] bg-slate-50 flex flex-col animate-in fade-in duration-200 overflow-y-auto overflow-x-hidden">
+            <DemoBanner />
             {/* Minimal top bar */}
             <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 flex-shrink-0">
                 <div className="flex items-center gap-2.5">

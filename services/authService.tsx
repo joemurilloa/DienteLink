@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
 import { queryClient } from '../lib/queryClient';
@@ -51,17 +51,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<DoctorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const isGuestRef = useRef(false);
+  const savedProfileRef = useRef<DoctorProfile | null>(null);
 
   const enterGuestMode = () => {
+    isGuestRef.current = true;
     setIsGuest(true);
-    setProfile(DEMO_PROFILE);
+    setProfile(prev => {
+      if (prev && prev.id !== 'demo') savedProfileRef.current = prev;
+      return DEMO_PROFILE;
+    });
     setCurrencyConfig(DEMO_PROFILE.currency, DEMO_PROFILE.locale);
     document.documentElement.setAttribute('data-theme', DEMO_PROFILE.theme_color || 'blue');
-  };
-
-  const exitGuestMode = () => {
-    setIsGuest(false);
-    setProfile(null);
   };
 
   // Fetch doctor profile from profiles table
@@ -100,6 +101,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   theme_color: updatedData.theme_color || 'blue',
                   has_completed_onboarding: updatedData.has_completed_onboarding || false,
                 };
+                if (isGuestRef.current) {
+                  savedProfileRef.current = prof;
+                  return;
+                }
                 document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
                 setProfile(prof);
                 setCurrencyConfig(prof.currency, prof.locale);
@@ -120,14 +125,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           has_completed_onboarding: data.has_completed_onboarding || false,
         };
 
-        document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
+        if (isGuestRef.current) {
+          savedProfileRef.current = prof;
+          return;
+        }
 
+        document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
         setProfile(prof);
         setCurrencyConfig(prof.currency, prof.locale);
       }
     } catch (err) {
       console.error("Unexpected error in fetchProfile:", err);
     }
+  };
+
+  const exitGuestMode = () => {
+    isGuestRef.current = false;
+    setIsGuest(false);
+    const restored = savedProfileRef.current;
+    savedProfileRef.current = null;
+    if (restored) {
+      setProfile(restored);
+      setCurrencyConfig(restored.currency, restored.locale);
+      document.documentElement.setAttribute('data-theme', restored.theme_color || 'blue');
+      return;
+    }
+    setProfile(null);
+    if (user) fetchProfile(user.id, user.email);
   };
 
 

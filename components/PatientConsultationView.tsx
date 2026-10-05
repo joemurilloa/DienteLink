@@ -10,6 +10,7 @@ import { sileo } from 'sileo';
 import { cn, getInitials } from '../lib/utils';
 import { useAuth } from '../services/authService';
 import PatientRecordComponent from './PatientRecord';
+import DemoBanner from './DemoBanner';
 
 const PatientConsultationView: React.FC = () => {
   const navigate = useNavigate();
@@ -178,7 +179,8 @@ const PatientConsultationView: React.FC = () => {
   if (!patient) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col font-sans">
+    <div className="safe-screen fixed inset-0 z-[100] bg-slate-50 flex flex-col font-sans">
+      <DemoBanner />
       {/* Top Navigation */}
       <header className="h-16 bg-white border-b border-slate-300 px-6 flex items-center justify-between flex-shrink-0 relative z-10 shadow-sm">
         <div className="flex items-center gap-4">
