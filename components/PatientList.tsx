@@ -87,7 +87,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
 
     return (
         <div className="space-y-12 animate-in fade-in duration-700 pb-20 max-w-[1400px] mx-auto">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 pt-4">
+            <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 lg:gap-8 pt-4">
                 <div className="animate-in-up stagger-delay-1">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="px-3 py-1 bg-slate-100/80 text-slate-500 rounded-lg text-xs font-bold uppercase tracking-wider">{patients.length} Expedientes</div>
@@ -95,14 +95,14 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                     <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Pacientes</h1>
                 </div>
 
-                <div className="flex items-center gap-2 md:gap-4 animate-in-up stagger-delay-2 w-full md:w-auto">
-                    <div className="relative group flex-1 md:flex-none">
+                <div className="flex items-center gap-2 md:gap-3 animate-in-up stagger-delay-2 w-full lg:w-auto min-w-0">
+                    <div className="relative group flex-1 lg:flex-none min-w-0">
                         <Search className="absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none" size={16} />
                         <input
                             autoFocus
                             type="text"
                             placeholder="Buscar paciente..."
-                            className="pl-9 md:pl-11 pr-4 md:pr-5 h-[46px] md:h-12 bg-slate-50 border border-slate-200 rounded-[12px] md:rounded-[14px] w-full md:w-80 outline-none text-[14px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition-all placeholder:font-normal placeholder:text-slate-400"
+                            className="pl-9 md:pl-11 pr-4 md:pr-5 h-[46px] md:h-12 bg-slate-50 border border-slate-200 rounded-[12px] md:rounded-[14px] w-full lg:w-72 xl:w-80 outline-none text-[14px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition-all placeholder:font-normal placeholder:text-slate-400"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
@@ -134,7 +134,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
             </header>
 
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                 {isLoading ? (
                     generateSkeletons(PatientCardSkeleton, 8)
                 ) : (
@@ -187,7 +187,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                         <div className="pt-4 border-t border-slate-50 flex justify-between items-center group-hover:border-slate-300 transition-colors">
                             <div className="flex items-center gap-2">
                                 <Calendar size={12} className="text-slate-400" />
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Aper. {new Date(patient.createdAt).toLocaleDateString('es-ES', {month: 'short', year: 'numeric'})}</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Desde {new Date(patient.createdAt).toLocaleDateString('es-ES', {month: 'short', year: 'numeric'})}</span>
                             </div>
                             <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                 <ArrowRight size={14} className="text-slate-500 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />

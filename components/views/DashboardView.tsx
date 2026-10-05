@@ -13,6 +13,10 @@ import { cn, getLocalISODate } from '../../lib/utils';
 import { Search, Plus, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
 import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useRoleAccess } from '../RoleGuard';
+import FinanceSummary from '../FinanceSummary';
+import GettingStarted from '../GettingStarted';
+import { getLastBackupDate } from '../../lib/backup';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -52,6 +56,8 @@ const SectionHeader: React.FC<{ title: string; action?: { label: string; onClick
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
+  const { canViewFinancial, isAdmin } = useRoleAccess();
+  const { isGuest } = useAuth();
 
   const { data: allAppointments = [] } = useAppointments();
   const { updateAppointment } = useAppointmentMutations();
@@ -240,11 +246,26 @@ const Dashboard: React.FC = () => {
           <StatPill label="Pacientes" value={allPatients.length} sub="en total" />
         </div>
 
+        {/* ── Primeros pasos (cuentas nuevas) ─────────────────────────────── */}
+        {isAdmin && !isGuest && (
+          <GettingStarted
+            hasPatient={allPatients.length > 0}
+            hasAppointment={allAppointments.some(a => a.status !== 'Eliminada')}
+            hasPayment={allPatients.some(p => (p.payments || []).length > 0)}
+            onNewAppointment={() => setIsNewAptOpen(true)}
+          />
+        )}
+
+        {/* ── Finanzas (solo roles con acceso financiero) ─────────────────── */}
+        {canViewFinancial && (
+          <FinanceSummary patients={allPatients} clinicName={profile?.clinic_name} />
+        )}
+
         {/* ── Agenda ──────────────────────────────────────────────────────── */}
         <section className="flex flex-col gap-3 min-w-0">
           <SectionHeader
             title="Tu Agenda"
-            action={{ label: 'Ver calendario completo', onClick: () => navigate('/calendar') }}
+            action={{ label: 'Ver agenda completa', onClick: () => navigate('/calendar') }}
           />
 
           {groupedAppointments.length === 0 ? (
@@ -286,6 +307,25 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </section>
+
+        {/* ── Recordatorio de respaldo (>30 días o nunca): discreto, al final ── */}
+        {isAdmin && !isGuest && allPatients.length > 0 && (() => {
+          const last = getLastBackupDate();
+          const days = last ? Math.floor((Date.now() - last.getTime()) / 86_400_000) : null;
+          if (days !== null && days <= 30) return null;
+          return (
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-left hover:border-amber-300 transition-all cursor-pointer"
+            >
+              <p className="text-[13px] text-slate-600">
+                {days === null ? 'Aún no has descargado un respaldo de tus pacientes.' : `Tu último respaldo fue hace ${days} días.`}
+              </p>
+              <span className="text-xs font-bold text-amber-700 whitespace-nowrap">Respaldar →</span>
+            </button>
+          );
+        })()}
 
       </div>
 

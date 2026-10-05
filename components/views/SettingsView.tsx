@@ -4,6 +4,10 @@ import { useAuth } from '../../services/authService';
 import { sileo } from 'sileo';
 import { useSettingsTip } from '../ContextualTips';
 import { useSubscription } from '../../hooks/useSubscription';
+import { useRoleAccess } from '../RoleGuard';
+import PriceCatalogSettings from './Settings/PriceCatalogSettings';
+import BackupSettings from './Settings/BackupSettings';
+import { openProblemReport } from '../../lib/support';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -27,7 +31,8 @@ const CURRENCY_OPTIONS = [
 ];
 
 const SettingsView: React.FC = () => {
-  const { profile, updateProfile, clinicId } = useAuth();
+  const { canViewFinancial, isAdmin } = useRoleAccess();
+  const { profile, updateProfile, clinicId, user } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -115,7 +120,7 @@ const SettingsView: React.FC = () => {
               <SettingsInput label="Nombre completo" value={form.full_name} field="full_name" />
               <div>
                 <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Rol en el sistema</label>
-                <p className="text-sm font-bold text-slate-900 py-2.5 capitalize">{profile?.role || 'Propietario'}</p>
+                <p className="text-sm font-bold text-slate-900 py-2.5 ">{({ owner: 'Propietario', doctor: 'Doctor', admin: 'Administrador', assistant: 'Asistente clínico', receptionist: 'Recepcionista' } as Record<string, string>)[profile?.role || 'owner'] || 'Propietario'}</p>
               </div>
               <SettingsInput label="Nombre de la clínica" value={form.clinic_name} field="clinic_name" />
               <SettingsInput label="Teléfono" value={form.phone} field="phone" />
@@ -172,6 +177,23 @@ const SettingsView: React.FC = () => {
               </button>
             </div>
           )}
+        </div>
+
+        {canViewFinancial && <PriceCatalogSettings />}
+
+        {isAdmin && <BackupSettings />}
+
+        <div className="card-premium p-6 flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">¿Algo no funciona?</h3>
+            <p className="text-sm text-slate-500 mt-0.5">Escríbenos por WhatsApp, respondemos directo.</p>
+          </div>
+          <button
+            onClick={() => openProblemReport({ doctorName: profile?.full_name, clinicName: profile?.clinic_name, email: user?.email })}
+            className="px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-sm font-semibold whitespace-nowrap cursor-pointer"
+          >
+            Reportar problema
+          </button>
         </div>
 
         {/* Team Settings (Oculto en la Beta Pública para simplificar la UX) */}

@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -105,6 +105,12 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const initialTab = ((initialParam === 'citas' ? 'history' : initialParam) || 'id') as TabId;
     const [activeTab, setActiveTab] = useState<TabId>(initialTab);
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [budgetPrefill, setBudgetPrefill] = useState<{ treatment: string; cost: string; toothId: number } | null>(null);
+    const handleAddToBudget = (toothId: number, suggestion: { treatment: string; cost: string }) => {
+        setBudgetPrefill({ ...suggestion, toothId });
+        setIsFocusMode(false);
+        setActiveTab('budget');
+    };
     const [isExporting, setIsExporting] = useState(false);
     const { canViewClinical, canViewFinancial, canEditClinical, role: userRole } = useRoleAccess();
 
@@ -194,6 +200,7 @@ const ENABLE_PERIODONTOGRAM = false;
                     teeth={patient.odontogram || []}
                     onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })}
                     snapshots={patient.odontogramHistory || []}
+                    onAddToBudget={canViewFinancial ? handleAddToBudget : undefined}
                 />
             );
             case 'periodontogram': return (
@@ -232,7 +239,7 @@ const ENABLE_PERIODONTOGRAM = false;
             case 'odontogram':
                 return (
                     <div className="space-y-0 animate-in-up duration-500 min-h-[600px] h-full flex flex-col">
-                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} />
+                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} onAddToBudget={canViewFinancial ? handleAddToBudget : undefined} />
                     </div>
                 );
             case 'periodontogram':
@@ -245,7 +252,7 @@ const ENABLE_PERIODONTOGRAM = false;
             case 'citas':
                 return <UnifiedTimelineTab patient={patient} onUpdate={onUpdate} />;
             case 'budget':
-                return <BudgetTab patient={patient} onUpdate={onUpdate} />;
+                return <BudgetTab patient={patient} onUpdate={onUpdate} prefill={budgetPrefill} onPrefillConsumed={() => setBudgetPrefill(null)} />;
             default:
                 return null;
         }

@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Home, Calendar, Users, Bell, Menu as MenuIcon, Settings, CreditCard, LogOut, X, Plus } from 'lucide-react';
+import { Home, Calendar, Users, Bell, Menu as MenuIcon, Settings, CreditCard, LogOut, X, Plus, Inbox, LifeBuoy } from 'lucide-react';
+import { openProblemReport } from '../lib/support';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 import NotificationCenter from './NotificationCenter';
@@ -18,7 +19,7 @@ interface BottomNavProps {
 
 const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOpen, pendingRequestsCount = 0 }) => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   const { isAdmin } = useRoleAccess();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -168,7 +169,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                     className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-amber-50 active:bg-amber-100 transition-colors text-left"
                   >
                     <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 relative">
-                      <Bell size={20} />
+                      <Inbox size={20} />
                       {pendingRequestsCount > 0 && (
                         <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                           {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
@@ -224,7 +225,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
 
                   {isAdmin && (
                     <button
-                      onClick={() => { setIsMenuOpen(false); navigate('/billing'); }}
+                      onClick={() => { setIsMenuOpen(false); navigate('/subscription'); }}
                       className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
                     >
                       <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -233,6 +234,16 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                       <span className="font-bold text-slate-700 text-[15px]">Plan y Facturación</span>
                     </button>
                   )}
+
+                  <button
+                    onClick={() => { setIsMenuOpen(false); openProblemReport({ doctorName: profile?.full_name, clinicName: profile?.clinic_name }); }}
+                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                      <LifeBuoy size={20} />
+                    </div>
+                    <span className="font-bold text-slate-700 text-[15px]">Reportar problema</span>
+                  </button>
 
                   <div className="h-px bg-slate-100 my-2 mx-3" />
 

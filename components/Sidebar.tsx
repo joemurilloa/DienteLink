@@ -2,7 +2,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn, getInitials } from '../lib/utils';
-import { Home, Users, Calendar as CalendarIcon, Settings, Bell, Menu, CreditCard, LogOut } from 'lucide-react';
+import { Home, Users, Calendar as CalendarIcon, Settings, Inbox, Menu, CreditCard, LogOut, LifeBuoy } from 'lucide-react';
+import { openProblemReport } from '../lib/support';
 import { useAuth } from '../services/authService';
 import { useRoleAccess } from './RoleGuard';
 import NotificationCenter from './NotificationCenter';
@@ -67,8 +68,8 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   const items: { id: string; label: string; icon: React.FC<any>; path: string; badge?: number; allowed: boolean }[] = [
     { id: 'dashboard',   label: 'Inicio',      icon: Home,            path: '/',              allowed: canViewFinancial },
     { id: 'patients',    label: 'Pacientes',   icon: Users,           path: '/patients',       allowed: true },
-    { id: 'calendar',    label: 'Calendario',  icon: CalendarIcon,    path: '/calendar',       allowed: true },
-    { id: 'solicitudes', label: 'Solicitudes', icon: Bell,            path: '/booking/manage', badge: pendingRequestsCount, allowed: true },
+    { id: 'calendar',    label: 'Agenda',      icon: CalendarIcon,    path: '/calendar',       allowed: true },
+    { id: 'solicitudes', label: 'Solicitudes', icon: Inbox,           path: '/booking/manage', badge: pendingRequestsCount, allowed: true },
   ].filter(i => i.allowed);
 
   return (
@@ -189,6 +190,17 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
               >
                 <Settings size={15} className="text-slate-500" />
                 <span>Ajustes</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  openProblemReport({ doctorName: profile?.full_name, clinicName: profile?.clinic_name });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-slate-700 hover:bg-slate-100/60 active:bg-slate-200/40 transition-colors duration-200 text-left"
+              >
+                <LifeBuoy size={15} className="text-slate-500" />
+                <span>Reportar problema</span>
               </button>
 
               <div className="h-px bg-slate-100/80 my-1" />

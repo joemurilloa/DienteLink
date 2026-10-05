@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { usePriceCatalog } from '../../lib/priceCatalog';
 import { PatientRecord as PatientRecordType, BudgetItem, Payment } from '../../types';
 import { cn, formatCurrency, getLocalISODate } from '../../lib/utils';
 import {
@@ -27,27 +28,30 @@ const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
 interface Props {
     patient: PatientRecordType;
     onUpdate: (updatedPatient: PatientRecordType) => void;
+    /** Tratamiento sugerido desde el odontograma (se precarga en el formulario). */
+    prefill?: { treatment: string; cost: string; toothId: number } | null;
+    onPrefillConsumed?: () => void;
 }
 
-const DEFAULT_CATALOG = [
-    { name: 'Consulta General', cost: 300 },
-    { name: 'Limpieza (Profilaxis)', cost: 600 },
-    { name: 'Resina Simple', cost: 800 },
-    { name: 'Resina Compuesta', cost: 1200 },
-    { name: 'Extracción Simple', cost: 1000 },
-    { name: 'Extracción Compleja', cost: 2500 },
-    { name: 'Endodoncia', cost: 3500 },
-    { name: 'Corona Metal/Porcelana', cost: 4000 },
-    { name: 'Blanqueamiento', cost: 3000 }
-];
-
-const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
+const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsumed }) => {
     const { profile } = useAuth();
+    const { catalog: DEFAULT_CATALOG } = usePriceCatalog();
     const doctorName = profile?.full_name || 'Doctor';
     const clinicName = profile?.clinic_name || 'Clínica Dental';
 
     const [newTreatment, setNewTreatment] = useState({ treatment: '', unitCost: '', quantity: '1', toothId: '' });
     const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash' as Payment['method'], note: '' });
+    useEffect(() => {
+        if (!prefill) return;
+        setNewTreatment(p => ({
+            ...p,
+            treatment: prefill.treatment,
+            unitCost: prefill.cost,
+            quantity: '1',
+            toothId: String(prefill.toothId),
+        }));
+        onPrefillConsumed?.();
+    }, [prefill]);
     const [budgetError, setBudgetError] = useState('');
     const [paymentError, setPaymentError] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<{ type: 'treatment' | 'payment', id: string } | null>(null);
@@ -154,8 +158,8 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate }) => {
         <div className="space-y-8 animate-in-up duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Presupuesto</h3>
-                    <p className="text-slate-500 text-sm mt-1">Plan de tratamiento y control de pagos</p>
+                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Finanzas</h3>
+                    <p className="text-slate-500 text-sm mt-1">Presupuesto, abonos y recibos del paciente</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     {budgetItems.length > 0 && (

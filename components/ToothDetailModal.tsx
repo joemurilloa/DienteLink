@@ -97,6 +97,7 @@ interface ToothDetailModalProps {
   onSetWholeToothCondition: (toothId: number, condition: ClinicalCondition) => void;
   onNavigateTooth: (nextId: number) => void;
   readOnly?: boolean;
+  onAddToBudget?: (toothId: number) => void;
 }
 
 export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
@@ -112,6 +113,7 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
   onSetWholeToothCondition,
   onNavigateTooth,
   readOnly = false,
+  onAddToBudget,
 }) => {
   const [hoveredSurface, setHoveredSurface] = React.useState<ToothSurface | null>(null);
 
@@ -495,6 +497,15 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
           <span className="text-xs font-medium text-slate-400 hidden sm:inline">
             Usa las flechas ← y → para navegar entre piezas dentales
           </span>
+          {onAddToBudget && toothId !== null && (
+            <button
+              type="button"
+              onClick={() => onAddToBudget(toothId)}
+              className="w-full sm:w-auto px-5 py-2 mr-0 sm:mr-2 mb-2 sm:mb-0 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all"
+            >
+              + Agregar al presupuesto
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

@@ -37,7 +37,7 @@ const PatientDetailView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 h-full overflow-hidden flex flex-col p-4 md:p-5 lg:p-8 pb-24 md:pb-32 page-transition">
+    <div className="flex-1 h-full overflow-y-auto flex flex-col p-4 md:p-5 lg:p-8 pb-24 md:pb-12 page-transition">
       <React.Suspense fallback={
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -69,7 +69,7 @@ const PatientDetailView: React.FC = () => {
             <span>Iniciar Consulta</span>
           </button>
         </header>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-[680px]">
           <PatientRecord patient={patient} onUpdate={handleUpdate} />
         </div>
       </React.Suspense>

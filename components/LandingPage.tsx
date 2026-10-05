@@ -7,6 +7,7 @@ import {
   CheckCircle2, ArrowRight
 } from 'lucide-react';
 import DentalLogo from './DentalLogo';
+import { BILLING } from '../lib/billing';
 
 
 const LandingPage: React.FC = () => {
@@ -82,7 +83,7 @@ const LandingPage: React.FC = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-sm font-bold text-slate-600 tracking-widest uppercase">El estándar en gestión dental</span>
+            <span className="text-sm font-bold text-slate-600 tracking-widest uppercase">Hecho para consultorios dentales</span>
           </motion.div>
           
           <motion.h1 
@@ -242,7 +243,7 @@ const LandingPage: React.FC = () => {
                 Historial médico siempre disponible, consentimientos informados listos para firmar y recetas personalizadas al instante.
               </p>
               <ul className="space-y-4">
-                {['Firmas digitales seguras', 'Historial 100% en la nube', 'Respaldo automático'].map((item, i) => (
+                {['Firma digital de consentimientos', 'Historial en la nube', 'Exporta tus pacientes cuando quieras'].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-base text-slate-700 font-bold">
                     <CheckCircle2 size={22} className="text-indigo-500" />
                     {item}
@@ -267,7 +268,7 @@ const LandingPage: React.FC = () => {
             <p className="text-slate-500 text-base mb-10 font-medium">Todo lo que tu clínica necesita para operar al máximo nivel, sin complicaciones.</p>
             
             <div className="flex items-baseline justify-center gap-2 mb-10">
-              <span className="text-6xl font-extrabold text-slate-900 tracking-tighter">$15</span>
+              <span className="text-6xl font-extrabold text-slate-900 tracking-tighter">{BILLING.priceAmount}</span>
               <span className="text-slate-500 font-bold text-lg">/ mes</span>
             </div>
 

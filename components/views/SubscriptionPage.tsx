@@ -4,16 +4,16 @@ import { useAuth } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../hooks/useSubscription';
 
-// ─── DATOS BANCARIOS — edita aquí ────────────────────────────
+import { BILLING } from '../../lib/billing';
+import BackupSettings from './Settings/BackupSettings';
+
 const BANK_INFO = {
-  bank:     'BAC Credomatic',
-  account:  '747076151',
-  holder:   'Joe Antonio Murillo Argueta',
-  amount:   'L. 250',
-  currency: 'Lempiras',
+  bank:     BILLING.bank.name,
+  account:  BILLING.bank.account,
+  holder:   BILLING.bank.holder,
+  amount:   BILLING.priceAmount,
+  currency: BILLING.priceCurrency,
 };
-const ADMIN_EMAIL = 'joemurillo95@gmail.com';
-// ─────────────────────────────────────────────────────────────
 
 type Step = 'info' | 'upload' | 'done';
 
@@ -141,6 +141,12 @@ const SubscriptionPage: React.FC = () => {
           <p className="sub-hero-subtitle">Completa tu pago para mantener acceso ininterrumpido a todas las herramientas.</p>
         </div>
 
+        {!subscription.isActive && (
+          <div className="mb-6">
+            <BackupSettings />
+          </div>
+        )}
+
         <div className="sub-grid-modern">
           {/* Left Column: Plan summary */}
           <div className="sub-col-left">
@@ -154,7 +160,7 @@ const SubscriptionPage: React.FC = () => {
                 <li><span className="feat-check">✓</span> Expedientes y pacientes ilimitados</li>
                 <li><span className="feat-check">✓</span> Odontograma profesional digital</li>
                 <li><span className="feat-check">✓</span> Agenda inteligente y citas</li>
-                <li><span className="feat-check">✓</span> Recordatorios por WhatsApp</li>
+                <li><span className="feat-check">✓</span> Recordatorio a pacientes por WhatsApp en un toque</li>
                 <li><span className="feat-check">✓</span> Portal de reserva para pacientes</li>
                 <li><span className="feat-check">✓</span> Control de pagos y presupuestos</li>
               </ul>

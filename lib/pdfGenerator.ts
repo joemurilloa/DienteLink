@@ -4,7 +4,12 @@ import { PatientRecord } from '../types';
 import { sileo } from 'sileo';
 import { formatCurrency, getLocalISODate } from './utils';
 
-export const generatePatientPDF = async (patient: PatientRecord, clinicName: string, doctorName: string) => {
+export const generatePatientPDF = async (
+    patient: PatientRecord,
+    clinicName: string,
+    doctorName: string,
+    options?: { asBlob?: boolean }
+): Promise<Blob | void> => {
     try {
         const doc = new jsPDF() as any;
         if (!doc || !doc.internal) throw new Error("No se pudo iniciar jsPDF");
@@ -248,7 +253,9 @@ export const generatePatientPDF = async (patient: PatientRecord, clinicName: str
         const sName = safeName.replace(/\s+/g, '-').toLowerCase();
         const sDate = getLocalISODate(new Date());
         const filename = `Expediente-${sName}-${sDate}.pdf`;
-        
+
+        if (options?.asBlob) return doc.output('blob') as Blob;
+
         doc.save(filename);
         sileo.success({ title: 'PDF Generado Exitosamente', description: 'El expediente médico profesional ha sido guardado.' });
     } catch (error) {

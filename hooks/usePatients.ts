@@ -16,7 +16,7 @@ function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
     }, {} as Record<string, T[]>);
 }
 
-function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = [], consents: any[] = [], prescriptions: any[] = [], labWorks: any[] = []): PatientRecord {
+export function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = [], consents: any[] = [], prescriptions: any[] = [], labWorks: any[] = []): PatientRecord {
     return {
         id: p.id,
         identification: {

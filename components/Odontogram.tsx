@@ -11,6 +11,7 @@ import {
   X as XIcon, Check, Copy, ArrowLeftRight, Info
 } from 'lucide-react';
 import ToothDetailModal from './ToothDetailModal';
+import { usePriceCatalog, suggestBudgetItem } from '../lib/priceCatalog';
 
 /* ================================================================
    TOOTH INFORMATION DATABASE
@@ -169,6 +170,8 @@ interface OdontogramProps {
   teeth: ToothData[];
   onUpdate: (teeth: ToothData[]) => void;
   snapshots?: OdontogramSnapshot[];
+  /** Si se pasa, el modal de pieza muestra "Agregar al presupuesto". */
+  onAddToBudget?: (toothId: number, suggestion: { treatment: string; cost: string }) => void;
 }
 
 /* ================================================================
@@ -997,7 +1000,8 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
 /* ================================================================
    MAIN ODONTOGRAM COMPONENT
    ================================================================ */
-const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, snapshots = [] }) => {
+const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, snapshots = [], onAddToBudget }) => {
+  const { catalog } = usePriceCatalog();
   const [selectedCondition, setSelectedCondition] = useState<ClinicalCondition>('caries');
   const [viewingSnapshotId, setViewingSnapshotId] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
@@ -1316,6 +1320,10 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
           onSetWholeToothCondition={handleSetWholeToothCondition}
           onNavigateTooth={(nextId) => setSelectedToothForDetail(nextId)}
           readOnly={isReadOnly}
+          onAddToBudget={onAddToBudget && !isReadOnly ? (id) => {
+            onAddToBudget(id, suggestBudgetItem(displayTeeth.find(t => t.id === id), catalog));
+            setSelectedToothForDetail(null);
+          } : undefined}
         />
       )}
     </div>

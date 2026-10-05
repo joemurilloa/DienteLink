@@ -303,6 +303,79 @@ class WhatsAppService {
       return { success: false, error: 'No se pudo abrir WhatsApp' };
     }
   }
+
+  /**
+   * Opens WhatsApp telling the patient their online booking request was confirmed.
+   */
+  sendBookingConfirmation(
+    phoneRaw: string | undefined | null,
+    patientName: string,
+    date: string,
+    time: string,
+    clinicName?: string,
+    defaultDialCode: string = '504'
+  ): { success: boolean; error?: string; url?: string } {
+    const phone = this.sanitizePhone(phoneRaw, defaultDialCode);
+    if (!phone) return { success: false, error: 'Sin teléfono registrado' };
+
+    const message = [
+      `¡Hola ${patientName}! 👋`,
+      '',
+      'Su solicitud de cita fue confirmada:',
+      `📅 ${this.formatDate(date)}`,
+      `⏰ ${this.formatTime(time)}`,
+      '',
+      '¡Le esperamos!',
+      '',
+      clinicName ? `— ${clinicName}` : '— DienteLink'
+    ].join('\n');
+    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    try {
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+      return { success: true, url: waUrl };
+    } catch {
+      return { success: false, error: 'No se pudo abrir WhatsApp' };
+    }
+  }
+
+  /**
+   * Builds a polite payment reminder with the pending balance.
+   */
+  buildPaymentReminderMessage(patientName: string, balanceFormatted: string, clinicName?: string): string {
+    const signOff = clinicName ? `— ${clinicName}` : '— DienteLink';
+    return [
+      `¡Hola ${patientName}! 👋`,
+      '',
+      `Le escribimos de ${clinicName || 'la clínica'} para recordarle amablemente que tiene un saldo pendiente de ${balanceFormatted}.`,
+      '',
+      'Si ya realizó su pago, por favor ignore este mensaje o envíenos su comprobante. ¡Gracias!',
+      '',
+      signOff
+    ].join('\n');
+  }
+
+  /**
+   * Opens WhatsApp with a payment reminder.
+   */
+  sendPaymentReminder(
+    phoneRaw: string | undefined | null,
+    patientName: string,
+    balanceFormatted: string,
+    clinicName?: string,
+    defaultDialCode: string = '504'
+  ): { success: boolean; error?: string; url?: string } {
+    const phone = this.sanitizePhone(phoneRaw, defaultDialCode);
+    if (!phone) return { success: false, error: 'Sin teléfono registrado' };
+
+    const message = this.buildPaymentReminderMessage(patientName, balanceFormatted, clinicName);
+    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    try {
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+      return { success: true, url: waUrl };
+    } catch {
+      return { success: false, error: 'No se pudo abrir WhatsApp' };
+    }
+  }
 }
 
 export const whatsappService = new WhatsAppService();

@@ -10,6 +10,7 @@ import OnboardingWizard from './components/OnboardingWizard';
 import InstallPrompt from './components/InstallPrompt';
 import ConnectionStatus from './components/ConnectionStatus';
 import TrialBanner from './components/TrialBanner';
+import SubscriptionGate from './components/SubscriptionGate';
 import { useSubscription } from './hooks/useSubscription';
 import { sileo, Toaster } from 'sileo';
 import 'sileo/styles.css';
@@ -148,6 +149,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
             <TrialBanner subscription={subscription} />
             <InstallPrompt />
             <ConnectionStatus />
+            <SubscriptionGate subscription={subscription}>
             <Suspense fallback={
               <div className="flex items-center justify-center w-full h-full">
                 <div className="text-center">
@@ -168,6 +170,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
                 <Route path="*" element={<Dashboard />} />
               </Routes>
             </Suspense>
+            </SubscriptionGate>
             <BottomNav activePath={getActivePath()} onSearchOpen={() => setIsSearchOpen(true)} pendingRequestsCount={pendingCount} />
           </main>
           <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />

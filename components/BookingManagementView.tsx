@@ -12,6 +12,8 @@ import { cn, generateId, getInitials, formatAppDate } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import ConfirmModal from './ConfirmModal';
+import { whatsappService } from '../services/whatsappService';
+import { useAuth } from '../services/authService';
 
 interface Props {
   onBack: () => void;
@@ -28,6 +30,7 @@ const daysOfWeek = [
 ];
 
 export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
+  const { profile } = useAuth();
   const { data: appointments = [] } = useAppointments();
   const { createAppointment, deleteAppointment } = useAppointmentMutations();
   const [activeTab, setActiveTab] = useState<'requests' | 'config' | 'share'>('requests');
@@ -80,6 +83,17 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   const handleApprove = async (id: string) => {
     const req = requests.find(r => r.id === id);
     if (!req) return;
+
+    const conflict = appointments.find(a =>
+      a.date === req.requestedDate && a.time === req.requestedTime && a.status !== 'Eliminada'
+    );
+    if (conflict) {
+      sileo.warning({
+        title: 'Horario ocupado',
+        description: `${conflict.patientName} ya tiene cita el ${formatAppDate(req.requestedDate)} a las ${req.requestedTime}. Declina o reprograma.`,
+      });
+      return;
+    }
 
     const approved = await bookingService.approveRequest(id);
     if (!approved) return;
@@ -355,6 +369,17 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                            <button onClick={() => handleApprove(req.id)} className="px-5 py-2.5 bg-slate-900 text-white rounded-[10px] text-[13px] font-bold hover:bg-slate-800 transition-all">Aprobar</button>
                            <button onClick={() => handleReject(req.id)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-[10px] text-[13px] font-bold hover:bg-slate-200 transition-all">Declinar</button>
                         </>
+                      )}
+                      {req.status === 'approved' && req.patientPhone && (
+                        <button
+                          onClick={() => {
+                            const r = whatsappService.sendBookingConfirmation(req.patientPhone, req.patientName, req.requestedDate, req.requestedTime, profile?.clinic_name);
+                            if (!r.success) sileo.warning({ title: 'No se pudo abrir WhatsApp', description: r.error });
+                          }}
+                          className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-bold transition-all"
+                        >
+                          Avisar por WhatsApp
+                        </button>
                       )}
                       {req.status === 'approved' && (
                         <button onClick={() => handleChangeStatus(req.id, 'rejected')} className="px-4 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold transition-all">Revocar</button>

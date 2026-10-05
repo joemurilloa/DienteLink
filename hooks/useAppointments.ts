@@ -101,13 +101,6 @@ export function useAppointmentMutations() {
         throw error;
       }
 
-      // [EN PAUSA] Disparo automático de WhatsApp API al crear cita (mantenido en pausa, no borrado)
-      // if (appointment.status === 'Programada') {
-      //   supabase.functions.invoke('whatsapp-confirmation', {
-      //     body: { appointment_id: data.id }
-      //   }).catch(err => console.error('WhatsApp confirmation failed to trigger:', err));
-      // }
-
 
 
       return dbToAppointment(data);

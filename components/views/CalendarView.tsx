@@ -109,13 +109,13 @@ const CalendarView: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white page-transition overflow-hidden">
-      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 pt-10 lg:p-6 lg:pb-6 gap-4 overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 pt-10 lg:p-6 lg:pb-6 gap-4 overflow-y-auto hide-scrollbar">
         
         {/* Superior Minimalist Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 flex-shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Calendario</h1>
+              <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Agenda</h1>
             </div>
             <p className="text-slate-500 font-medium text-sm">Organiza tu clínica fácilmente.</p>
           </div>
@@ -164,7 +164,7 @@ const CalendarView: React.FC = () => {
           <div className="w-16" /> {/* Spacer */}
         </div>
 
-        <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-500">
+        <div className="flex-1 flex flex-col min-h-[540px] animate-in fade-in duration-500">
           
           {/* ══════ MONTH VIEW ══════ */}
           {viewMode === 'month' && (
