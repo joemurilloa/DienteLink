@@ -69,7 +69,7 @@ const PatientDetailView: React.FC = () => {
             <span>Iniciar Consulta</span>
           </button>
         </header>
-        <div className="flex-1 min-h-[680px]">
+        <div className="flex-1 md:min-h-[680px]">
           <PatientRecord patient={patient} onUpdate={handleUpdate} />
         </div>
       </React.Suspense>

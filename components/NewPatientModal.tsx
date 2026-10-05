@@ -17,7 +17,7 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
     const [formData, setFormData] = useState<PatientIdentification>({
         fullName: '',
         birthDate: '',
-        gender: 'Otro',
+        gender: '',
         address: '',
         phone: '',
         email: '',
@@ -84,7 +84,7 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
 
         onSave(newPatient);
         onClose();
-        setFormData({ fullName: '', birthDate: '', gender: 'Otro', address: '', phone: '', email: '', occupation: '' });
+        setFormData({ fullName: '', birthDate: '', gender: '', address: '', phone: '', email: '', occupation: '' });
         setErrors({});
     };
 

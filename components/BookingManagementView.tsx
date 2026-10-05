@@ -5,10 +5,11 @@ import {
   Settings, Share2, Copy, Eye, Plus, Trash2, Save, Globe,
   Bell, RefreshCw, Link2, MoreVertical
 } from 'lucide-react';
-import { DoctorAvailability, PublicBookingSettings, AppointmentRequest, Appointment } from '../types';
+import { DoctorAvailability, PublicBookingSettings, AppointmentRequest, Appointment, PatientRecord } from '../types';
 import { bookingService } from '../services/bookingService';
 import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
-import { cn, generateId, getInitials, formatAppDate } from '../lib/utils';
+import { usePatients, usePatientMutations } from '../hooks/usePatients';
+import { cn, generateId, getInitials, formatAppDate, createDefaultPeriodontogramData } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import ConfirmModal from './ConfirmModal';
@@ -32,7 +33,9 @@ const daysOfWeek = [
 export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   const { profile } = useAuth();
   const { data: appointments = [] } = useAppointments();
+  const { data: patients = [] } = usePatients();
   const { createAppointment, deleteAppointment } = useAppointmentMutations();
+  const { savePatient } = usePatientMutations();
   const [activeTab, setActiveTab] = useState<'requests' | 'config' | 'share'>('requests');
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -44,6 +47,19 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   const [saving, setSaving] = useState(false);
   const [publicUrl, setPublicUrl] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  // La página pública hereda el nombre de la clínica y del doctor del perfil,
+  // mientras el doctor no haya puesto uno propio (el valor por defecto es genérico).
+  useEffect(() => {
+    const clinic = profile?.clinic_name?.trim();
+    if (!clinic) return;
+    const isDefault = !settings.clinicName || settings.clinicName === 'DienteLink Clínica';
+    if (!isDefault) return;
+    const next = { ...settings, clinicName: clinic, doctorName: settings.doctorName || profile?.full_name || '' };
+    setSettings(next);
+    bookingService.saveBookingSettings(next).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.clinic_name]);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -98,9 +114,52 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     const approved = await bookingService.approveRequest(id);
     if (!approved) return;
 
+    // Liga la cita al expediente si el teléfono coincide con un paciente existente
+    // (últimos 8 dígitos, ignora +504, espacios y guiones).
+    const digits = (v?: string) => (v || '').replace(/\D/g, '').slice(-8);
+    const reqPhone = digits(req.patientPhone);
+    const existing = reqPhone.length === 8
+      ? patients.find(p => digits(p.identification.phone) === reqPhone)
+      : undefined;
+
+    // El teléfono identifica al paciente: si no existe, se crea su expediente básico.
+    let patientId = existing?.id || '';
+    if (!existing && reqPhone.length === 8) {
+      const newPatient: PatientRecord = {
+        id: crypto.randomUUID(),
+        identification: {
+          fullName: req.patientName.trim(),
+          birthDate: '',
+          gender: '' as any,
+          address: '',
+          phone: req.patientPhone || '',
+          email: req.patientEmail || '',
+          occupation: '',
+        },
+        clinicalHistory: { allergies: [], medications: '', previousDiseases: '', familyHistory: '', motiveOfConsult: '' },
+        evolutionNotes: [],
+        history: [],
+        consentSigned: false,
+        odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
+        periodontogram: createDefaultPeriodontogramData(),
+        budget: [],
+        payments: [],
+        xrays: [],
+        balance: 0,
+        consents: [],
+        prescriptions: [],
+      };
+      try {
+        await savePatient.mutateAsync(newPatient);
+        patientId = newPatient.id;
+      } catch (e) {
+        console.error('No se pudo crear el paciente', e);
+      }
+    }
+
     const appointment: Appointment = {
       id: generateId(),
-      patientId: '',
+      patientId,
       patientName: req.patientName,
       phoneNumber: req.patientPhone || '',
       time: req.requestedTime,
@@ -235,7 +294,8 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
   const openPreview = () => window.open(publicUrl, '_blank');
 
-  const pendingCount = requests.filter(r => r.status === 'pending').length;
+  const todayISO = new Date().toLocaleDateString('en-CA');
+  const pendingCount = requests.filter(r => r.status === 'pending' && r.requestedDate >= todayISO).length;
   const filteredRequests = requests.filter(r => filter === 'all' || r.status === filter);
 
   const fmtTime = (s: string) => {
@@ -252,7 +312,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
   return (
     <div className="flex-1 h-full overflow-y-auto page-transition bg-white">
-      <div className="p-6 lg:p-12 pb-32 max-w-[1200px] mx-auto space-y-10">
+      <div className="p-4 sm:p-6 lg:p-12 pb-32 max-w-[1200px] mx-auto space-y-6 sm:space-y-10">
         
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -265,7 +325,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                 </div>
               )}
             </div>
-            <p className="text-slate-500 font-medium pl-11">Gestiona las reservas hechas desde tu enlace público.</p>
+            <p className="text-slate-500 font-medium text-sm sm:text-base md:pl-11">Gestiona las reservas hechas desde tu enlace público.</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -305,7 +365,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                   key={f.key}
                   onClick={() => setFilter(f.key)}
                   className={cn(
-                    "px-4 py-2 rounded-[10px] text-[13px] font-bold transition-all whitespace-nowrap",
+                    "px-2.5 sm:px-4 py-2 rounded-[10px] text-[13px] font-bold transition-all whitespace-nowrap",
                     filter === f.key ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"
                   )}
                 >
@@ -394,7 +454,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     </div>
 
                     <div className="absolute right-5 top-5 md:hidden text-xs uppercase font-bold text-slate-400">
-                      {req.status}
+                      {({ pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' } as Record<string, string>)[req.status] || req.status}
                     </div>
                   </div>
                 ))}

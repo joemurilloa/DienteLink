@@ -61,7 +61,7 @@ export const TrialBanner: React.FC<Props> = ({ subscription }) => {
     if (daysLeft === 1) {
       return '⚠️ Tu prueba gratuita vence en 1 día';
     }
-    return `Período de prueba · ${daysLeft} días restantes`;
+    return `Prueba gratis · ${daysLeft} días`;
   };
 
   return (

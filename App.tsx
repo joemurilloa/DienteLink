@@ -26,6 +26,7 @@ const PublicBookingPage = lazy(() => import('./components/PublicBookingPage'));
 const BookingManagementView = lazy(() => import('./components/BookingManagementView'));
 const AuthPage = lazy(() => import('./components/AuthPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
+const TermsPage = lazy(() => import('./components/TermsPage'));
 const SubscriptionPage = lazy(() => import('./components/views/SubscriptionPage'));
 
 // Enters guest/demo mode and redirects to the dashboard
@@ -216,6 +217,7 @@ const App: React.FC = () => (
             
             {/* Public Landing Page */}
             <Route path="/welcome" element={<LandingPage />} />
+            <Route path="/terminos" element={<TermsPage />} />
             
             {/* Auth Page */}
             <Route path="/login" element={<AuthPage />} />

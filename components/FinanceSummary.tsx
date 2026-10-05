@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -40,17 +40,17 @@ const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
   return (
     <section className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <div className="card-premium flex flex-col px-4 sm:px-5 py-3.5 sm:py-4 gap-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cobrado hoy</span>
-          <span className="text-lg sm:text-2xl font-bold text-emerald-600 tabular-nums leading-none tracking-tight">{formatCurrency(collectedToday)}</span>
+        <div className="card-premium flex flex-col px-3 sm:px-5 py-3.5 sm:py-4 gap-1 min-w-0">
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Cobrado hoy</span>
+          <span className="text-[15px] sm:text-2xl font-bold whitespace-nowrap text-emerald-600 tabular-nums leading-none tracking-tight">{formatCurrency(collectedToday)}</span>
         </div>
-        <div className="card-premium flex flex-col px-4 sm:px-5 py-3.5 sm:py-4 gap-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Este mes</span>
-          <span className="text-lg sm:text-2xl font-bold text-slate-900 tabular-nums leading-none tracking-tight">{formatCurrency(collectedMonth)}</span>
+        <div className="card-premium flex flex-col px-3 sm:px-5 py-3.5 sm:py-4 gap-1 min-w-0">
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Este mes</span>
+          <span className="text-[15px] sm:text-2xl font-bold whitespace-nowrap text-slate-900 tabular-nums leading-none tracking-tight">{formatCurrency(collectedMonth)}</span>
         </div>
-        <div className="card-premium flex flex-col px-4 sm:px-5 py-3.5 sm:py-4 gap-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Me deben</span>
-          <span className={cn('text-lg sm:text-2xl font-bold tabular-nums leading-none tracking-tight', totalOwed > 0 ? 'text-amber-600' : 'text-slate-400')}>
+        <div className="card-premium flex flex-col px-3 sm:px-5 py-3.5 sm:py-4 gap-1 min-w-0">
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Me deben</span>
+          <span className={cn('text-[15px] sm:text-2xl font-bold whitespace-nowrap tabular-nums leading-none tracking-tight', totalOwed > 0 ? 'text-amber-600' : 'text-slate-400')}>
             {formatCurrency(totalOwed)}
           </span>
         </div>

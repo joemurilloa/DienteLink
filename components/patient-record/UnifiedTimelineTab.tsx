@@ -402,8 +402,8 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
 
       {/* ── Metrics Summary Bar ── */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <div className="card-premium p-3.5 sm:p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+        <div className="card-premium p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0">
+          <div className="hidden sm:flex w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
             <Calendar size={18} />
           </div>
           <div>
@@ -414,20 +414,20 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
           </div>
         </div>
 
-        <div className="card-premium p-3.5 sm:p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+        <div className="card-premium p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0">
+          <div className="hidden sm:flex w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
             <Activity size={18} />
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Tratamientos</p>
+            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Tratam.</p>
             <p className="text-xl sm:text-2xl font-bold text-slate-900 tabular-nums leading-tight">
               {(patient.history || []).length}
             </p>
           </div>
         </div>
 
-        <div className="card-premium p-3.5 sm:p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+        <div className="card-premium p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0">
+          <div className="hidden sm:flex w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
             <FileText size={18} />
           </div>
           <div>
@@ -641,7 +641,7 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
                           className="card-premium p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-blue-300"
                         >
                           <div className="flex items-start sm:items-center gap-3.5">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
+                            <div className="hidden sm:flex w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
                               <Calendar size={18} />
                             </div>
                             <div>
@@ -693,7 +693,7 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
                           className="card-premium p-4 flex items-center justify-between gap-3 hover:border-emerald-300"
                         >
                           <div className="flex items-center gap-3.5">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                            <div className="hidden sm:flex w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
                               <Activity size={18} />
                             </div>
                             <div>

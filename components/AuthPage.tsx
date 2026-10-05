@@ -17,6 +17,7 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [signupSuccess, setSignupSuccess] = useState(false);
@@ -59,6 +60,11 @@ const AuthPage: React.FC = () => {
       }
       if (password.length < 6) {
         setError('La contraseña debe tener al menos 6 caracteres');
+        setLoading(false);
+        return;
+      }
+      if (!acceptedTerms) {
+        setError('Debes aceptar los términos de uso para crear tu cuenta');
         setLoading(false);
         return;
       }
@@ -244,6 +250,23 @@ const AuthPage: React.FC = () => {
                   </button>
                 </div>
               </div>
+            )}
+
+            {!isLogin && !isResetMode && (
+              <label className="flex items-start gap-2.5 text-sm text-slate-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-blue-600"
+                />
+                <span>
+                  Acepto los{' '}
+                  <a href="#/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">
+                    términos de uso y privacidad
+                  </a>
+                </span>
+              </label>
             )}
 
             {error && (

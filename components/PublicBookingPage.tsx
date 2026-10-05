@@ -112,7 +112,10 @@ const PublicBookingPage: React.FC = () => {
   }, [selectedDate, availability, doctorId]);
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    // 'YYYY-MM-DD' se interpreta como UTC y retrocede un día en Honduras (UTC-6).
+    // Se construye en hora local para mostrar el mismo día que eligió el paciente.
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, (m || 1) - 1, d || 1);
     return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
@@ -163,8 +166,8 @@ const PublicBookingPage: React.FC = () => {
       return;
     }
 
-    if (settings?.requirePhone && !formData.phone.trim()) {
-      setError('Por favor ingresa tu teléfono');
+    if (formData.phone.replace(/\D/g, '').length < 8) {
+      setError('Ingresa un teléfono válido (mínimo 8 dígitos). Con él identificamos tu expediente.');
       return;
     }
 
@@ -476,7 +479,7 @@ const PublicBookingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {settings.requirePhone && (
+                  {(
                     <div>
                       <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Teléfono *</label>
                       <div className="relative">

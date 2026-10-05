@@ -199,7 +199,9 @@ export class BookingService {
   }
 
   getPendingRequests(): AppointmentRequest[] {
-    return this.requests.filter(r => r.status === 'pending');
+    // Una solicitud cuya fecha ya pasó no requiere acción: no cuenta como pendiente.
+    const today = getLocalISODate();
+    return this.requests.filter(r => r.status === 'pending' && r.requestedDate >= today);
   }
 
   /** Re-fetch requests from Supabase to pick up requests created by the public page */

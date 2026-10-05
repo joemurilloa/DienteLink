@@ -193,15 +193,17 @@ interface ToothDiagramProps {
  * En celular (<768px) conserva el desplazamiento horizontal.
  */
 const ARCH_NATURAL_WIDTH = 1180;
+const ARCH_MOBILE_WIDTH = 505;
 const ArchFit: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const mobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const calc = () => {
-      if (window.innerWidth < 768) return setScale(1);
+      if (window.innerWidth < 768) return setScale(Math.min(1, Math.max(0.3, (window.innerWidth - 80) / ARCH_MOBILE_WIDTH)));
       setScale(Math.min(1, Math.max(0.5, el.clientWidth / ARCH_NATURAL_WIDTH)));
     };
     calc();
@@ -211,8 +213,8 @@ const ArchFit: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, []);
 
   return (
-    <div ref={ref} className="overflow-x-auto custom-scrollbar pb-8 -mx-6 px-6 lg:mx-0 lg:px-0">
-      <div className="mx-auto" style={{ minWidth: scale < 1 ? undefined : 850, zoom: scale }}>
+    <div ref={ref} className="overflow-x-auto custom-scrollbar pb-8 min-w-0 max-w-full -mx-6 px-6 lg:mx-0 lg:px-0">
+      <div className="mx-auto" style={{ minWidth: scale < 1 ? undefined : 850, width: mobile ? ARCH_MOBILE_WIDTH : undefined, zoom: scale }}>
         {children}
       </div>
     </div>
@@ -1241,7 +1243,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
               <span className="text-xs font-black uppercase text-slate-500 tracking-[3px]">Arcada Superior</span>
               <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
             </div>
-            <div className="flex flex-nowrap md:flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
+            <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
               {upper.map(tooth => (
                 <ToothDiagram
                   key={tooth.id}
@@ -1264,7 +1266,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
 
           {/* Lower Arch */}
           <div className="flex flex-col items-center relative z-10">
-            <div className="flex flex-nowrap md:flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
+            <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
               {/* Lower Arch Reordered to match clinical standard: Quadrant 4 (Right) | Quadrant 3 (Left) */}
               {/* FDI 48-41 (IDs 32 to 25) */}
               {[32, 31, 30, 29, 28, 27, 26, 25].map(id => {

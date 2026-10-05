@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -285,7 +285,7 @@ const ENABLE_PERIODONTOGRAM = false;
     );
 
     return (
-        <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500 pb-20 lg:pb-0 relative">
+        <div className="flex flex-col md:h-full md:overflow-hidden animate-in fade-in duration-500 pb-20 lg:pb-0 relative">
             {isFocusMode && createPortal(FocusModeContent, document.body)}
 
             {/* Top Horizontal Tabs */}
@@ -320,11 +320,11 @@ const ENABLE_PERIODONTOGRAM = false;
 
             {/* Main Content */}
             <div className={cn(
-                "flex-1 bg-white rounded-2xl border border-slate-300 overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm",
+                "flex-1 bg-white rounded-2xl border border-slate-300 md:overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm",
                 isClinicalTab ? "border-slate-300 shadow-none" : ""
             )}>
                 <div className={cn(
-                    "flex-1 overflow-y-auto hide-scrollbar transition-all duration-300",
+                    "flex-1 md:overflow-y-auto hide-scrollbar transition-all duration-300",
                     isClinicalTab ? "p-0" : "p-5 lg:p-8"
                 )}>
                     {isClinicalTab && (

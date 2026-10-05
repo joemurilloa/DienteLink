@@ -120,14 +120,14 @@ const CalendarView: React.FC = () => {
             <p className="text-slate-500 font-medium text-sm">Organiza tu clínica fácilmente.</p>
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="flex bg-slate-100/80 p-1 rounded-xl">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex bg-slate-100/80 p-1 rounded-xl flex-1 sm:flex-none">
               {([['day', 'Día'], ['week', 'Semana'], ['month', 'Mes']] as const).map(([mode, label]) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer",
+                    "flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer",
                     viewMode === mode ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-700"
                   )}
                 >
@@ -146,22 +146,22 @@ const CalendarView: React.FC = () => {
 
         {/* Date Navigation Strip */}
         <div className="flex items-center justify-between border-y border-slate-200 py-3 px-2 flex-shrink-0">
-          <button onClick={handleToday} className="px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer">
+          <button onClick={handleToday} className="px-3 sm:px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer">
             Hoy
           </button>
           
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-1 sm:gap-8">
             <button onClick={handlePrev} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer" title="Anterior">
               <ChevronLeft size={20} />
             </button>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight min-w-[200px] text-center">
+            <h2 className="text-sm sm:text-lg font-bold text-slate-900 tracking-tight sm:min-w-[200px] text-center">
               {headerLabel}
             </h2>
             <button onClick={handleNext} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer" title="Siguiente">
               <ChevronRight size={20} />
             </button>
           </div>
-          <div className="w-16" /> {/* Spacer */}
+          <div className="hidden sm:block w-16" /> {/* Spacer */}
         </div>
 
         <div className="flex-1 flex flex-col min-h-[540px] animate-in fade-in duration-500">
@@ -191,7 +191,7 @@ const CalendarView: React.FC = () => {
                 return (
                   <div
                     key={d}
-                    onClick={() => { setCurrentDate(new Date(dateStr)); setViewMode('day'); }}
+                    onClick={() => { setCurrentDate(new Date(year, month, d)); setViewMode('day'); }}
                     className={cn(
                         "flex flex-col border-r border-b border-slate-300 p-1.5 cursor-pointer transition-all relative min-h-0",
                         isPast 
@@ -315,7 +315,7 @@ const CalendarView: React.FC = () => {
 
           {/* ══════ DAY VIEW ══════ */}
           {viewMode === 'day' && (
-            <div className="flex-1 overflow-y-auto hide-scrollbar bg-white rounded-3xl border border-slate-300 p-4 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] min-h-0">
+            <div className="flex-1 overflow-y-auto hide-scrollbar bg-white rounded-3xl border border-slate-300 p-2.5 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] min-h-0">
               {HOURS.map(hour => {
                 const dateStr = fmtDate(currentDate);
                 const isNow = todayStr === dateStr && new Date().getHours() === hour;
@@ -323,13 +323,13 @@ const CalendarView: React.FC = () => {
 
                 return (
                   <div key={hour} className="flex min-h-[80px] group relative">
-                    <div className="w-24 flex-shrink-0 text-right pr-6 pt-5 relative">
+                    <div className="w-14 sm:w-24 flex-shrink-0 text-right pr-3 sm:pr-6 pt-5 relative">
                       <span className={cn("text-[13px] font-semibold", isNow ? "text-blue-600" : "text-slate-500")}>{fmtHour(hour)}</span>
                       {isNow && <div className="absolute right-0 top-6 w-2 h-2 bg-blue-600 rounded-full translate-x-1" />}
                     </div>
                     
                     <div className={cn(
-                      "flex-1 border-t border-slate-300 py-3 pl-6 pr-2 space-y-3",
+                      "flex-1 min-w-0 border-t border-slate-300 py-3 pl-2 sm:pl-6 pr-0 sm:pr-2 space-y-3",
                       isNow ? "border-t-blue-200 bg-blue-50/5" : ""
                     )}>
                       {hourApts.map(a => (
@@ -338,7 +338,7 @@ const CalendarView: React.FC = () => {
                             onClick={() => { if (a.patientId) navigate(`/patient/${a.patientId}`); }}
                             className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-300/60 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all group/apt cursor-pointer hover:border-blue-200"
                           >
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                               <div className="w-12 h-12 bg-blue-50 rounded-[14px] flex items-center justify-center text-blue-600 font-bold text-sm">
                                 {getInitials(a.patientName)}
                               </div>
@@ -350,11 +350,11 @@ const CalendarView: React.FC = () => {
                           
                           <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:opacity-0 group-hover/apt:opacity-100 transition-opacity justify-end">
                             {a.patientId && (
-                              <button onClick={(e) => { e.stopPropagation(); navigate(`/patient/${a.patientId}`); }} className="px-4 py-2 bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all">
+                              <button onClick={(e) => { e.stopPropagation(); navigate(`/patient/${a.patientId}`); }} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all">
                                 Ficha Clínica
                               </button>
                             )}
-                            <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="px-4 py-2 bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl text-sm font-bold transition-all">
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl text-sm font-bold transition-all">
                               Eliminar
                             </button>
                           </div>

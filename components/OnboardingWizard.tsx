@@ -11,6 +11,7 @@ const OnboardingWizard: React.FC = () => {
     // Form state
     const [clinicName, setClinicName] = useState(profile?.clinic_name || '');
     const [currency, setCurrency] = useState(profile?.currency || 'HNL');
+    const [phone, setPhone] = useState(profile?.phone || '');
 
     if (!profile || profile.has_completed_onboarding) return null;
 
@@ -20,10 +21,16 @@ const OnboardingWizard: React.FC = () => {
             return;
         }
 
+        if (phone.replace(/\D/g, '').length < 8) {
+            sileo.error({ title: 'Falta información', description: 'Ingresa tu teléfono (mínimo 8 dígitos).' });
+            return;
+        }
+
         setIsSaving(true);
         try {
             await updateProfile({
                 clinic_name: clinicName,
+                phone: phone.trim(),
                 currency,
                 locale: currency === 'HNL' ? 'es-HN' : currency === 'MXN' ? 'es-MX' : 'es-US',
                 has_completed_onboarding: true
@@ -104,6 +111,11 @@ const OnboardingWizard: React.FC = () => {
                             </div>
 
                             <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">Tu teléfono (WhatsApp)</label>
+                                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="9999-9999" className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-slate-900 text-lg" />
+                            </div>
+
+                            <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                                     <Coins size={14} /> Moneda Principal
                                 </label>
@@ -124,6 +136,11 @@ const OnboardingWizard: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
+                        <p className="text-xs text-slate-500">
+                            Al continuar aceptas los{' '}
+                            <a href="#/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">términos de uso y privacidad</a>.
+                        </p>
 
                         <div className="pt-6 border-t border-slate-300 flex gap-4">
                             <button

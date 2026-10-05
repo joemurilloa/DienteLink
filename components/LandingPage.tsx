@@ -219,10 +219,10 @@ const LandingPage: React.FC = () => {
               </div>
               <h3 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Expediente Clínico</h3>
               <p className="text-lg text-slate-500 mb-8 max-w-md font-medium leading-relaxed">
-                Historial médico siempre disponible, consentimientos informados listos para firmar y recetas personalizadas al instante.
+                Historial médico siempre disponible, odontograma por superficie, notas de evolución y recetas en cada consulta.
               </p>
               <ul className="space-y-4">
-                {['Firma digital de consentimientos', 'Historial en la nube', 'Exporta tus pacientes cuando quieras'].map((item, i) => (
+                {['Odontograma y notas de evolución', 'Historial en la nube', 'Exporta tus pacientes cuando quieras'].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-base text-slate-700 font-bold">
                     <CheckCircle2 size={22} className="text-indigo-500" />
                     {item}
