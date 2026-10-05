@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { ToothData, SurfaceData, ToothSurface, ClinicalCondition, OdontogramSnapshot } from '../types';
 import { cn } from '../lib/utils';
 import { sileo } from 'sileo';
@@ -187,6 +187,37 @@ interface ToothDiagramProps {
   highlight?: boolean;
   readOnly?: boolean;
 }
+
+/**
+ * Ajusta el arco dental al ancho disponible (laptops con panel lateral).
+ * En celular (<768px) conserva el desplazamiento horizontal.
+ */
+const ARCH_NATURAL_WIDTH = 1180;
+const ArchFit: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const calc = () => {
+      if (window.innerWidth < 768) return setScale(1);
+      setScale(Math.min(1, Math.max(0.5, el.clientWidth / ARCH_NATURAL_WIDTH)));
+    };
+    calc();
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="overflow-x-auto custom-scrollbar pb-8 -mx-6 px-6 lg:mx-0 lg:px-0">
+      <div className="mx-auto" style={{ minWidth: scale < 1 ? undefined : 850, zoom: scale }}>
+        {children}
+      </div>
+    </div>
+  );
+};
 
 const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
   tooth, selectedCondition, onSurfaceClick, onClearSurface, onToothClick,
@@ -1187,8 +1218,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
         )}
 
         <div className={cn("flex-1 space-y-2 relative pb-20 xl:pb-0")}>
-          <div className="overflow-x-auto custom-scrollbar pb-8 -mx-6 px-6 lg:mx-0 lg:px-0">
-            <div className="min-w-[850px] relative mx-auto">
+          <ArchFit>
+            <div className="relative">
               {/* Quadrant Vertical Center Line */}
               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-0 hidden md:block" />
           
@@ -1281,7 +1312,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
             </div>
           </div>
             </div>
-          </div>
+          </ArchFit>
 
           {/* Clinical Summary */}
           <ClinicalSummaryPanel teeth={displayTeeth} />

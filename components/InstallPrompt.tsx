@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X, Share, Plus } from 'lucide-react';
 
 // Detectar si ya está instalada como PWA standalone
@@ -25,19 +24,12 @@ const isDismissed = (): boolean => {
 // ── iOS Install Instructions Modal ──────────────────────────────────────────
 
 const IOSInstructions: React.FC<{ onClose: () => void }> = ({ onClose }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[300] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4"
+  <div
+    className="fixed inset-0 z-[300] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
     onClick={onClose}
   >
-    <motion.div
-      initial={{ y: 60, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 60, opacity: 0 }}
-      transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-      className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl mb-2"
+    <div
+      className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl mb-2 animate-in slide-in-from-bottom-8 duration-300"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
@@ -103,8 +95,8 @@ const IOSInstructions: React.FC<{ onClose: () => void }> = ({ onClose }) => (
         </p>
         <div className="text-2xl animate-bounce">↓</div>
       </div>
-    </motion.div>
-  </motion.div>
+    </div>
+  </div>
 );
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -163,15 +155,8 @@ const InstallPrompt: React.FC = () => {
   return (
     <>
       {/* Top banner */}
-      <AnimatePresence>
-        {showBanner && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
+      {showBanner && (
+          <div className="overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium">
               {/* App icon */}
               <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
@@ -206,16 +191,11 @@ const InstallPrompt: React.FC = () => {
                 <X size={14} />
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
 
       {/* iOS instruction modal */}
-      <AnimatePresence>
-        {showIOSModal && (
-          <IOSInstructions onClose={() => setShowIOSModal(false)} />
-        )}
-      </AnimatePresence>
+      {showIOSModal && <IOSInstructions onClose={() => setShowIOSModal(false)} />}
     </>
   );
 };

@@ -137,36 +137,15 @@ const LandingPage: React.FC = () => {
               <div className="w-3 h-3 rounded-full bg-slate-200"></div>
             </div>
             {/* The Image inside the mockup */}
-            <div className="relative rounded-2xl overflow-hidden bg-slate-50 aspect-[16/9] md:aspect-[21/9]">
-                <img 
-                  src="https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=2000&q=80" 
-                  alt="Clínica Premium" 
-                  className="w-full h-full object-cover opacity-90 mix-blend-luminosity"
+            <div className="relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-200">
+                <img
+                  src="/screens/inicio.png"
+                  alt="Pantalla de inicio de DienteLink con citas del día, cobros y saldos pendientes"
+                  width={1440}
+                  height={900}
+                  fetchPriority="high"
+                  className="w-full h-auto block"
                 />
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/10 to-emerald-400/10 mix-blend-overlay"></div>
-                {/* Floating UI Elements Over Image */}
-                <div className="absolute top-8 left-8 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/50 w-64 animate-float">
-                   <div className="flex items-center gap-3 mb-3">
-                     <div className="w-11 h-11 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600"><CheckCircle2 size={20}/></div>
-                     <div>
-                       <p className="text-sm font-bold text-slate-900">Cita Confirmada</p>
-                       <p className="text-sm text-slate-500">Hoy, 10:30 AM</p>
-                     </div>
-                   </div>
-                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-3/4 bg-emerald-500 rounded-full"></div></div>
-                </div>
-
-                <div className="absolute bottom-8 right-8 bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-xl border border-white/50 animate-float" style={{ animationDelay: '2s' }}>
-                   <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Ingresos Semanales</p>
-                   <p className="text-2xl font-black text-slate-900 mb-3">$4,250.00</p>
-                   <div className="flex items-end gap-1 h-12">
-                     <div className="w-4 bg-blue-100 rounded-t-sm h-1/2"></div>
-                     <div className="w-4 bg-blue-200 rounded-t-sm h-3/4"></div>
-                     <div className="w-4 bg-blue-300 rounded-t-sm h-2/3"></div>
-                     <div className="w-4 bg-blue-400 rounded-t-sm h-4/5"></div>
-                     <div className="w-4 bg-blue-600 rounded-t-sm h-full"></div>
-                   </div>
-                </div>
             </div>
           </div>
         </motion.div>

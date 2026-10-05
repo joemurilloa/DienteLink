@@ -13,7 +13,6 @@ create table if not exists public.subscriptions (
   currency              text not null default 'USD',
   current_period_start  timestamptz,
   current_period_end    timestamptz,
-  pagadito_token        text,
   last_payment_at       timestamptz,
   created_at            timestamptz not null default now(),
   updated_at            timestamptz not null default now(),
