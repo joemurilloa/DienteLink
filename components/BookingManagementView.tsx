@@ -15,6 +15,7 @@ import 'sileo/styles.css';
 import ConfirmModal from './ConfirmModal';
 import { whatsappService } from '../services/whatsappService';
 import { useAuth } from '../services/authService';
+import WhatsAppAction from './WhatsAppAction';
 
 interface Props {
   onBack: () => void;
@@ -431,15 +432,19 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                         </>
                       )}
                       {req.status === 'approved' && req.patientPhone && (
-                        <button
-                          onClick={() => {
-                            const r = whatsappService.sendBookingConfirmation(req.patientPhone, req.patientName, req.requestedDate, req.requestedTime, profile?.clinic_name);
-                            if (!r.success) sileo.warning({ title: 'No se pudo abrir WhatsApp', description: r.error });
-                          }}
-                          className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-bold transition-all"
-                        >
-                          Avisar por WhatsApp
-                        </button>
+                        <WhatsAppAction
+                          storageKey={`reserva_${req.id}`}
+                          label="Avisar por WhatsApp"
+                          sentLabel="Paciente avisado"
+                          title="Abrir WhatsApp con la confirmación de la cita"
+                          send={() => whatsappService.sendBookingConfirmation(
+                            req.patientPhone,
+                            req.patientName,
+                            req.requestedDate,
+                            req.requestedTime,
+                            profile?.clinic_name,
+                          )}
+                        />
                       )}
                       {req.status === 'approved' && (
                         <button onClick={() => handleChangeStatus(req.id, 'rejected')} className="px-4 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold transition-all">Revocar</button>

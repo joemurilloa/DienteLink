@@ -110,7 +110,7 @@ class WhatsAppService {
       const [h, m] = timeStr.split(':');
       const date = new Date(0, 0, 0, parseInt(h || '0', 10), parseInt(m || '0', 10));
       return date.toLocaleTimeString('es-ES', {
-        hour: '2-digit',
+        hour: 'numeric',
         minute: '2-digit',
         hour12: true
       });
@@ -120,28 +120,76 @@ class WhatsAppService {
   }
 
   /**
-   * Builds the pre-saved appointment reminder message.
+   * Abre WhatsApp en la misma pestaña (o la app en el celular),
+   * para no sacar al doctor de DienteLink con mil ventanas nuevas.
+   */
+  openChat(url: string): { success: boolean; error?: string; url?: string } {
+    try {
+      const w = window.open(url, 'dientelink_wa');
+      if (!w) {
+        return {
+          success: false,
+          error: 'El navegador bloqueó la ventana. Permite ventanas emergentes para DienteLink.',
+        };
+      }
+      return { success: true, url };
+    } catch {
+      return { success: false, error: 'No se pudo abrir WhatsApp.' };
+    }
+  }
+
+  private sendTo(
+    phoneRaw: string | undefined | null,
+    message: string,
+    defaultDialCode: string = '504'
+  ): { success: boolean; error?: string; url?: string } {
+    const phone = this.sanitizePhone(phoneRaw, defaultDialCode);
+    if (!phone) {
+      return { success: false, error: 'El paciente no tiene un teléfono válido registrado.' };
+    }
+    return this.openChat(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`);
+  }
+
+  /**
+   * Recordatorio de cita: corto, en usted, pide confirmación.
    */
   buildReminderMessage(appointment: Appointment, clinicName?: string): string {
-    const formattedDate = this.formatDate(appointment.date);
-    const formattedTime = this.formatTime(appointment.time);
-    const signOff = clinicName ? `— ${clinicName}` : '— DienteLink';
+    const when = this.relativeDay(appointment.date);
+    const time = this.formatTime(appointment.time);
+    const name = this.firstName(appointment.patientName);
+    const from = clinicName ? ` de ${clinicName}` : '';
+    const motive = appointment.type ? ` (${appointment.type.toLowerCase()})` : '';
 
-    const lines = [
-      `¡Hola ${appointment.patientName}! 👋`,
+    return [
+      `Hola ${name}, le escribimos${from}.`,
       '',
-      'Le recordamos su próxima cita odontológica:',
-      `📅 Fecha: ${formattedDate}`,
-      formattedTime ? `⏰ Hora: ${formattedTime}` : '',
-      appointment.type ? `🦷 Motivo: ${appointment.type}` : '',
+      `Le recordamos su cita ${when}${time ? ` a las ${time}` : ''}${motive}.`,
       '',
-      'Por favor responda a este mensaje para confirmar su asistencia.',
-      '¡Le esperamos!',
+      '¿Podrá asistir? Responda SÍ para confirmar, o avísenos si necesita cambiarla.',
       '',
-      signOff
-    ];
+      'Gracias.',
+    ].join('\n');
+  }
 
-    return lines.filter(line => line !== '').join('\n');
+  /** Primer nombre con mayúscula inicial ("JOSÉ MIGUEL TORRES" → "José"). */
+  firstName(full: string | undefined): string {
+    const first = (full || '').trim().split(/\s+/)[0] || '';
+    return first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : 'paciente';
+  }
+
+  /** "hoy", "mañana" o "el lunes 5 de octubre". */
+  relativeDay(dateStr: string | undefined): string {
+    if (!dateStr) return 'próxima';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!y || !m || !d) return `el ${dateStr}`;
+    const target = new Date(y, m - 1, d);
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diff = Math.round((target.getTime() - start.getTime()) / 86400000);
+    if (diff === 0) return 'de hoy';
+    if (diff === 1) return 'de mañana';
+    const label = target.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    return `del ${label}`;
   }
 
   /**
@@ -161,19 +209,7 @@ class WhatsAppService {
       };
     }
 
-    const message = this.buildReminderMessage(appointment, clinicName);
-    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-
-    try {
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-      return { success: true, url: waUrl };
-    } catch (err: any) {
-      console.error('[WhatsAppService] Error opening window:', err);
-      return {
-        success: false,
-        error: 'No se pudo abrir la ventana de WhatsApp. Revisa los permisos de ventanas emergentes.'
-      };
-    }
+    return this.sendTo(phone, this.buildReminderMessage(appointment, clinicName), defaultDialCode);
   }
 
   /**
@@ -189,28 +225,26 @@ class WhatsAppService {
   ): string {
     const signOff = clinicName
       ? (doctorName ? `— Dr(a). ${doctorName} | ${clinicName}` : `— ${clinicName}`)
-      : '— Tu Clínica Dental';
+      : '— Su clínica dental';
+    const money = (n: number) =>
+      `${currencySymbol ? currencySymbol + ' ' : ''}${n.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
+    const name = this.firstName(patientName);
 
     const itemsText = items.map((item, index) => {
-      const qtyStr = item.quantity > 1 ? `${item.quantity}x ` : '';
-      const toothStr = item.toothId ? ` (Pieza #${item.toothId})` : '';
-      const totalItem = item.unitCost * item.quantity;
-      return `${index + 1}. *${item.treatment}*${toothStr}\n   ${qtyStr}Importe: ${currencySymbol ? currencySymbol + ' ' : ''}${totalItem.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
-    }).join('\n\n');
+      const qtyStr = item.quantity > 1 ? `${item.quantity} × ` : '';
+      const toothStr = item.toothId ? ` (pieza ${item.toothId})` : '';
+      return `${index + 1}. ${qtyStr}${item.treatment}${toothStr} — ${money(item.unitCost * item.quantity)}`;
+    }).join('\n');
 
     const lines = [
-      `¡Hola ${patientName}! 👋`,
-      '',
-      `Le compartimos el presupuesto para su plan de tratamiento${clinicName ? ` en *${clinicName}*` : ''}:`,
+      `Hola ${name}, le compartimos el presupuesto${clinicName ? ` de ${clinicName}` : ''}:`,
       '',
       itemsText,
       '',
-      '─────────────────────',
-      `💰 *Total Estimado:* ${currencySymbol ? currencySymbol + ' ' : ''}${totalBudget.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`,
-      '─────────────────────',
+      `Total: ${money(totalBudget)}`,
+      'Válido por 30 días.',
       '',
-      '📌 *Condiciones:* Presupuesto válido por 30 días.',
-      'Si tiene dudas o desea agendar su cita para iniciar el tratamiento, con gusto le atendemos por este medio.',
+      'Si tiene dudas o desea agendar, responda este mensaje.',
       '',
       signOff
     ];
@@ -247,38 +281,26 @@ class WhatsAppService {
       };
     }
 
-    const message = this.buildBudgetQuoteMessage(patientName, items, totalBudget, clinicName, doctorName, currencySymbol);
-    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-
-    try {
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-      return { success: true, url: waUrl };
-    } catch (err: any) {
-      console.error('[WhatsAppService] Error opening window:', err);
-      return {
-        success: false,
-        error: 'No se pudo abrir WhatsApp. Verifica que tu navegador permita ventanas emergentes.'
-      };
-    }
+    return this.sendTo(
+      phone,
+      this.buildBudgetQuoteMessage(patientName, items, totalBudget, clinicName, doctorName, currencySymbol),
+      defaultDialCode
+    );
   }
 
   /**
    * Builds post-procedure check-in / care follow-up message.
    */
   buildFollowUpMessage(patientName: string, procedure?: string, clinicName?: string): string {
-    const signOff = clinicName ? `— ${clinicName}` : '— DienteLink';
-    const lines = [
-      `¡Hola ${patientName}! 👋`,
+    const name = this.firstName(patientName);
+    const from = clinicName || 'la clínica';
+    return [
+      `Hola ${name}, le escribimos de ${from} para saber cómo se siente${procedure ? ` después de su ${procedure.toLowerCase()}` : ''}.`,
       '',
-      `Esperamos que se encuentre muy bien. Le escribimos de ${clinicName || 'la clínica'} para dar seguimiento a su estado tras su procedimiento${procedure ? ` (${procedure})` : ''}.`,
+      'Si tiene molestias o dudas, responda este mensaje. Estamos para ayudarle.',
       '',
-      '¿Cómo ha evolucionado? Si presenta molestias inusuales o necesita indicaciones adicionales, por favor respóndanos a este mensaje.',
-      '',
-      '¡Que tenga una pronta recuperación!',
-      '',
-      signOff
-    ];
-    return lines.join('\n');
+      'Que tenga una pronta recuperación.',
+    ].join('\n');
   }
 
   /**
@@ -294,14 +316,7 @@ class WhatsAppService {
     const phone = this.sanitizePhone(phoneRaw, defaultDialCode);
     if (!phone) return { success: false, error: 'Sin teléfono registrado' };
 
-    const message = this.buildFollowUpMessage(patientName, procedure, clinicName);
-    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    try {
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-      return { success: true, url: waUrl };
-    } catch {
-      return { success: false, error: 'No se pudo abrir WhatsApp' };
-    }
+    return this.sendTo(phone, this.buildFollowUpMessage(patientName, procedure, clinicName), defaultDialCode);
   }
 
   /**
@@ -319,38 +334,27 @@ class WhatsAppService {
     if (!phone) return { success: false, error: 'Sin teléfono registrado' };
 
     const message = [
-      `¡Hola ${patientName}! 👋`,
+      `Hola ${this.firstName(patientName)}, su cita${clinicName ? ` en ${clinicName}` : ''} quedó confirmada.`,
       '',
-      'Su solicitud de cita fue confirmada:',
-      `📅 ${this.formatDate(date)}`,
-      `⏰ ${this.formatTime(time)}`,
+      `${this.formatDate(date)} a las ${this.formatTime(time)}.`,
       '',
-      '¡Le esperamos!',
-      '',
-      clinicName ? `— ${clinicName}` : '— DienteLink'
+      'Si necesita cambiarla, avísenos por este medio. Le esperamos.',
     ].join('\n');
-    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    try {
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-      return { success: true, url: waUrl };
-    } catch {
-      return { success: false, error: 'No se pudo abrir WhatsApp' };
-    }
+    return this.sendTo(phone, message, defaultDialCode);
   }
 
   /**
    * Builds a polite payment reminder with the pending balance.
    */
   buildPaymentReminderMessage(patientName: string, balanceFormatted: string, clinicName?: string): string {
-    const signOff = clinicName ? `— ${clinicName}` : '— DienteLink';
+    const name = this.firstName(patientName);
+    const from = clinicName || 'la clínica';
     return [
-      `¡Hola ${patientName}! 👋`,
+      `Hola ${name}, le escribimos de ${from}.`,
       '',
-      `Le escribimos de ${clinicName || 'la clínica'} para recordarle amablemente que tiene un saldo pendiente de ${balanceFormatted}.`,
+      `Le recordamos un saldo pendiente de ${balanceFormatted}.`,
       '',
-      'Si ya realizó su pago, por favor ignore este mensaje o envíenos su comprobante. ¡Gracias!',
-      '',
-      signOff
+      'Si ya pagó, ignore este mensaje o envíenos el comprobante. Gracias.',
     ].join('\n');
   }
 
@@ -367,14 +371,7 @@ class WhatsAppService {
     const phone = this.sanitizePhone(phoneRaw, defaultDialCode);
     if (!phone) return { success: false, error: 'Sin teléfono registrado' };
 
-    const message = this.buildPaymentReminderMessage(patientName, balanceFormatted, clinicName);
-    const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    try {
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-      return { success: true, url: waUrl };
-    } catch {
-      return { success: false, error: 'No se pudo abrir WhatsApp' };
-    }
+    return this.sendTo(phone, this.buildPaymentReminderMessage(patientName, balanceFormatted, clinicName), defaultDialCode);
   }
 }
 

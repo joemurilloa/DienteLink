@@ -17,13 +17,7 @@ import { generatePaymentReceiptPDF, generateAccountStatementPDF, generateBudgetP
 import { whatsappService } from '../../services/whatsappService';
 import { useAuth } from '../../services/authService';
 import ConfirmModal from '../ConfirmModal';
-
-const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.561 4.14 1.535 5.875L0 24l6.322-1.505A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.722.886.93-3.618-.234-.372A9.818 9.818 0 0 1 12 2.182c5.42 0 9.818 4.398 9.818 9.818s-4.398 9.818-9.818 9.818z"/>
-    </svg>
-);
+import WhatsAppAction from '../WhatsAppAction';
 
 interface Props {
     patient: PatientRecordType;
@@ -118,42 +112,6 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
         onUpdate({ ...patient, payments: payments.filter(p => p.id !== id) });
     };
 
-    const handleShareWhatsApp = () => {
-        if (!patient.identification.phone) {
-            sileo.warning({
-                title: 'Sin teléfono',
-                description: 'El paciente no tiene un número telefónico registrado en su ficha.'
-            });
-            return;
-        }
-        if (budgetItems.length === 0) {
-            sileo.warning({
-                title: 'Presupuesto vacío',
-                description: 'Agrega al menos un tratamiento para compartir el presupuesto.'
-            });
-            return;
-        }
-        const result = whatsappService.sendBudgetQuote(
-            patient.identification.phone,
-            patient.identification.fullName,
-            budgetItems,
-            totalBudget,
-            clinicName,
-            doctorName
-        );
-        if (result.success) {
-            sileo.success({
-                title: 'WhatsApp Abierto',
-                description: 'Presupuesto preparado para enviar al paciente.'
-            });
-        } else {
-            sileo.error({
-                title: 'Error de WhatsApp',
-                description: result.error || 'No se pudo abrir WhatsApp.'
-            });
-        }
-    };
-
     return (
         <div className="space-y-8 animate-in-up duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -164,13 +122,28 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                 <div className="flex flex-wrap items-center gap-2">
                     {budgetItems.length > 0 && (
                         <>
-                            <button
-                                onClick={handleShareWhatsApp}
-                                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-sm font-semibold transition-all active:scale-95 shadow-sm cursor-pointer"
-                                title="Enviar cotización detallada por WhatsApp al paciente"
-                            >
-                                <WhatsAppIcon size={16} /> Compartir por WhatsApp
-                            </button>
+                            <WhatsAppAction
+                                storageKey={`presupuesto_${patient.id}`}
+                                label="Compartir por WhatsApp"
+                                sentLabel="Presupuesto enviado"
+                                title="Abrir WhatsApp con el presupuesto listo"
+                                send={() => {
+                                    if (!patient.identification.phone) {
+                                        return { success: false, error: 'El paciente no tiene teléfono en su ficha.' };
+                                    }
+                                    if (budgetItems.length === 0) {
+                                        return { success: false, error: 'Agrega al menos un tratamiento al presupuesto.' };
+                                    }
+                                    return whatsappService.sendBudgetQuote(
+                                        patient.identification.phone,
+                                        patient.identification.fullName,
+                                        budgetItems,
+                                        totalBudget,
+                                        clinicName,
+                                        doctorName
+                                    );
+                                }}
+                            />
                             <button
                                 onClick={() => generateBudgetPDF(patient, clinicName, doctorName)}
                                 className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-sm font-semibold transition-all active:scale-95 shadow-sm cursor-pointer"

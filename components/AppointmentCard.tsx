@@ -3,21 +3,11 @@ import { createPortal } from 'react-dom';
 import { Appointment, ReminderStatus } from '../types';
 import { cn, getInitials, formatAppDate } from '../lib/utils';
 import { useAuth } from '../services/authService';
-import { usePatient } from '../hooks/usePatients';
 import { useAppointmentMutations } from '../hooks/useAppointments';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle2, X, User, Phone, Calendar, Tag, Play, Ban, MessageCircle } from 'lucide-react';
-import { sileo } from 'sileo';
+import { Clock, X, User, Phone, Calendar, Tag, Play, Ban } from 'lucide-react';
 import { whatsappService } from '../services/whatsappService';
-
-
-// WhatsApp SVG icon — matches official brand color #25D366
-const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.561 4.14 1.535 5.875L0 24l6.322-1.505A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.37l-.36-.213-3.722.886.93-3.618-.234-.372A9.818 9.818 0 0 1 12 2.182c5.42 0 9.818 4.398 9.818 9.818s-4.398 9.818-9.818 9.818z"/>
-  </svg>
-);
+import WhatsAppAction from './WhatsAppAction';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -46,33 +36,21 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
   const { profile } = useAuth();
   const navigate = useNavigate();
 
-  const handleSendWhatsApp = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const sendReminder = () => {
     if (!appointment.phoneNumber) {
-      sileo.warning({
-        title: 'Sin teléfono',
-        description: `El paciente ${appointment.patientName} no tiene un número registrado.`
-      });
-      return;
+      return { success: false, error: `${appointment.patientName} no tiene teléfono registrado.` };
     }
-
-    const result = whatsappService.sendAppointmentReminder(appointment, profile?.clinic_name);
-    if (result.success) {
-      if (onReminderSent) {
-        onReminderSent(appointment.id, 'sent');
-      }
-      sileo.success({
-        title: 'WhatsApp Abierto',
-        description: `Mensaje de recordatorio preparado para ${appointment.patientName}.`
-      });
-    } else {
-      sileo.error({
-        title: 'Error de WhatsApp',
-        description: result.error || 'No se pudo abrir WhatsApp para este paciente.'
-      });
-    }
+    return whatsappService.sendAppointmentReminder(appointment, profile?.clinic_name);
   };
 
+  // El recordatorio solo tiene sentido para citas programadas que aún no pasan
+  const canRemind = (() => {
+    if (appointment.status !== 'Programada') return false;
+    const [y, m, d] = (appointment.date || '').split('-').map(Number);
+    const [hh, mm] = (appointment.time || '0:0').split(':').map(Number);
+    if (!y || !m || !d) return false;
+    return new Date(y, m - 1, d, hh || 0, mm || 0).getTime() > Date.now();
+  })();
   const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-emerald-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
   const statusInfo = statusLabels[appointment.status] || statusLabels.Programada;
@@ -121,32 +99,19 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
           </div>
         </div>
 
-        {/* Botón directo para enviar WhatsApp Web */}
-        <button
-          type="button"
-          onClick={handleSendWhatsApp}
-          title={
-            appointment.reminderStatus === 'sent'
-              ? 'Recordatorio ya enviado por WhatsApp. Clic para reenviar.'
-              : 'Enviar recordatorio directo por WhatsApp Web al paciente'
-          }
-          className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer active:scale-95",
-            appointment.reminderStatus === 'sent'
-              ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200 shadow-sm"
-              : "bg-[#25D366] hover:bg-[#20ba5a] text-white shadow-md hover:shadow-emerald-500/25"
-          )}
-          aria-label="Enviar recordatorio por WhatsApp"
-        >
-          {appointment.reminderStatus === 'sent' ? (
-            <div className="relative flex items-center justify-center">
-              <WhatsAppIcon size={18} />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
-            </div>
-          ) : (
-            <WhatsAppIcon size={19} />
-          )}
-        </button>
+        {canRemind && (
+          <WhatsAppAction
+            variant="icon"
+            storageKey={`reminder_${appointment.id}`}
+            initiallySent={appointment.reminderStatus === 'sent'}
+            persistLocal={false}
+            label="Enviar recordatorio por WhatsApp"
+            sentLabel="Recordatorio enviado"
+            title="Abrir WhatsApp con el recordatorio listo"
+            send={sendReminder}
+            onSent={() => onReminderSent?.(appointment.id, 'sent')}
+          />
+        )}
       </div>
 
       {/* Appointment Detail Modal */}
@@ -257,24 +222,18 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
             {/* Footer Actions */}
             <div className="px-5 pb-5 pt-2 space-y-2">
-              {/* WhatsApp Web direct sender button */}
-              <button
-                type="button"
-                onClick={handleSendWhatsApp}
-                className={cn(
-                  "w-full flex items-center justify-center gap-2.5 py-3 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer active:scale-[0.98]",
-                  appointment.reminderStatus === 'sent'
-                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                    : "bg-[#25D366] hover:bg-[#20ba5a] text-white shadow-md shadow-emerald-500/20"
-                )}
-              >
-                <WhatsAppIcon size={18} />
-                {appointment.reminderStatus === 'sent' ? (
-                  <span>Recordatorio enviado • Clic para reenviar por WhatsApp</span>
-                ) : (
-                  <span>Enviar recordatorio por WhatsApp</span>
-                )}
-              </button>
+              {canRemind && (
+                <WhatsAppAction
+                  variant="row"
+                  storageKey={`reminder_${appointment.id}`}
+                  initiallySent={appointment.reminderStatus === 'sent'}
+                  persistLocal={false}
+                  label="Enviar recordatorio por WhatsApp"
+                  sentLabel="Recordatorio enviado"
+                  send={sendReminder}
+                  onSent={() => onReminderSent?.(appointment.id, 'sent')}
+                />
+              )}
 
               <div className="flex gap-2.5 mt-2 pt-2 border-t border-slate-300">
                 {appointment.status === 'Programada' && (

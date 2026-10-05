@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { sileo } from 'sileo';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { PatientRecord } from '../types';
 import { cn, formatCurrency, getLocalISODate } from '../lib/utils';
 import { whatsappService } from '../services/whatsappService';
 import { computeFinance } from '../lib/finance';
+import WhatsAppAction from './WhatsAppAction';
 
 interface Props {
   patients: PatientRecord[];
@@ -22,18 +22,6 @@ const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
     () => computeFinance(patients, getLocalISODate(new Date())),
     [patients],
   );
-
-  const handleCollect = (p: PatientRecord, balance: number) => {
-    const result = whatsappService.sendPaymentReminder(
-      p.identification.phone,
-      p.identification.fullName,
-      formatCurrency(balance),
-      clinicName,
-    );
-    if (!result.success) {
-      sileo.warning({ title: 'No se pudo abrir WhatsApp', description: result.error || 'Revisa el teléfono del paciente.' });
-    }
-  };
 
   const visible = expanded ? debtors : debtors.slice(0, MAX_VISIBLE);
 
@@ -71,13 +59,18 @@ const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
                   <p className="text-sm font-semibold text-slate-800 truncate">{patient.identification.fullName}</p>
                   <p className="text-xs font-bold text-amber-600">{formatCurrency(balance)}</p>
                 </button>
-                <button
-                  onClick={() => handleCollect(patient, balance)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer"
-                  title="Enviar recordatorio de pago por WhatsApp"
-                >
-                  <MessageCircle size={14} /> Cobrar
-                </button>
+                <WhatsAppAction
+                  storageKey={`cobro_${patient.id}`}
+                  label="Cobrar"
+                  sentLabel="Avisado"
+                  title="Abrir WhatsApp con el recordatorio de pago"
+                  send={() => whatsappService.sendPaymentReminder(
+                    patient.identification.phone,
+                    patient.identification.fullName,
+                    formatCurrency(balance),
+                    clinicName,
+                  )}
+                />
               </li>
             ))}
           </ul>
