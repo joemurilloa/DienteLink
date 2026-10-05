@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
 import { usePatients } from '../hooks/usePatients';
 import { Appointment, AppointmentType } from '../types';
@@ -64,6 +64,14 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   if (!isOpen) return null;
 
   const todayStr = getLocalISODate(new Date());
+  // Un horario que ya pasó (hoy o días anteriores) no se puede agendar
+  const isPastSlot = (date: string, time: string) => {
+    if (date < todayStr) return true;
+    if (date > todayStr) return false;
+    const now = new Date();
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
+  };
   const monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -81,6 +89,12 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
     }
     if (newApt.patientName.trim().length < 3) {
       setFormError('El nombre es demasiado corto');
+      setIsCreating(false);
+      return;
+    }
+
+    if (isPastSlot(newApt.date, newApt.time)) {
+      setFormError('Ese horario ya pasó. Elige una hora posterior a la actual.');
       setIsCreating(false);
       return;
     }
@@ -201,7 +215,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                   </div>
                   <input
                     autoFocus
-                    className="w-full pl-11 pr-5 py-3 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all border border-slate-200"
+                    className="w-full pl-11 pr-12 py-3 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all border border-slate-200"
                     value={newApt.patientName}
                     onChange={e => {
                       setNewApt(p => ({ ...p, patientName: e.target.value }));
@@ -211,6 +225,14 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                     onFocus={() => setShowDropdown(true)}
                     placeholder="Busca paciente o escribe un nombre nuevo..."
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowDropdown(s => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    title="Ver pacientes existentes"
+                  >
+                    <ChevronDown size={18} className={cn('transition-transform', showDropdown && 'rotate-180')} />
+                  </button>
 
                   {showDropdown && (
                     <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 max-h-[240px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
@@ -353,7 +375,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                     const timeStr = `${hour.toString().padStart(2, '0')}:${mins}`;
                     const isTaken = appointments.some(
                       a => a.date === newApt.date && a.time === timeStr && a.status !== 'Eliminada'
-                    );
+                    ) || isPastSlot(newApt.date, timeStr);
 
                     return (
                       <button

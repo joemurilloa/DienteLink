@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppointmentRequest } from '../types';
 import { formatAppDate } from '../lib/utils';
+import { useAuth } from '../services/authService';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,13 +35,16 @@ export interface AppNotification {
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'dientelink_notifications_v2';
+// Las notificaciones se guardan POR USUARIO: dos cuentas en el mismo navegador nunca se mezclan.
+const STORAGE_PREFIX = 'dientelink_notifications_v3_';
+const LEGACY_KEY = 'dientelink_notifications_v2'; // versión global antigua (filtraba entre cuentas)
 const MAX_STORED = 50;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
 
-function loadStored(): AppNotification[] {
+function loadStored(key: string): AppNotification[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed: AppNotification[] = JSON.parse(raw);
     const cutoff = Date.now() - RETENTION_MS;
@@ -50,9 +54,9 @@ function loadStored(): AppNotification[] {
   }
 }
 
-function saveStored(notifications: AppNotification[]) {
+function saveStored(key: string, notifications: AppNotification[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications.slice(0, MAX_STORED)));
+    localStorage.setItem(key, JSON.stringify(notifications.slice(0, MAX_STORED)));
   } catch { /* quota exceeded — ignore */ }
 }
 
@@ -63,19 +67,28 @@ function makeId() {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => loadStored());
+  const { user } = useAuth();
+  const storageKey = `${STORAGE_PREFIX}${user?.id || 'anon'}`;
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => loadStored(storageKey));
   const seenIdsRef = useRef<Set<string>>(
-    new Set(
-      loadStored()
-        .map((n) => n.dedupeKey || n.id)
-        .filter(Boolean)
-    )
+    new Set(loadStored(storageKey).map((n) => n.dedupeKey || n.id).filter(Boolean))
   );
+  const loadedKeyRef = useRef(storageKey);
 
-  // Persist on every change
+  // Si cambia el usuario, recarga SOLO sus notificaciones
   useEffect(() => {
-    saveStored(notifications);
-  }, [notifications]);
+    if (loadedKeyRef.current === storageKey) return;
+    loadedKeyRef.current = storageKey;
+    const stored = loadStored(storageKey);
+    seenIdsRef.current = new Set(stored.map((n) => n.dedupeKey || n.id).filter(Boolean));
+    setNotifications(stored);
+  }, [storageKey]);
+
+  // Persist on every change (solo en la clave del usuario cargado)
+  useEffect(() => {
+    if (loadedKeyRef.current !== storageKey) return;
+    saveStored(storageKey, notifications);
+  }, [notifications, storageKey]);
 
   // ── Add a new notification ──────────────────────────────────────────────────
   const addNotification = useCallback((

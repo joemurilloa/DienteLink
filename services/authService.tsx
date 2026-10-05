@@ -193,6 +193,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     queryClient.clear();
     bookingService.reset();
+    try {
+      // Datos locales que pertenecen a la sesión que se cierra
+      ['dientelink_notifications_v2', 'dientelink_last_backup', 'dientelink_shown_tips'].forEach(k => localStorage.removeItem(k));
+    } catch { /* ignore */ }
     await supabase.auth.signOut();
     setProfile(null);
   };

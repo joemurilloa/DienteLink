@@ -223,8 +223,8 @@ const CalendarView: React.FC = () => {
                           title={`${a.time} - ${a.patientName} (${a.type})`}
                         >
                           <span className="text-[10px] font-semibold text-blue-800 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-blue-400 hover:text-red-500 opacity-0 group-hover/apt:opacity-100 flex-shrink-0 ml-1">
-                            <Trash2 size={10} />
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} title="Eliminar cita" className="w-6 h-6 -my-1 -mr-1 rounded-md flex items-center justify-center text-blue-400 hover:text-red-600 hover:bg-red-50 lg:opacity-40 lg:group-hover/apt:opacity-100 flex-shrink-0 ml-1 transition-colors">
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       ))}
@@ -296,8 +296,8 @@ const CalendarView: React.FC = () => {
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-blue-600">{a.time}</span>
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Trash2 size={12} />
+                                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} title="Eliminar cita" className="w-8 h-8 -my-1 -mr-1 rounded-lg flex items-center justify-center text-red-300 hover:text-red-600 hover:bg-red-50 lg:opacity-50 lg:group-hover:opacity-100 transition-all">
+                                    <Trash2 size={15} />
                                   </button>
                                 </div>
                                 <span className="text-sm font-semibold text-slate-800 line-clamp-2 mt-0.5 leading-tight">{a.patientName}</span>

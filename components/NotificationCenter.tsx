@@ -239,6 +239,19 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ compact = false
     const spaceRight = window.innerWidth - rect.right;
     const spaceBelow = window.innerHeight - rect.bottom;
 
+    // Botón abajo (sidebar): el panel se abre como "flyout" a la derecha, pegado al botón.
+    if (spaceBelow < 300 && spaceRight >= panelWidth + 24) {
+      setPanelStyle({
+        position: 'fixed',
+        bottom: Math.max(16, window.innerHeight - rect.bottom),
+        left: rect.right + 12,
+        width: panelWidth,
+        maxHeight: Math.min(460, window.innerHeight - 32),
+        zIndex: 9999,
+      });
+      return;
+    }
+
     let left = rect.left;
     // If not enough space to the right, align right edge of panel to right of button
     if (left + panelWidth > window.innerWidth - 16) {
@@ -248,7 +261,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ compact = false
 
     const top = spaceBelow >= 300
       ? rect.bottom + 8
-      : rect.top - Math.min(460, rect.top - 16) - 8;
+      : Math.max(16, rect.top - 8 - Math.min(460, rect.top - 16));
 
     setPanelStyle({
       position: 'fixed',
