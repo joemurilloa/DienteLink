@@ -1,4 +1,40 @@
-import type { PatientRecord } from '../types';
+import type { PatientRecord, Payment } from '../types';
+import { generateId, getLocalISODate } from './utils';
+
+export const PAYMENT_METHOD_OPTIONS: { value: Payment['method']; label: string }[] = [
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'card', label: 'Tarjeta' },
+  { value: 'transfer', label: 'Transferencia' },
+];
+
+export function paymentMethodLabel(method: Payment['method']): string {
+  return PAYMENT_METHOD_OPTIONS.find(m => m.value === method)?.label
+    || (method === 'other' ? 'Otro' : method);
+}
+
+/** Crea un cobro listo para guardar. El monto suele ser el saldo completo. */
+export function createPayment(
+  amount: number,
+  method: Payment['method'] = 'cash',
+  note = '',
+  date = getLocalISODate(new Date()),
+): Payment {
+  return { id: generateId(), amount, method, note, date };
+}
+
+/** Registra un cobro en el expediente. Por defecto cobra el saldo completo. */
+export function applyPayment(
+  patient: PatientRecord,
+  amount: number,
+  method: Payment['method'] = 'cash',
+  note = '',
+  date = getLocalISODate(new Date()),
+): PatientRecord {
+  return {
+    ...patient,
+    payments: [...(patient.payments || []), createPayment(amount, method, note, date)],
+  };
+}
 
 export interface FinanceSummaryData {
   collectedToday: number;

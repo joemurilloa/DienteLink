@@ -8,6 +8,7 @@ import { useRoleAccess } from '../RoleGuard';
 import PriceCatalogSettings from './Settings/PriceCatalogSettings';
 import BackupSettings from './Settings/BackupSettings';
 import { openProblemReport } from '../../lib/support';
+import { isPlatformAdmin } from '../../lib/billing';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -36,7 +37,7 @@ const SettingsView: React.FC = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const subscription = useSubscription(clinicId);
+  const subscription = useSubscription(clinicId, user?.created_at);
 
   // Contextual tip (show once)
   useSettingsTip();
@@ -88,12 +89,27 @@ const SettingsView: React.FC = () => {
   );
 
   return (
-    <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition">
+    <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition main-scroll">
       <header className="flex items-center gap-4 mb-8">
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ajustes</h2>
       </header>
 
       <div className="max-w-2xl space-y-5">
+        {isPlatformAdmin(user?.email) && (
+          <div className="card-premium p-6 border border-blue-100 bg-blue-50/40">
+            <h3 className="text-base font-bold text-slate-900">Panel interno de cobros</h3>
+            <p className="text-sm text-slate-500 mt-1 mb-4">
+              Activa a un doctor por 30, 60, 90 días o 1 año cuando te pague. Al vencer se corta el acceso; los datos no se borran.
+            </p>
+            <button
+              onClick={() => navigate('/admin')}
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700"
+            >
+              Abrir panel de activaciones
+            </button>
+          </div>
+        )}
+
         {/* Profile Card - Editable */}
 
 

@@ -5,14 +5,14 @@ import { sileo } from 'sileo';
 import DentalLogo from './DentalLogo';
 
 const AuthPage: React.FC = () => {
-  const { user, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       navigate('/', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -91,9 +91,22 @@ const AuthPage: React.FC = () => {
     return error;
   };
 
+  if (authLoading || user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-slate-400 font-medium">
+            {user ? 'Entrando a tu clínica...' : 'Iniciando DienteLink...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-6">
+      <div className="h-full overflow-y-auto overscroll-contain bg-gradient-to-br from-slate-50 to-blue-50 flex items-start justify-center p-6 py-10">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-300 p-8 text-center">
             <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
@@ -120,7 +133,7 @@ const AuthPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-6">
+    <div className="h-full overflow-y-auto overscroll-contain bg-gradient-to-br from-slate-50 to-blue-50 flex items-start justify-center p-6 py-10">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { isAuthCallbackUrl, supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
 import { queryClient } from '../lib/queryClient';
 import { bookingService } from './bookingService';
@@ -156,43 +156,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 
   useEffect(() => {
-    // Get initial session.
-    // IMPORTANT: setLoading(false) is called AFTER fetchProfile resolves so that
-    // clinicId (derived from profile) is fully settled before the app renders.
-    // This prevents team members from briefly seeing their own profile.id as clinicId
-    // while redeemInvitation is still running.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Detect if this is a brand-new account (registered in the last 10 minutes)
-        const createdAt = new Date(session.user.created_at).getTime();
-        const isNewAccount = Date.now() - createdAt < 10 * 60 * 1000;
-        fetchProfile(session.user.id, session.user.email, isNewAccount).finally(() => {
-          setLoading(false);
-        });
-      } else {
+    let cancelled = false;
+    const waitingForOAuth = isAuthCallbackUrl();
+
+    // Only subscribe to onAuthStateChange. Calling getSession() in parallel can
+    // refresh the same token twice; with reuse detection Supabase then signs
+    // the user out — which looks like "I have to log in every time I open the browser".
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (cancelled) return;
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        const shouldLoadProfile = event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED';
+        if (shouldLoadProfile) {
+          const createdAt = new Date(nextSession.user.created_at).getTime();
+          const isNewAccount = event === 'SIGNED_IN' && Date.now() - createdAt < 10 * 60 * 1000;
+          fetchProfile(nextSession.user.id, nextSession.user.email, isNewAccount).finally(() => {
+            if (!cancelled && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
+              setLoading(false);
+            }
+          });
+        }
+        return;
+      }
+
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear();
+        setProfile(null);
+      }
+
+      const stillExchangingCode = waitingForOAuth && event === 'INITIAL_SESSION';
+      if (!stillExchangingCode && (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT')) {
         setLoading(false);
       }
     });
 
-    // Listen for auth changes (sign-in / sign-out / token refresh).
-    // On sign-in: fetchProfile resolves before components can query data.
-    // On sign-out: clear cache and profile immediately.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Re-fetch profile on every auth change (e.g. Google OAuth redirect).
-        // Do NOT block loading state here — initial load already covers this.
-        fetchProfile(session.user.id, session.user.email);
-      } else {
-        queryClient.clear();
-        setProfile(null);
-      }
-    });
+    const safetyTimer = window.setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 8000);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string): Promise<{ error: string | null }> => {
@@ -264,7 +273,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         redirectTo,
         queryParams: {
           access_type: 'offline',
-          prompt: 'consent',
         },
       }
     });

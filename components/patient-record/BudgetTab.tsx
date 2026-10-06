@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePriceCatalog } from '../../lib/priceCatalog';
 import { PatientRecord as PatientRecordType, BudgetItem, Payment } from '../../types';
 import { cn, formatCurrency, getLocalISODate } from '../../lib/utils';
+import { PAYMENT_METHOD_OPTIONS, paymentMethodLabel } from '../../lib/finance';
 import {
     Plus,
     DollarSign,
@@ -35,6 +36,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
 
     const [newTreatment, setNewTreatment] = useState({ treatment: '', unitCost: '', quantity: '1', toothId: '' });
     const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash' as Payment['method'], note: '' });
+    const [customAmount, setCustomAmount] = useState(false);
     useEffect(() => {
         if (!prefill) return;
         setNewTreatment(p => ({
@@ -55,6 +57,16 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
     const totalBudget = budgetItems.reduce((sum, b) => sum + (b.unitCost * b.quantity), 0);
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     const pendingBalance = totalBudget - totalPaid;
+    const chargeAmount = parseFloat(newPayment.amount);
+    const resolvedCharge = !customAmount || isNaN(chargeAmount) || chargeAmount <= 0
+      ? pendingBalance
+      : chargeAmount;
+
+    useEffect(() => {
+        if (!customAmount && pendingBalance > 0) {
+            setNewPayment(p => (p.amount === String(pendingBalance) ? p : { ...p, amount: String(pendingBalance) }));
+        }
+    }, [pendingBalance, customAmount]);
 
     const handleAddTreatment = () => {
         setBudgetError('');
@@ -92,7 +104,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
 
     const handleAddPayment = () => {
         setPaymentError('');
-        const amount = parseFloat(newPayment.amount);
+        const amount = resolvedCharge;
         if (isNaN(amount) || amount <= 0) { setPaymentError('Ingresa un monto válido mayor a 0'); return; }
         if (amount > pendingBalance && pendingBalance > 0) { setPaymentError(`El monto excede el saldo pendiente (${formatCurrency(pendingBalance)})`); return; }
 
@@ -105,7 +117,8 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
         };
         onUpdate({ ...patient, payments: [...payments, payment] });
         setNewPayment({ amount: '', method: 'cash', note: '' });
-        sileo.success({ title: 'Abono registrado', description: `${formatCurrency(amount)} aplicado al presupuesto` });
+        setCustomAmount(false);
+        sileo.success({ title: 'Pago registrado', description: `${formatCurrency(amount)} · ${paymentMethodLabel(payment.method)}` });
     };
 
     const handleDeletePayment = (id: string) => {
@@ -305,36 +318,97 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
 
             {/* Payments Section */}
             <div className="border-t border-slate-300 pt-8">
-                <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-11 h-11 bg-emerald-600 text-white rounded-xl flex items-center justify-center"><CreditCard size={16} /></div>
-                    <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">Registrar Abono / Pago</p>
-                </div>
+                {pendingBalance > 0 ? (
+                    <div className="p-5 bg-white border border-emerald-100 rounded-2xl shadow-sm mb-6">
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-1">Cobrar</p>
+                                <p className="text-3xl font-black text-slate-900 tabular-nums leading-none">{formatCurrency(resolvedCharge)}</p>
+                                <p className="text-sm text-slate-500 mt-1.5">
+                                    {resolvedCharge === pendingBalance ? 'Pago total del saldo' : `Saldo ${formatCurrency(pendingBalance)}`}
+                                </p>
+                            </div>
+                            <div className="w-11 h-11 bg-emerald-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                <CreditCard size={18} />
+                            </div>
+                        </div>
 
-                {paymentError && (
-                    <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium mb-4">{paymentError}</div>
-                )}
+                        {paymentError && (
+                            <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium mb-4">{paymentError}</div>
+                        )}
 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
-                    <div className="md:col-span-3">
-                        <input placeholder="Monto" type="number" step="0.01" min="0" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400" value={newPayment.amount} onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }} />
-                    </div>
-                    <div className="md:col-span-3">
-                        <select className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-800 transition-all focus:border-emerald-500 appearance-none" value={newPayment.method} onChange={e => setNewPayment(p => ({ ...p, method: e.target.value as Payment['method'] }))}>
-                            <option value="cash">Efectivo</option>
-                            <option value="card">Tarjeta</option>
-                            <option value="transfer">Transferencia</option>
-                            <option value="other">Otro</option>
-                        </select>
-                    </div>
-                    <div className="md:col-span-4">
-                        <input placeholder="Nota (opcional)" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-emerald-500 transition-all placeholder:text-slate-400" value={newPayment.note} onChange={e => setNewPayment(p => ({ ...p, note: e.target.value }))} />
-                    </div>
-                    <div className="md:col-span-2 flex items-stretch">
-                        <button onClick={handleAddPayment} className="w-full py-3 bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/15 font-semibold text-sm active:scale-[0.98]">
-                            <Plus size={16} /> Aplicar
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                            {PAYMENT_METHOD_OPTIONS.map(opt => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setNewPayment(p => ({ ...p, method: opt.value }))}
+                                    className={cn(
+                                        'py-3 rounded-xl text-sm font-bold border transition-all',
+                                        newPayment.method === opt.value
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-300'
+                                    )}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {customAmount && (
+                            <input
+                                placeholder="Monto a cobrar"
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
+                                min="0"
+                                className="w-full bg-slate-50 px-4 py-3 rounded-xl border border-slate-300 outline-none text-base font-semibold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400 mb-3"
+                                value={newPayment.amount}
+                                onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }}
+                            />
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={handleAddPayment}
+                            className="w-full py-4 bg-emerald-600 text-white rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 font-bold text-base active:scale-[0.98]"
+                        >
+                            <Check size={18} /> Cobrar {formatCurrency(resolvedCharge)}
                         </button>
+
+                        {!customAmount ? (
+                            <button
+                                type="button"
+                                onClick={() => setCustomAmount(true)}
+                                className="w-full mt-2 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800"
+                            >
+                                Cobrar otro monto
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setCustomAmount(false);
+                                    setNewPayment(p => ({ ...p, amount: String(pendingBalance) }));
+                                    setPaymentError('');
+                                }}
+                                className="w-full mt-2 py-2 text-sm font-semibold text-emerald-700 hover:text-emerald-900"
+                            >
+                                Volver al pago total
+                            </button>
+                        )}
                     </div>
-                </div>
+                ) : budgetItems.length > 0 ? (
+                    <div className="p-4 mb-6 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                            <Check size={18} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-emerald-800">Cuenta al día</p>
+                            <p className="text-xs text-emerald-700/80">No hay saldo pendiente para cobrar.</p>
+                        </div>
+                    </div>
+                ) : null}
 
                 {payments.length > 0 && (
                     <div className="space-y-2">
@@ -354,7 +428,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                                     <div>
                                         <p className="text-sm font-semibold text-slate-800">{formatCurrency(pay.amount)}</p>
                                         <p className="text-sm text-slate-500">
-                                            {pay.date} · {pay.method === 'cash' ? 'Efectivo' : pay.method === 'card' ? 'Tarjeta' : pay.method === 'transfer' ? 'Transferencia' : 'Otro'}
+                                            {pay.date} · {paymentMethodLabel(pay.method)}
                                             {pay.note && ` · ${pay.note}`}
                                         </p>
                                     </div>

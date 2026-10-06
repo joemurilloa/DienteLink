@@ -40,7 +40,7 @@ const PatientsView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto p-6 lg:p-12 pb-32">
+    <div className="flex-1 h-full overflow-y-auto p-6 lg:p-12 pb-32 main-scroll">
       <PatientList
         patients={patients}
         onSelect={(p) => navigate(`/patient/${p.id}`)}

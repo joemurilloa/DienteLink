@@ -108,7 +108,7 @@ CREATE OR REPLACE VIEW public.subscription_status WITH (security_invoker = true)
       ELSE false
     END AS is_expired,
     -- Días restantes (0 si ya venció)
-    GREATEST(0, EXTRACT(DAY FROM (s.current_period_end - now()))::int) AS days_left,
+    GREATEST(0, CEIL(EXTRACT(EPOCH FROM (s.current_period_end - now())) / 86400))::int AS days_left,
     -- ¿Vence pronto? (dentro de 4 días)
     CASE
       WHEN s.current_period_end BETWEEN now() AND now() + interval '4 days' THEN true

@@ -20,7 +20,7 @@ type Step = 'info' | 'upload' | 'done';
 const SubscriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, clinicId } = useAuth();
-  const subscription = useSubscription(clinicId);
+  const subscription = useSubscription(clinicId, user?.created_at);
   const userEmail = user?.email ?? '';
 
   const [step, setStep] = useState<Step>('info');
@@ -218,7 +218,7 @@ const SubscriptionPage: React.FC = () => {
                 onClick={() => fileRef.current?.click()}
               >
                 {preview ? (
-                  <img src={preview} alt="Comprobante" className="sub-upload-img" />
+                  <img src={preview} alt="Comprobante" className="sub-upload-img" draggable={false} />
                 ) : file ? (
                   <div className="sub-upload-filename">📄 {file.name}</div>
                 ) : (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeFinance } from '../lib/finance';
+import { computeFinance, applyPayment } from '../lib/finance';
 import type { PatientRecord } from '../types';
 
 const patient = (over: Partial<PatientRecord>): PatientRecord => ({
@@ -37,5 +37,15 @@ describe('computeFinance', () => {
     const r = computeFinance([patient({ budget: [item(100)], payments: [pay(150, '2026-10-02')] })], '2026-10-05');
     expect(r.debtors).toHaveLength(0);
     expect(r.totalOwed).toBe(0);
+  });
+
+  it('registra un pago total sobre el saldo', () => {
+    const before = patient({ id: 'a', budget: [item(600)], payments: [] });
+    const after = applyPayment(before, 600, 'cash');
+    expect(after.payments).toHaveLength(1);
+    expect(after.payments?.[0].amount).toBe(600);
+    expect(after.payments?.[0].method).toBe('cash');
+    const r = computeFinance([after], '2026-10-05');
+    expect(r.debtors).toHaveLength(0);
   });
 });

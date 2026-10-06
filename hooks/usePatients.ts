@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { PatientRecord, ToothData, SurfaceData, OdontogramSnapshot } from '../types';
+import { PatientRecord, ToothData, SurfaceData, OdontogramSnapshot, Payment } from '../types';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import { ensurePeriodontogramData } from '../lib/utils';
@@ -351,7 +351,7 @@ export function usePatientMutations() {
             sileo.error({ title: 'Error al sincronizar datos', description: 'Los cambios fueron revertidos. Verifica tu conexión.' });
         },
         onSettled: (data, error, variables) => {
-            // Keep it fresh without annoying the user
+            if (isGuest) return;
             queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
             queryClient.invalidateQueries({ queryKey: ['patient', variables.id, clinicId] });
         }
@@ -398,5 +398,55 @@ export function usePatientMutations() {
         }
     });
 
-    return { savePatient: saveMutation, deletePatient: deleteMutation };
+    const addPaymentMutation = useMutation({
+        mutationFn: async ({ patientId, payment }: { patientId: string; payment: Payment }) => {
+            if (isGuest) {
+                await guestPatientsUpdate(prev => prev.map(p =>
+                    p.id === patientId ? { ...p, payments: [...(p.payments || []), payment] } : p
+                ));
+                return { patientId, payment };
+            }
+
+            if (!clinicId) throw new Error('No doctor/clinic mapped');
+            const { error } = await supabase.from('payments').insert({
+                id: payment.id,
+                patient_id: patientId,
+                doctor_id: clinicId,
+                amount: payment.amount,
+                method: payment.method,
+                note: payment.note || null,
+                date: payment.date,
+            });
+            if (error) throw error;
+            return { patientId, payment };
+        },
+        onMutate: async ({ patientId, payment }) => {
+            if (isGuest) return;
+            await queryClient.cancelQueries({ queryKey: ['patients', clinicId] });
+            const previousList = queryClient.getQueryData<PatientRecord[]>(['patients', clinicId]);
+            const previousDetail = queryClient.getQueryData<PatientRecord>(['patient', patientId, clinicId]);
+            const append = (p: PatientRecord) => ({ ...p, payments: [...(p.payments || []), payment] });
+            if (previousList) {
+                queryClient.setQueryData(['patients', clinicId], previousList.map(p => p.id === patientId ? append(p) : p));
+            }
+            if (previousDetail) {
+                queryClient.setQueryData(['patient', patientId, clinicId], append(previousDetail));
+            }
+            return { previousList, previousDetail, patientId };
+        },
+        onError: (err, _vars, context) => {
+            if (context?.previousList) queryClient.setQueryData(['patients', clinicId], context.previousList);
+            if (context?.previousDetail) {
+                queryClient.setQueryData(['patient', context.patientId, clinicId], context.previousDetail);
+            }
+            sileo.error({ title: 'No se registró el pago', description: 'Verifica tu conexión e inténtalo de nuevo.' });
+        },
+        onSettled: (_data, _err, variables) => {
+            if (isGuest) return;
+            queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
+            queryClient.invalidateQueries({ queryKey: ['patient', variables.patientId, clinicId] });
+        },
+    });
+
+    return { savePatient: saveMutation, deletePatient: deleteMutation, addPayment: addPaymentMutation };
 }

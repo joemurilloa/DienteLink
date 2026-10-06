@@ -29,6 +29,7 @@ const AuthPage = lazy(() => import('./components/AuthPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
 const TermsPage = lazy(() => import('./components/TermsPage'));
 const SubscriptionPage = lazy(() => import('./components/views/SubscriptionPage'));
+const AdminBillingView = lazy(() => import('./components/views/AdminBillingView'));
 
 // Enters guest/demo mode and redirects to the dashboard
 const DemoRoute: React.FC = () => {
@@ -116,7 +117,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
     if (location.pathname === '/consultation') return 'consultation';
     if (location.pathname === '/calendar') return 'calendar';
     if (location.pathname.startsWith('/booking/manage')) return 'solicitudes';
-    if (location.pathname === '/settings') return 'settings';
+    if (location.pathname === '/settings' || location.pathname === '/admin') return 'settings';
     return 'dashboard';
   };
 
@@ -169,6 +170,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
                 <Route path="/calendar" element={<CalendarView />} />
                 <Route path="/booking/manage" element={<BookingManagementWrapper />} />
                 <Route path="/settings" element={<SettingsView />} />
+                <Route path="/admin" element={<AdminBillingView />} />
                 <Route path="/subscription" element={<SubscriptionPage />} />
                 <Route path="*" element={<Dashboard />} />
               </Routes>
@@ -188,7 +190,7 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
 // Auth guard — shows login when not authenticated
 const AuthGuard: React.FC = () => {
   const { user, loading, clinicId, isGuest } = useAuth();
-  const subscription = useSubscription(clinicId);
+  const subscription = useSubscription(clinicId, user?.created_at);
 
   if (loading) {
     return (

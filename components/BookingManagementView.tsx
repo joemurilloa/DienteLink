@@ -312,7 +312,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto page-transition bg-white">
+    <div className="flex-1 h-full overflow-y-auto page-transition bg-white main-scroll">
       <div className="p-4 sm:p-6 lg:p-12 pb-32 max-w-[1200px] mx-auto space-y-6 sm:space-y-10">
         
         {/* Header */}

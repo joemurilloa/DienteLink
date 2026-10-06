@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { computeTrialDaysLeft, trialEndFromStart } from '../lib/billing';
 
 export interface SubscriptionState {
   status: 'trial' | 'active' | 'expired' | 'inactive' | 'pending' | null;
@@ -17,7 +18,26 @@ export interface SubscriptionState {
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // refresca cada 5 min en background
 
-export function useSubscription(clinicId: string | null): SubscriptionState {
+function parseDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function fetchSubscriptionRow(clinicId: string) {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('clinic_id', clinicId)
+    .maybeSingle();
+  if (error) {
+    console.error('[useSubscription] Error fetching subscriptions row:', error);
+    return null;
+  }
+  return data;
+}
+
+export function useSubscription(clinicId: string | null, accountCreatedAt?: string | null): SubscriptionState {
   const [state, setState] = useState<Omit<SubscriptionState, 'refresh'>>({
     status: null,
     isActive: false,
@@ -62,44 +82,55 @@ export function useSubscription(clinicId: string | null): SubscriptionState {
 
       if (error) {
         console.error('[useSubscription] Error fetching subscription:', error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: error.message,
-          // Si hay error de consulta, no bloquear el acceso
-          isActive: true,
-          isExpired: false,
-        }));
-        return;
       }
 
-      if (!data) {
-        // No existe suscripción — usuario muy nuevo, el trigger debería haberla creado
-        // Dar acceso por defecto para no bloquear al usuario
+      const row = (!error && data) ? data : await fetchSubscriptionRow(clinicId);
+      const accountStart = accountCreatedAt ? new Date(accountCreatedAt) : null;
+
+      if (!row) {
+        // Sin fila: la prueba corre desde que se creó la cuenta, no un 14 eterno.
+        const daysLeft = computeTrialDaysLeft({
+          isTrial: true,
+          accountCreatedAt: accountStart,
+        });
         setState({
           status: 'trial',
-          isActive: true,
+          isActive: daysLeft > 0,
           isTrial: true,
-          isExpired: false,
-          daysLeft: 14,
-          expiresSoon: false,
-          expiresAt: null,
-          trialStartedAt: null,
+          isExpired: daysLeft <= 0,
+          daysLeft,
+          expiresSoon: daysLeft > 0 && daysLeft <= 4,
+          expiresAt: accountStart ? trialEndFromStart(accountStart) : null,
+          trialStartedAt: accountStart,
           loading: false,
           error: null,
         });
         return;
       }
 
+      const trialStartedAt = parseDate(row.trial_started_at);
+      const periodStart = parseDate(row.current_period_start);
+      const expiresAt = parseDate(row.current_period_end);
+      const isTrial = row.is_trial ?? row.status === 'trial';
+      const daysLeft = computeTrialDaysLeft({
+        isTrial,
+        expiresAt,
+        trialStartedAt,
+        periodStart,
+        accountCreatedAt: accountStart,
+      });
+      const isExpired = row.is_expired ?? daysLeft <= 0;
+      const isActive = row.is_active ?? ((row.status === 'active' || row.status === 'trial') && daysLeft > 0);
+
       setState({
-        status: data.status as SubscriptionState['status'],
-        isActive: data.is_active ?? false,
-        isTrial: data.is_trial ?? false,
-        isExpired: data.is_expired ?? false,
-        daysLeft: data.days_left ?? 0,
-        expiresSoon: data.expires_soon ?? false,
-        expiresAt: data.current_period_end ? new Date(data.current_period_end) : null,
-        trialStartedAt: data.trial_started_at ? new Date(data.trial_started_at) : null,
+        status: row.status as SubscriptionState['status'],
+        isActive,
+        isTrial,
+        isExpired,
+        daysLeft,
+        expiresSoon: daysLeft > 0 && daysLeft <= 4,
+        expiresAt,
+        trialStartedAt,
         loading: false,
         error: null,
       });
@@ -114,14 +145,20 @@ export function useSubscription(clinicId: string | null): SubscriptionState {
         isExpired: false,
       }));
     }
-  }, [clinicId]);
+  }, [clinicId, accountCreatedAt]);
 
   useEffect(() => {
     fetchSubscription();
 
-    // Refrescar en background cada 5 minutos
     const interval = setInterval(fetchSubscription, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchSubscription();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [fetchSubscription]);
 
   return { ...state, refresh: fetchSubscription };

@@ -108,8 +108,8 @@ const CalendarView: React.FC = () => {
       })();
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white page-transition overflow-hidden">
-      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 pt-10 lg:p-6 lg:pb-6 gap-4 overflow-y-auto hide-scrollbar">
+    <div className="flex-1 flex flex-col min-h-0 bg-white page-transition main-scroll pb-28 md:pb-6">
+      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 pt-8 lg:p-6 gap-4">
         
         {/* Superior Minimalist Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 flex-shrink-0">
@@ -164,20 +164,20 @@ const CalendarView: React.FC = () => {
           <div className="hidden sm:block w-16" /> {/* Spacer */}
         </div>
 
-        <div className="flex-1 flex flex-col min-h-[540px] animate-in fade-in duration-500">
+        <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-500">
           
           {/* ══════ MONTH VIEW ══════ */}
           {viewMode === 'month' && (
-            <div className="flex-1 flex flex-col border border-slate-300 bg-slate-50/50 rounded-3xl overflow-hidden min-h-0">
-              <div className="grid grid-cols-7 flex-shrink-0 bg-slate-50">
+            <div className="flex flex-col border border-slate-300 bg-white rounded-3xl overflow-hidden">
+              <div className="grid grid-cols-7 bg-slate-50">
                 {dayNamesShort.map(d => (
-                  <div key={d} className="h-10 flex items-center justify-end pr-4 text-xs font-bold uppercase tracking-widest text-slate-600 border-r border-b border-slate-300 last:border-r-0">
+                  <div key={d} className="h-9 flex items-center justify-center text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 border-b border-slate-200">
                     {d}
                   </div>
                 ))}
               </div>
-              <div className="flex-1 grid grid-cols-7 auto-rows-[1fr] min-h-0 bg-white">
-                {Array.from({ length: skip }).map((_, i) => <div key={`s-${i}`} className="bg-slate-50/80 border-r border-b border-slate-300" />)}
+              <div className="grid grid-cols-7 bg-white">
+                {Array.from({ length: skip }).map((_, i) => <div key={`s-${i}`} className="min-h-[48px] sm:min-h-[88px] bg-slate-50/80 border-r border-b border-slate-200" />)}
                 
                 {Array.from({ length: days }).map((_, i) => {
                 const d = i + 1;
@@ -185,36 +185,42 @@ const CalendarView: React.FC = () => {
                 const isToday = todayStr === dateStr;
                 const isPast = dateStr < todayStr;
                 const dayApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada');
-                const weekRow = Math.floor((skip + i) / 7);
-                const isEvenRow = weekRow % 2 === 0;
 
                 return (
                   <div
                     key={d}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => { setCurrentDate(new Date(year, month, d)); setViewMode('day'); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCurrentDate(new Date(year, month, d)); setViewMode('day'); } }}
                     className={cn(
-                        "flex flex-col border-r border-b border-slate-300 p-1.5 cursor-pointer transition-all relative min-h-0",
-                        isPast 
-                          ? "bg-slate-100/70 opacity-50" 
-                          : cn(
-                              isEvenRow ? "bg-white" : "bg-slate-50/40",
-                              "group hover:bg-blue-50/40 hover:z-10"
-                            ),
-                        isToday && !isPast && "ring-2 ring-inset ring-blue-500/30 bg-blue-50/20"
+                        "flex flex-col items-center sm:items-stretch min-h-[48px] sm:min-h-[88px] border-r border-b border-slate-200 p-1 sm:p-1.5 cursor-pointer transition-colors",
+                        isPast ? "bg-slate-50 opacity-60" : "bg-white hover:bg-blue-50/40",
+                        isToday && !isPast && "bg-blue-50/40"
                     )}
                   >
-                    <div className="flex justify-end flex-shrink-0 mb-1">
-                      <span className={cn(
-                        "w-7 h-7 flex items-center justify-center rounded-full text-sm",
-                        isToday 
-                          ? "bg-blue-600 text-white font-extrabold shadow-sm shadow-blue-600/30" 
-                          : isPast 
-                            ? "text-slate-500 font-semibold" 
-                            : "text-slate-800 font-bold"
-                      )}>{d}</span>
-                    </div>
+                    <span className={cn(
+                      "w-7 h-7 flex items-center justify-center rounded-full text-sm",
+                      isToday
+                        ? "bg-blue-600 text-white font-extrabold"
+                        : isPast
+                          ? "text-slate-400 font-semibold"
+                          : "text-slate-800 font-bold"
+                    )}>{d}</span>
 
-                    <div className="flex-1 space-y-1 px-0.5 overflow-hidden">
+                    {dayApts.length > 0 && (
+                      <span className="sm:hidden mt-0.5 flex items-center justify-center">
+                        {dayApts.length === 1 ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                        ) : (
+                          <span className="min-w-[16px] h-4 px-1 rounded-full bg-blue-600 text-white text-[9px] font-bold leading-4">
+                            {dayApts.length}
+                          </span>
+                        )}
+                      </span>
+                    )}
+
+                    <div className="hidden sm:block flex-1 space-y-1 px-0.5 overflow-hidden mt-1 w-full">
                       {dayApts.slice(0, 2).map(a => (
                         <div 
                           key={a.id} 
@@ -229,7 +235,7 @@ const CalendarView: React.FC = () => {
                         </div>
                       ))}
                       {dayApts.length > 2 && (
-                        <div className="text-[10px] font-bold text-slate-500 hover:text-blue-600 px-1 py-0.5 text-right transition-colors">
+                        <div className="text-[10px] font-bold text-slate-500 px-1 py-0.5 text-right">
                           +{dayApts.length - 2} más
                         </div>
                       )}
@@ -240,10 +246,42 @@ const CalendarView: React.FC = () => {
               </div>
             </div>
           )}
+          {viewMode === 'month' && (
+            <p className="sm:hidden text-center text-xs text-slate-400 font-medium">Toca un día para ver las citas</p>
+          )}
 
           {/* ══════ WEEK VIEW ══════ */}
           {viewMode === 'week' && (
-            <div className="flex-1 overflow-y-auto hide-scrollbar border border-slate-300 rounded-3xl min-h-0 bg-white">
+            <>
+              <div className="sm:hidden grid grid-cols-7 gap-1">
+                {getWeekDates().map((date, i) => {
+                  const dateStr = fmtDate(date);
+                  const isToday = dateStr === todayStr;
+                  const count = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada').length;
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => { setCurrentDate(date); setViewMode('day'); }}
+                      className={cn(
+                        "flex flex-col items-center py-3 rounded-2xl border",
+                        isToday ? "bg-blue-600 text-white border-blue-600" : "bg-white border-slate-200 text-slate-800"
+                      )}
+                    >
+                      <span className={cn("text-[10px] font-bold uppercase", isToday ? "text-blue-100" : "text-slate-400")}>{dayNamesShort[(i + 1) % 7]}</span>
+                      <span className="text-lg font-bold mt-0.5">{date.getDate()}</span>
+                      {count > 0 && (
+                        <span className={cn("mt-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold leading-4", isToday ? "bg-white text-blue-600" : "bg-blue-600 text-white")}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="sm:hidden text-center text-xs text-slate-400 font-medium -mt-1">Toca un día para ver las citas</p>
+
+            <div className="hidden sm:block overflow-x-auto border border-slate-300 rounded-3xl bg-white">
               <div className="min-w-[800px] flex flex-col h-max">
                 {/* Headers */}
                 <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50/30 border-b border-slate-300 sticky top-0 z-10">
@@ -311,11 +349,12 @@ const CalendarView: React.FC = () => {
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {/* ══════ DAY VIEW ══════ */}
           {viewMode === 'day' && (
-            <div className="flex-1 overflow-y-auto hide-scrollbar bg-white rounded-3xl border border-slate-300 p-2.5 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] min-h-0">
+            <div className="bg-white rounded-3xl border border-slate-300 p-2.5 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
               {HOURS.map(hour => {
                 const dateStr = fmtDate(currentDate);
                 const isNow = todayStr === dateStr && new Date().getHours() === hour;

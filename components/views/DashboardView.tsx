@@ -182,7 +182,7 @@ const Dashboard: React.FC = () => {
   const firstName = doctorName.replace(/^Dr\.?\s*/i, '').split(' ')[0];
 
   return (
-    <div className="flex-1 h-full overflow-y-auto hide-scrollbar bg-[#f5f7fa]">
+    <div className="flex-1 h-full overflow-y-auto hide-scrollbar bg-[#f5f7fa] main-scroll">
       <div className="max-w-4xl mx-auto px-5 sm:px-8 py-8 flex flex-col gap-7 pb-28 md:pb-12">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}

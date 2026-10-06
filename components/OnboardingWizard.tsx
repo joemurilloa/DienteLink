@@ -50,10 +50,10 @@ const OnboardingWizard: React.FC = () => {
     const progressPercent = (step / TOTAL_STEPS) * 100;
 
     return (
-        <div className="fixed inset-0 z-[200] bg-slate-100 flex items-center justify-center p-4 selection:bg-blue-100 selection:text-blue-900 animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-[200] bg-slate-100 flex items-start sm:items-center justify-center p-4 overflow-y-auto selection:bg-blue-100 selection:text-blue-900 animate-in fade-in duration-500">
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#1e293b 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-            <div className="relative bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl p-8 md:p-14 border border-slate-300/60 overflow-hidden animate-in zoom-in-95 duration-700">
+            <div className="relative bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl p-8 md:p-14 border border-slate-300/60 my-6 animate-in zoom-in-95 duration-700">
                 {/* Progress bar */}
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-100">
                     <div

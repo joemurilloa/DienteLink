@@ -495,13 +495,19 @@ select:focus-visible {
   --primary-dark: var(--theme-700);
 }
 
-body, input, textarea, button, select {
+body, input, textarea, select {
   font-family: 'Plus Jakarta Sans', sans-serif;
   -webkit-tap-highlight-color: transparent;
   background-color: var(--background);
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ===== Card System ===== */
@@ -685,20 +691,15 @@ body, input, textarea, button, select {
 }
 
 /* ===== Smooth page transitions ===== */
+/* Opacity only. A leftover transform (forwards + translate) breaks iOS scrolling:
+   the user has to hold a tap before the page will move. */
 .page-transition {
-  animation: pageIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pageIn 0.28s ease-out;
 }
 
 @keyframes pageIn {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ================================
@@ -973,6 +974,17 @@ body, input, textarea, button, select {
 /* Prevent pull-to-refresh gesture from triggering in the app shell */
 body {
   overscroll-behavior-y: contain;
+}
+
+/* Single scroll surface for app views (avoids nested overflow-hidden on iPhone). */
+.main-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
 }
 
 /* ================================
@@ -1801,11 +1813,21 @@ body {
 
 .sub-page {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   background: #f1f5f9;
-  min-height: 0;
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.sub-body {
+  padding: 20px 20px 8px;
+  flex: 1;
 }
 
 .sub-back {
@@ -1959,9 +1981,10 @@ body {
   padding: 32px 20px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
   background: #f8fafc;
   margin-bottom: 16px;
+  touch-action: pan-y;
 }
 .sub-upload-modern:hover { border-color: #3b82f6; background: #eff6ff; }
 .sub-upload-modern.has-file { border-color: #22c55e; border-style: solid; background: white; padding: 12px; }
@@ -1999,16 +2022,19 @@ body {
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: background 0.2s, box-shadow 0.2s;
   box-shadow: 0 4px 12px rgba(15,23,42,0.15);
+  position: sticky;
+  bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
 }
-.sub-btn-submit:hover:not(:disabled) { transform: translateY(-2px); background: #1e293b; box-shadow: 0 6px 16px rgba(15,23,42,0.25); }
+.sub-btn-submit:hover:not(:disabled) { background: #1e293b; box-shadow: 0 6px 16px rgba(15,23,42,0.25); }
 .sub-btn-submit:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; color: white; opacity: 1; }
 
 .sub-error-modern { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 
-.fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in-up { animation: fadeInUp 0.35s ease-out; }
+@keyframes fadeInUp { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Success / Done Screen ── */
 .sub-body--centered {

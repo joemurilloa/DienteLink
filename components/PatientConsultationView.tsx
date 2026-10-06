@@ -355,7 +355,7 @@ const PatientConsultationView: React.FC = () => {
 
           {/* Right Column: Active Form */}
           <main className={cn(
-            "flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6 lg:p-10 hide-scrollbar",
+            "flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6 lg:p-10 hide-scrollbar overscroll-contain",
             mobileTab === 'form' ? "block" : "hidden lg:block"
           )}>
             <div className="max-w-3xl mx-auto space-y-8">

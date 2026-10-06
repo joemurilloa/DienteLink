@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authService';
 import { motion, useScroll, useTransform } from 'framer-motion';
@@ -12,8 +12,14 @@ import { BILLING } from '../lib/billing';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const targetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, navigate]);
   
   const { scrollYProgress } = useScroll({
     container: targetRef
@@ -31,6 +37,19 @@ const LandingPage: React.FC = () => {
   };
 
   const handleDemo = () => navigate('/demo');
+
+  if (loading || user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-slate-400 font-medium">
+            {user ? 'Entrando a tu clínica...' : 'Iniciando DienteLink...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full bg-[#FAFCFF] text-slate-900 overflow-y-auto overflow-x-hidden font-sans relative scroll-smooth" ref={targetRef}>
@@ -108,7 +127,7 @@ const LandingPage: React.FC = () => {
               onClick={handleCTA}
               className="w-full sm:w-auto px-10 py-5 bg-blue-600 text-white rounded-full font-bold text-lg transition-all shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:shadow-blue-600/40 hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 group"
             >
-              <span>Comenzar Prueba Gratis</span>
+              <span>{user ? 'Entrar a mi clínica' : 'Comenzar Prueba Gratis'}</span>
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <button
@@ -255,7 +274,7 @@ const LandingPage: React.FC = () => {
               onClick={handleCTA}
               className="w-full py-5 bg-blue-600 text-white font-bold rounded-full transition-all shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:shadow-blue-600/40 hover:-translate-y-1 active:scale-95 text-lg"
             >
-              Comenzar Prueba Gratis
+              {user ? 'Entrar a mi clínica' : 'Comenzar Prueba Gratis'}
             </button>
           </div>
         </motion.div>
