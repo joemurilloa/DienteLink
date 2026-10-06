@@ -39,7 +39,8 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   const { savePatient } = usePatientMutations();
   const [activeTab, setActiveTab] = useState<'requests' | 'config' | 'share'>('requests');
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [notifyReq, setNotifyReq] = useState<AppointmentRequest | null>(null);
   const [loadingReqs, setLoadingReqs] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [availability, setAvailability] = useState<DoctorAvailability>(() => bookingService.getDoctorAvailability());
@@ -55,8 +56,8 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     const clinic = profile?.clinic_name?.trim();
     if (!clinic) return;
     const isDefault = !settings.clinicName || settings.clinicName === 'DienteLink Clínica';
-    if (!isDefault) return;
-    const next = { ...settings, clinicName: clinic, doctorName: settings.doctorName || profile?.full_name || '' };
+    if (!isDefault && settings.requirePhone) return;
+    const next = { ...settings, clinicName: clinic, doctorName: settings.doctorName || profile?.full_name || '', requirePhone: true };
     setSettings(next);
     bookingService.saveBookingSettings(next).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,7 +82,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   }, [loadRequests]);
 
   useEffect(() => {
-    const handle = () => loadRequests();
+    const handle = () => setRequests(bookingService.getAppointmentRequests());
     window.addEventListener('bookingRequestsUpdated', handle);
     window.addEventListener('newAppointmentRequest', handle);
     return () => {
@@ -172,14 +173,33 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     
     createAppointment.mutate(appointment, {
       onSuccess: () => {
-        sileo.success({
-          title: '¡Cita Aprobada!',
-          description: `Agendada el ${formatAppDate(req.requestedDate)} a las ${req.requestedTime}`,
-        });
+        if (req.patientPhone) {
+          setNotifyReq(req);
+        } else {
+          sileo.success({
+            title: 'Cita en la agenda',
+            description: `${formatAppDate(req.requestedDate)} a las ${req.requestedTime}. No hay teléfono para avisar.`,
+          });
+        }
       }
     });
-    
+
     setRequests(bookingService.getAppointmentRequests());
+  };
+
+  const tellPatient = () => {
+    if (!notifyReq) return;
+    const result = whatsappService.sendBookingConfirmation(
+      notifyReq.patientPhone,
+      notifyReq.patientName,
+      notifyReq.requestedDate,
+      notifyReq.requestedTime,
+      profile?.clinic_name,
+    );
+    if (!result.success) {
+      sileo.warning({ title: 'No se pudo abrir WhatsApp', description: result.error || 'Revisa el teléfono.' });
+    }
+    setNotifyReq(null);
   };
 
   const handleReject = async (id: string) => {
@@ -277,14 +297,28 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
   const handleSaveConfig = async () => {
     setSaving(true);
     try {
+      const nextSettings = { ...settings, requirePhone: true };
       await bookingService.saveDoctorAvailability(availability);
-      await bookingService.saveBookingSettings(settings);
+      await bookingService.saveBookingSettings(nextSettings);
+      setSettings(nextSettings);
       setHasChanges(false);
       sileo.success({ title: 'Guardado' });
     } catch (e) {
       sileo.error({ title: 'Error' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleOnlineBooking = async () => {
+    const next = { ...settings, isActive: !settings.isActive, requirePhone: true };
+    setSettings(next);
+    try {
+      await bookingService.saveBookingSettings(next);
+      sileo.success({ title: next.isActive ? 'Reservas en línea encendidas' : 'Reservas en línea apagadas' });
+    } catch {
+      setSettings(settings);
+      sileo.error({ title: 'No se pudo cambiar' });
     }
   };
 
@@ -321,15 +355,50 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Solicitudes</h1>
               {pendingCount > 0 && (
-                <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-sm font-bold animate-pulse">
-                  {pendingCount} Pendientes
+                <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-sm font-bold">
+                  {pendingCount} por aprobar
                 </div>
               )}
             </div>
-            <p className="text-slate-500 font-medium text-sm sm:text-base md:pl-11">Gestiona las reservas hechas desde tu enlace público.</p>
+            <p className="text-slate-500 font-medium text-sm sm:text-base">Reservas que llegaron por tu enlace. Aprueba las que sí vas a atender.</p>
           </div>
+        </header>
 
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5">
+          <div className="min-w-0">
+            <p className="font-bold text-slate-900">Reservas en línea</p>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {settings.isActive
+                ? 'Los pacientes pueden pedir cita por tu enlace.'
+                : 'Apagado. Nadie puede agendar por el enlace.'}
+            </p>
+          </div>
+          <div
+            role="switch"
+            aria-checked={settings.isActive}
+            aria-label="Reservas en línea"
+            tabIndex={0}
+            onClick={toggleOnlineBooking}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleOnlineBooking();
+              }
+            }}
+            className={cn(
+              'relative h-[31px] w-[51px] flex-shrink-0 rounded-full cursor-pointer transition-colors duration-200 ease-out',
+              settings.isActive ? 'bg-[#34C759]' : 'bg-[#E9E9EA]',
+            )}
+          >
+            <span
+              className="absolute top-[2px] h-[27px] w-[27px] rounded-full bg-white border border-black/5 shadow-[0_3px_1px_rgba(0,0,0,0.06),0_3px_8px_rgba(0,0,0,0.15)] transition-transform duration-200 ease-out"
+              style={{ transform: settings.isActive ? 'translateX(22px)' : 'translateX(2px)' }}
+            />
+          </div>
+        </div>
+
+        <div className={cn('space-y-6 sm:space-y-10', !settings.isActive && 'pointer-events-none select-none opacity-40')}>
+          <div className="flex items-center gap-3 justify-end">
              <div className="flex bg-slate-100/80 p-1 rounded-xl">
                {([
                 { key: 'requests', label: 'Buzón', icon: Bell },
@@ -350,17 +419,16 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                ))}
              </div>
           </div>
-        </header>
 
         {/* TAB: REQUESTS */}
         {activeTab === 'requests' && (
           <div className="animate-in fade-in duration-300">
             <div className="flex items-center gap-2 mb-6 border-b border-slate-300 pb-4 overflow-x-auto hide-scrollbar">
               {([
+                { key: 'pending', label: 'Por aprobar' },
+                { key: 'approved', label: 'En la agenda' },
+                { key: 'rejected', label: 'Declinadas' },
                 { key: 'all', label: 'Todas' },
-                { key: 'pending', label: 'Pendientes' },
-                { key: 'approved', label: 'Aprobadas' },
-                { key: 'rejected', label: 'Rechazadas' },
               ] as const).map(f => (
                 <button
                   key={f.key}
@@ -390,8 +458,14 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                 <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-400">
                   <Bell size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Buzón vacío</h3>
-                <p className="text-[15px] font-medium text-slate-500">Las peticiones de cita aparecerán aquí para tu aprobación.</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                  {filter === 'pending' ? 'Nada por aprobar' : 'Nada en esta lista'}
+                </h3>
+                <p className="text-[15px] font-medium text-slate-500">
+                  {filter === 'pending'
+                    ? 'Cuando alguien reserve por tu enlace, la cita aparece aquí.'
+                    : 'No hay solicitudes con este estado.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -409,13 +483,29 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                         {getInitials(req.patientName)}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-bold text-[15px] text-slate-900 truncate">{req.patientName}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-[15px] text-slate-900 truncate">{req.patientName}</h4>
+                          <span className={cn(
+                            'text-[11px] font-bold px-2 py-0.5 rounded-md',
+                            req.status === 'pending' && 'bg-amber-100 text-amber-800',
+                            req.status === 'approved' && 'bg-blue-50 text-blue-700',
+                            req.status === 'rejected' && 'bg-slate-100 text-slate-500',
+                          )}>
+                            {req.status === 'pending' ? 'Por aprobar' : req.status === 'approved' ? 'En la agenda' : req.requestedDate < todayISO ? 'Venció' : 'Declinada'}
+                          </span>
+                        </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px] font-medium text-slate-500 leading-tight">
                           <span className="capitalize whitespace-nowrap">{formatAppDate(req.requestedDate)}</span>
                           <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"/>
                           <span className="font-semibold text-slate-700 whitespace-nowrap">{fmtTime(req.requestedTime)}</span>
                           <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"/>
                           <span className="whitespace-nowrap">{req.appointmentType}</span>
+                          {req.patientPhone && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"/>
+                              <a href={`tel:${req.patientPhone}`} className="whitespace-nowrap text-slate-700 hover:text-blue-700">{req.patientPhone}</a>
+                            </>
+                          )}
                         </div>
                         {req.message && (
                           <p className="mt-2 text-[13px] text-slate-600 bg-white border border-slate-300 p-2.5 rounded-lg">"{req.message}"</p>
@@ -427,7 +517,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t border-slate-300 md:border-0 pt-4 md:pt-0">
                       {req.status === 'pending' && (
                         <>
-                           <button onClick={() => handleApprove(req.id)} className="px-5 py-2.5 bg-slate-900 text-white rounded-[10px] text-[13px] font-bold hover:bg-slate-800 transition-all">Aprobar</button>
+                           <button onClick={() => handleApprove(req.id)} className="px-5 py-2.5 bg-blue-600 text-white rounded-[10px] text-[13px] font-bold hover:bg-blue-700 transition-all">Aprobar</button>
                            <button onClick={() => handleReject(req.id)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-[10px] text-[13px] font-bold hover:bg-slate-200 transition-all">Declinar</button>
                         </>
                       )}
@@ -446,20 +536,14 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                           )}
                         />
                       )}
-                      {req.status === 'approved' && (
-                        <button onClick={() => handleChangeStatus(req.id, 'rejected')} className="px-4 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-sm font-bold transition-all">Revocar</button>
-                      )}
                       {req.status === 'rejected' && (
-                        <button onClick={() => handleChangeStatus(req.id, 'approved')} className="px-4 py-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg text-sm font-bold transition-all">Re-Aprobar</button>
+                        <button onClick={() => handleChangeStatus(req.id, 'approved')} className="px-4 py-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg text-sm font-bold transition-all">Aprobar</button>
                       )}
-                      <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block" />
-                      <button title="Eliminar solicitud" onClick={() => setDeleteTarget(req.id)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-
-                    <div className="absolute right-5 top-5 md:hidden text-xs uppercase font-bold text-slate-400">
-                      {({ pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' } as Record<string, string>)[req.status] || req.status}
+                      {req.status !== 'pending' && (
+                        <button title="Eliminar solicitud" onClick={() => setDeleteTarget(req.id)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -471,36 +555,30 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
         {/* TAB: CONFIGURAR */}
         {activeTab === 'config' && (
           <div className="animate-in fade-in duration-300 max-w-4xl">
-             <div className="flex items-center justify-between mb-8">
-               <h2 className="text-xl font-bold text-slate-900">Ajustes de Agenda</h2>
-               <button
-                  onClick={handleSaveConfig}
-                  disabled={saving || !hasChanges}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-[12px] text-sm font-bold shadow-[0_4px_12px_rgba(37,99,235,0.2)] disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all"
-                >
-                  {saving ? 'Guardando...' : 'Guardar Cambios'}
-                </button>
+             <div className="mb-8">
+               <h2 className="text-xl font-bold text-slate-900">Cuándo puedes atender</h2>
+               <p className="text-sm text-slate-500 mt-1">Esto es lo que ve quien reserva por tu enlace.</p>
              </div>
 
              <div className="space-y-12">
                {/* Sección 1 */}
                <section>
-                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Reglas de Reserva</h3>
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Cómo se reservan</h3>
                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                    <div className="space-y-2">
-                     <label className="text-[13px] font-semibold text-slate-900">Duración base</label>
+                     <label className="text-[13px] font-semibold text-slate-900">Cuánto dura una cita</label>
                      <select value={availability.slotDuration} onChange={e => { setAvailability(p => ({ ...p, slotDuration: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
                        <option value={15}>15 minutos</option><option value={30}>30 minutos</option><option value={45}>45 minutos</option><option value={60}>1 hora</option>
                      </select>
                    </div>
                    <div className="space-y-2">
-                     <label className="text-[13px] font-semibold text-slate-900">Pausa intermedia</label>
+                     <label className="text-[13px] font-semibold text-slate-900">Tiempo entre citas</label>
                      <select value={availability.bufferTime} onChange={e => { setAvailability(p => ({ ...p, bufferTime: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
                        <option value={0}>Sin pausa</option><option value={15}>15 minutos</option><option value={30}>30 minutos</option>
                      </select>
                    </div>
                    <div className="space-y-2">
-                     <label className="text-[13px] font-semibold text-slate-900">Anticipación max.</label>
+                     <label className="text-[13px] font-semibold text-slate-900">Hasta cuándo pueden reservar</label>
                      <select value={availability.advanceBookingDays} onChange={e => { setAvailability(p => ({ ...p, advanceBookingDays: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
                        <option value={7}>1 semana</option><option value={14}>2 semanas</option><option value={30}>1 mes</option><option value={60}>2 meses</option>
                      </select>
@@ -512,7 +590,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
                {/* Sección 2 */}
                <section>
-                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Disponibilidad Semanal</h3>
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Días y horarios</h3>
                  <div className="space-y-2">
                    {daysOfWeek.map(day => {
                      const cfg = availability.weeklySchedule.find(d => d.dayOfWeek === day.value);
@@ -526,7 +604,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                            </label>
                            {cfg.enabled && (
                              <button onClick={() => addTimeSlot(day.value)} className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-sm font-bold hover:bg-blue-100 transition-colors">
-                               Agregar Franja
+                               Otro horario
                              </button>
                            )}
                          </div>
@@ -554,30 +632,30 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
                {/* Sección 3 */}
                <section className="pb-12">
-                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Portal de Reservas</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Lo que ve el paciente</h3>
+                 <div className="max-w-xl space-y-5">
                     <div className="space-y-5">
                       <div className="space-y-2">
-                        <label className="text-[13px] font-semibold text-slate-900">Nombre del Perfil</label>
+                        <label className="text-[13px] font-semibold text-slate-900">Nombre que ve el paciente</label>
                         <input type="text" value={settings.doctorName} onChange={e => { setSettings(p => ({ ...p, doctorName: e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-[15px] font-semibold focus:bg-white focus:border-blue-500 border border-slate-300 transition-all" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[13px] font-semibold text-slate-900">Descripción Médica</label>
+                        <label className="text-[13px] font-semibold text-slate-900">Texto de la página</label>
                         <textarea rows={3} value={settings.description} onChange={e => { setSettings(p => ({ ...p, description: e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-[13px] text-slate-600 focus:bg-white focus:border-blue-500 border border-slate-300 resize-none transition-all" />
                       </div>
                     </div>
-                    <div className="space-y-5">
-                       <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl border border-slate-300 hover:bg-slate-50 transition-colors">
-                         <input type="checkbox" checked={settings.isActive} onChange={() => { setSettings(p => ({ ...p, isActive: !p.isActive })); setHasChanges(true); }} className="w-5 h-5 rounded-md cursor-pointer" />
-                         <span className="text-sm font-bold text-slate-900">Agenda Pública Activa</span>
-                       </label>
-                       <label className="flex items-center gap-3 cursor-pointer p-2">
-                         <input type="checkbox" checked={settings.requirePhone} onChange={() => { setSettings(p => ({ ...p, requirePhone: !p.requirePhone })); setHasChanges(true); }} className="w-4 h-4 rounded cursor-pointer" />
-                         <span className="text-sm font-medium text-slate-700">Requerir teléfono obligatorio</span>
-                       </label>
-                    </div>
                  </div>
                </section>
+             </div>
+
+             <div className="sticky bottom-4 mt-8 flex justify-end">
+               <button
+                  onClick={handleSaveConfig}
+                  disabled={saving || !hasChanges}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-[12px] text-sm font-bold shadow-[0_4px_12px_rgba(37,99,235,0.2)] disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all"
+                >
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
              </div>
           </div>
         )}
@@ -608,7 +686,28 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
              </div>
           </div>
         )}
+        </div>
       </div>
+
+      {notifyReq && (
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setNotifyReq(null)}>
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">Cita en la agenda</p>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">{notifyReq.patientName}</h3>
+            <p className="text-sm text-slate-500 mb-5">
+              {formatAppDate(notifyReq.requestedDate)} a las {fmtTime(notifyReq.requestedTime)}. ¿Le avisamos por WhatsApp?
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setNotifyReq(null)} className="flex-1 py-3.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm">
+                Ahora no
+              </button>
+              <button type="button" onClick={tellPatient} className="flex-[2] py-3.5 rounded-xl bg-blue-600 text-white font-bold text-sm">
+                Avisar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteTarget && (
         <ConfirmModal

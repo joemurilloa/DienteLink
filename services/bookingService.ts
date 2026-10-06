@@ -209,10 +209,33 @@ export class BookingService {
     try {
       const data = await persistence.fetchAppointmentRequests(userId);
       this.requests = (data || []).map(dbToRequest);
+      await this.expirePastPending();
       window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
     } catch (err) {
       console.error('[BookingService] refreshRequests error:', err);
     }
+  }
+
+  /** Si la hora de la reserva ya pasó y nadie la aprobó, se cierra. No queda en el buzón. */
+  private async expirePastPending(): Promise<void> {
+    const now = Date.now();
+    const stale = this.requests.filter(r => r.status === 'pending' && this.requestMoment(r) < now);
+    for (const request of stale) {
+      request.status = 'rejected';
+      request.respondedAt = new Date().toISOString();
+      try {
+        await persistence.updateAppointmentRequestStatus(request.id, 'rejected', request.respondedAt);
+      } catch (err) {
+        console.error('[BookingService] expirePastPending error:', err);
+      }
+    }
+  }
+
+  private requestMoment(request: AppointmentRequest): number {
+    const [y, m, d] = (request.requestedDate || '').split('-').map(Number);
+    const [hh, mm] = (request.requestedTime || '00:00').split(':').map(Number);
+    if (!y || !m || !d) return 0;
+    return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
   }
 
   async approveRequest(requestId: string): Promise<AppointmentRequest | null> {

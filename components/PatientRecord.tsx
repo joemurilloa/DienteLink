@@ -101,9 +101,11 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
     const { profile } = useAuth();
     const doctorName = profile?.full_name || 'Doctor';
     const clinicName = profile?.clinic_name || 'DienteLink';
+    const { canViewClinical, canViewFinancial, canEditClinical, role: userRole } = useRoleAccess();
     const [searchParams] = useSearchParams();
     const initialParam = searchParams.get('tab');
-    const initialTab = ((initialParam === 'citas' ? 'history' : initialParam) || 'id') as TabId;
+    const fallbackTab: TabId = canViewClinical ? 'history' : 'id';
+    const initialTab = ((initialParam === 'citas' ? 'history' : initialParam) || fallbackTab) as TabId;
     const [activeTab, setActiveTab] = useState<TabId>(initialTab);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [budgetPrefill, setBudgetPrefill] = useState<{ treatment: string; cost: string; toothId: number } | null>(null);
@@ -113,7 +115,6 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         setActiveTab('budget');
     };
     const [isExporting, setIsExporting] = useState(false);
-    const { canViewClinical, canViewFinancial, canEditClinical, role: userRole } = useRoleAccess();
 
     // Show wow banner only once for newly created patients (< 3 minutes)
     const [showWow, setShowWow] = useState(() => {
@@ -155,12 +156,12 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 const ENABLE_PERIODONTOGRAM = false;
 
     const tabs = [
-        { id: 'id',             label: 'Ficha y Anamnesis',    labelShort: 'Ficha',       icon: User,        allowed: true },
+        { id: 'history',        label: 'Historial y Citas',     labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
         { id: 'odontogram',     label: 'Odontograma',          labelShort: 'Odonto',      icon: LayoutGrid,  allowed: canViewClinical },
         ...(ENABLE_PERIODONTOGRAM ? [
             { id: 'periodontogram', label: 'Periodonto',       labelShort: 'Perio',       icon: BarChart3,   allowed: canViewClinical },
         ] : []),
-        { id: 'history',        label: 'Historial y Citas',     labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
+        { id: 'id',             label: 'Ficha y Anamnesis',    labelShort: 'Ficha',       icon: User,        allowed: true },
         { id: 'budget',         label: 'Finanzas',              labelShort: 'Finanzas',    icon: DollarSign,  allowed: canViewFinancial },
     ].filter(t => t.allowed);
 

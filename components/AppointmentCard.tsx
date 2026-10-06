@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Appointment, ReminderStatus } from '../types';
-import { cn, getInitials, formatAppDate } from '../lib/utils';
+import { cn, getInitials, formatAppDate, getLocalISODate } from '../lib/utils';
 import { useAuth } from '../services/authService';
 import { useAppointmentMutations } from '../hooks/useAppointments';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +51,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
     if (!y || !m || !d) return false;
     return new Date(y, m - 1, d, hh || 0, mm || 0).getTime() > Date.now();
   })();
+  const isToday = appointment.date === getLocalISODate(new Date());
+  const canStart = appointment.status === 'Programada' && !!appointment.patientId && isToday;
   const statusDot = appointment.status === 'Programada' ? 'bg-blue-400' : appointment.status === 'Completada' ? 'bg-emerald-400' : 'bg-amber-400';
   const typeColor = typeColors[appointment.type] || typeColors.Consulta;
   const statusInfo = statusLabels[appointment.status] || statusLabels.Programada;
@@ -99,7 +101,18 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
           </div>
         </div>
 
-        {canRemind && (
+        {canStart ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/consultation?patientId=${appointment.patientId}&appointmentId=${appointment.id}`);
+            }}
+            className="h-10 px-3 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 active:scale-95 transition-all whitespace-nowrap shadow-sm shadow-blue-500/25 flex-shrink-0"
+          >
+            Iniciar
+          </button>
+        ) : canRemind ? (
           <WhatsAppAction
             variant="icon"
             storageKey={`reminder_${appointment.id}`}
@@ -111,7 +124,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
             send={sendReminder}
             onSent={() => onReminderSent?.(appointment.id, 'sent')}
           />
-        )}
+        ) : null}
       </div>
 
       {/* Appointment Detail Modal */}
@@ -255,7 +268,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                       setShowDetail(false);
                       navigate(`/consultation?patientId=${appointment.patientId}&appointmentId=${appointment.id}`);
                     }}
-                    className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all"
+                    className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all"
                   >
                     <Play size={16} className="fill-white" /> Iniciar Consulta
                   </button>

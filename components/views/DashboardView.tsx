@@ -14,7 +14,6 @@ import { Search, Plus, Calendar as CalendarIcon, ArrowRight } from 'lucide-react
 import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useRoleAccess } from '../RoleGuard';
-import FinanceSummary from '../FinanceSummary';
 import GettingStarted from '../GettingStarted';
 import { getLastBackupDate } from '../../lib/backup';
 
@@ -56,7 +55,7 @@ const SectionHeader: React.FC<{ title: string; action?: { label: string; onClick
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
-  const { canViewFinancial, isAdmin } = useRoleAccess();
+  const { isAdmin } = useRoleAccess();
   const { isGuest } = useAuth();
 
   const { data: allAppointments = [] } = useAppointments();
@@ -254,11 +253,6 @@ const Dashboard: React.FC = () => {
             hasPayment={allPatients.some(p => (p.payments || []).length > 0)}
             onNewAppointment={() => setIsNewAptOpen(true)}
           />
-        )}
-
-        {/* ── Finanzas (solo roles con acceso financiero) ─────────────────── */}
-        {canViewFinancial && (
-          <FinanceSummary patients={allPatients} clinicName={profile?.clinic_name} />
         )}
 
         {/* ── Agenda ──────────────────────────────────────────────────────── */}

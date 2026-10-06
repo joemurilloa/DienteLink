@@ -319,61 +319,72 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
             {/* Payments Section */}
             <div className="border-t border-slate-300 pt-8">
                 {pendingBalance > 0 ? (
-                    <div className="p-5 bg-white border border-emerald-100 rounded-2xl shadow-sm mb-6">
+                    <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm mb-6">
                         <div className="flex items-start justify-between gap-3 mb-4">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600 mb-1">Cobrar</p>
-                                <p className="text-3xl font-black text-slate-900 tabular-nums leading-none">{formatCurrency(resolvedCharge)}</p>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">¿Ya pagó?</p>
+                                <p className="text-3xl font-black text-slate-900 tabular-nums leading-none">{formatCurrency(customAmount ? resolvedCharge : pendingBalance)}</p>
                                 <p className="text-sm text-slate-500 mt-1.5">
-                                    {resolvedCharge === pendingBalance ? 'Pago total del saldo' : `Saldo ${formatCurrency(pendingBalance)}`}
+                                    {customAmount ? `Saldo ${formatCurrency(pendingBalance)}` : 'Se registra el saldo completo'}
                                 </p>
                             </div>
-                            <div className="w-11 h-11 bg-emerald-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
-                                <CreditCard size={18} />
-                            </div>
+                            <WhatsAppAction
+                                storageKey={`cobro_${patient.id}`}
+                                variant="icon"
+                                label="Recordar saldo por WhatsApp"
+                                sentLabel="Avisado"
+                                title="Abrir WhatsApp con el recordatorio de pago"
+                                send={() => whatsappService.sendPaymentReminder(
+                                    patient.identification.phone,
+                                    patient.identification.fullName,
+                                    formatCurrency(pendingBalance),
+                                    clinicName,
+                                )}
+                            />
                         </div>
 
                         {paymentError && (
                             <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium mb-4">{paymentError}</div>
                         )}
 
-                        <div className="grid grid-cols-3 gap-2 mb-4">
-                            {PAYMENT_METHOD_OPTIONS.map(opt => (
-                                <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => setNewPayment(p => ({ ...p, method: opt.value }))}
-                                    className={cn(
-                                        'py-3 rounded-xl text-sm font-bold border transition-all',
-                                        newPayment.method === opt.value
-                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-300'
-                                    )}
-                                >
-                                    {opt.label}
-                                </button>
-                            ))}
-                        </div>
-
                         {customAmount && (
-                            <input
-                                placeholder="Monto a cobrar"
-                                type="number"
-                                inputMode="decimal"
-                                step="0.01"
-                                min="0"
-                                className="w-full bg-slate-50 px-4 py-3 rounded-xl border border-slate-300 outline-none text-base font-semibold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400 mb-3"
-                                value={newPayment.amount}
-                                onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }}
-                            />
+                            <>
+                                <div className="grid grid-cols-3 gap-2 mb-4">
+                                    {PAYMENT_METHOD_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setNewPayment(p => ({ ...p, method: opt.value }))}
+                                            className={cn(
+                                                'py-3 rounded-xl text-sm font-bold border transition-all',
+                                                newPayment.method === opt.value
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300'
+                                            )}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input
+                                    placeholder="Monto que pagó"
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.01"
+                                    min="0"
+                                    className="w-full bg-slate-50 px-4 py-3 rounded-xl border border-slate-300 outline-none text-base font-semibold text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-400 mb-3"
+                                    value={newPayment.amount}
+                                    onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }}
+                                />
+                            </>
                         )}
 
                         <button
                             type="button"
                             onClick={handleAddPayment}
-                            className="w-full py-4 bg-emerald-600 text-white rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 font-bold text-base active:scale-[0.98]"
+                            className="w-full py-4 bg-blue-600 text-white rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 font-bold text-base active:scale-[0.98]"
                         >
-                            <Check size={18} /> Cobrar {formatCurrency(resolvedCharge)}
+                            <Check size={18} /> {customAmount ? `Registrar ${formatCurrency(resolvedCharge)}` : 'Sí, ya pagó'}
                         </button>
 
                         {!customAmount ? (
@@ -382,7 +393,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                                 onClick={() => setCustomAmount(true)}
                                 className="w-full mt-2 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800"
                             >
-                                Cobrar otro monto
+                                Fue otro monto
                             </button>
                         ) : (
                             <button

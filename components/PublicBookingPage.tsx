@@ -67,7 +67,7 @@ const PublicBookingPage: React.FC = () => {
         const doctorAvailability = await bookingService.getPublicDoctorAvailability(doctorId);
         
         if (!bookingSettings || !bookingSettings.isActive) {
-          setError('Las reservas están temporalmente deshabilitadas');
+          setError('Este consultorio no recibe citas por este enlace.');
           setLoading(false);
           return;
         }

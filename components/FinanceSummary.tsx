@@ -3,20 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import type { PatientRecord, Payment } from '../types';
 import { cn, formatCurrency, getLocalISODate } from '../lib/utils';
-import { whatsappService } from '../services/whatsappService';
 import { computeFinance, createPayment, PAYMENT_METHOD_OPTIONS, paymentMethodLabel } from '../lib/finance';
 import { usePatientMutations } from '../hooks/usePatients';
-import WhatsAppAction from './WhatsAppAction';
 import { sileo } from 'sileo';
 
 interface Props {
   patients: PatientRecord[];
-  clinicName?: string;
 }
 
 const MAX_VISIBLE = 5;
 
-const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
+const FinanceSummary: React.FC<Props> = ({ patients }) => {
   const navigate = useNavigate();
   const { addPayment } = usePatientMutations();
   const [expanded, setExpanded] = useState(false);
@@ -81,28 +78,13 @@ const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
                   <p className="text-sm font-semibold text-slate-800 truncate">{patient.identification.fullName}</p>
                   <p className="text-xs font-bold text-amber-600">{formatCurrency(balance)}</p>
                 </button>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <WhatsAppAction
-                    storageKey={`cobro_${patient.id}`}
-                    variant="icon"
-                    label="Recordar por WhatsApp"
-                    sentLabel="Avisado"
-                    title="Abrir WhatsApp con el recordatorio de pago"
-                    send={() => whatsappService.sendPaymentReminder(
-                      patient.identification.phone,
-                      patient.identification.fullName,
-                      formatCurrency(balance),
-                      clinicName,
-                    )}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { setMethod('cash'); setConfirming({ patient, balance }); }}
-                    className="h-10 px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 active:scale-95 transition-all whitespace-nowrap"
-                  >
-                    Confirmar pago
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => { setMethod('cash'); setConfirming({ patient, balance }); }}
+                  className="h-10 px-3 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 active:scale-95 transition-all whitespace-nowrap shadow-sm shadow-blue-500/25 flex-shrink-0"
+                >
+                  Cobrar
+                </button>
               </li>
             ))}
           </ul>
@@ -123,7 +105,7 @@ const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
             className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 animate-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1">Pago tardío</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">Pago tardío</p>
             <h3 className="text-xl font-bold text-slate-900 mb-1">{confirming.patient.identification.fullName}</h3>
             <p className="text-3xl font-black text-slate-900 tabular-nums mb-2">{formatCurrency(confirming.balance)}</p>
             <p className="text-sm text-slate-500 mb-5">Se registra el saldo completo con fecha de hoy.</p>
@@ -137,7 +119,7 @@ const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
                   className={cn(
                     'py-3 rounded-xl text-sm font-bold border transition-all',
                     method === opt.value
-                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-slate-50 text-slate-600 border-slate-200'
                   )}
                 >
@@ -159,7 +141,7 @@ const FinanceSummary: React.FC<Props> = ({ patients, clinicName }) => {
                 type="button"
                 disabled={addPayment.isPending}
                 onClick={handleConfirmPay}
-                className="flex-[2] py-3.5 rounded-xl bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+                className="flex-[2] py-3.5 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-600/20"
               >
                 {addPayment.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 {addPayment.isPending ? 'Registrando...' : 'Sí, ya pagó'}

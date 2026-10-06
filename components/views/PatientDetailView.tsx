@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePatient, usePatientMutations } from '../../hooks/usePatients';
 import { PatientRecord as PatientRecordType } from '../../types';
-import { ArrowLeft, Play, Sparkles } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 const PatientRecord = React.lazy(() => import('../PatientRecord'));
 
@@ -57,17 +57,6 @@ const PatientDetailView: React.FC = () => {
               <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">{patient.identification.phone || 'Expediente clínico'}</p>
             </div>
           </div>
-
-          {/* Quick Action: Iniciar Consulta */}
-          <button
-            type="button"
-            onClick={() => navigate(`/consultation?patientId=${patient.id}`)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex-shrink-0"
-            title="Iniciar sesión de atención clínica con este paciente"
-          >
-            <Play size={15} fill="currentColor" />
-            <span>Iniciar Consulta</span>
-          </button>
         </header>
         <div className="flex-1 md:min-h-[680px]">
           <PatientRecord patient={patient} onUpdate={handleUpdate} />

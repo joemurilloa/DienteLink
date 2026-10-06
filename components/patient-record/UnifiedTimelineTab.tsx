@@ -362,33 +362,6 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Action 1: Nueva Nota */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveFormTab('note');
-              setIsNewRecordOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-semibold hover:border-purple-300 hover:text-purple-700 transition-all shadow-sm cursor-pointer"
-          >
-            <FileText size={15} className="text-purple-600" />
-            <span>+ Nota</span>
-          </button>
-
-          {/* Action 2: Nuevo Tratamiento */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveFormTab('treatment');
-              setIsNewRecordOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-semibold hover:border-emerald-300 hover:text-emerald-700 transition-all shadow-sm cursor-pointer"
-          >
-            <Activity size={15} className="text-emerald-600" />
-            <span>+ Tratamiento</span>
-          </button>
-
-          {/* Action 3: Agendar Cita */}
           <button
             type="button"
             onClick={() => setIsNewAptOpen(true)}
@@ -570,29 +543,9 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
           <p className="text-xs text-slate-500 max-w-sm mb-5">
             {searchQuery || filterKind !== 'all' || selectedYear !== 'all'
               ? 'Intenta cambiar el término de búsqueda o quitar los filtros aplicados.'
-              : 'Comienza agendando la primera cita o redactando la primera nota de evolución.'}
+              : 'La nota y el tratamiento quedan guardados al terminar la consulta. Si aún no hay cita, agéndala.'}
           </p>
           <div className="flex gap-2 flex-wrap justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveFormTab('note');
-                setIsNewRecordOpen(true);
-              }}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold shadow-sm cursor-pointer"
-            >
-              + Nueva Nota
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveFormTab('treatment');
-                setIsNewRecordOpen(true);
-              }}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:border-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
-            >
-              + Registrar Tratamiento
-            </button>
             <button
               type="button"
               onClick={() => setIsNewAptOpen(true)}
@@ -668,7 +621,7 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
                           </div>
 
                           {/* Quick action for appointment */}
-                          {apt.status === 'Programada' && (
+                          {apt.status === 'Programada' && isToday && (
                             <button
                               type="button"
                               onClick={() =>
@@ -676,9 +629,9 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
                                   `/consultation?patientId=${patient.id}&appointmentId=${apt.id}`
                                 )
                               }
-                              className="self-end sm:self-center flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                              className="self-end sm:self-center flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 hover:border-blue-300 hover:text-blue-700 rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
                             >
-                              <Play size={12} className="fill-white" />
+                              <Play size={12} />
                               <span>Iniciar Consulta</span>
                             </button>
                           )}

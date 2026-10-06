@@ -92,13 +92,13 @@ const WhatsAppAction: React.FC<Props> = ({
         className={cn(
           'w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer active:scale-95',
           sent
-            ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 shadow-sm'
-            : 'bg-[#25D366] hover:bg-[#20ba5a] text-white shadow-md',
+            ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 border border-slate-200',
         )}
       >
         <span className="relative flex items-center justify-center">
           <WhatsAppIcon size={sent ? 18 : 19} />
-          {sent && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />}
+          {sent && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-slate-600 rounded-full border-2 border-white" />}
         </span>
       </button>
     );
