@@ -3,6 +3,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { legacyHashToPath } from './lib/legacyHash';
+
+function applyLegacyHash() {
+  const path = legacyHashToPath(window.location.hash);
+  if (path) window.location.replace(`${path}${window.location.search}`);
+}
+applyLegacyHash();
+window.addEventListener('hashchange', applyLegacyHash);
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -7,6 +7,7 @@ import 'sileo/styles.css';
 import { generateAvailableSlots } from './bookingUtils';
 import * as persistence from './bookingPersistence';
 import { createAppointmentRequestsChannel } from './bookingRealtime';
+import { publicBookingUrl } from '../lib/legacyHash';
 
 // ==========================================================
 // BookingService — In-Memory Cache + Supabase
@@ -100,9 +101,7 @@ export class BookingService {
   }
 
   generatePublicBookingUrl(): string {
-    const doctorId = this.uid();
-    const baseUrl = window.location.origin + window.location.pathname;
-    return `${baseUrl}#/p/${doctorId}`;
+    return publicBookingUrl(window.location.origin, this.uid());
   }
 
   // ===================== AVAILABILITY =====================

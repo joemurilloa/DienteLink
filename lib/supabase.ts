@@ -8,9 +8,8 @@ if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KE
 }
 
 /**
- * HashRouter uses "#/path". Supabase's default detectSessionInUrl parses the
- * entire hash as an OAuth callback and can wipe a valid persisted session.
- * Only enable URL detection when this load actually looks like an auth redirect.
+ * Supabase's default detectSessionInUrl can treat a leftover hash as an OAuth
+ * callback and wipe a valid session. Only enable it on a real auth redirect.
  */
 export function isAuthCallbackUrl(href?: string): boolean {
   const raw = href ?? (typeof window !== 'undefined' ? window.location.href : '');

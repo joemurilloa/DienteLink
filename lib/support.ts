@@ -9,7 +9,7 @@ interface ReportContext {
 
 /** Abre WhatsApp con un mensaje listo que incluye dónde estaba el doctor y su navegador. */
 export function openProblemReport(ctx: ReportContext = {}): void {
-  const page = window.location.hash || window.location.pathname;
+  const page = `${window.location.pathname}${window.location.search}`;
   const lines = [
     'Hola, quiero reportar un problema en DienteLink:',
     '',

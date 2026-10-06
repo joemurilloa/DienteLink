@@ -7,6 +7,10 @@
       document.documentElement.classList.remove('dark');
       document.documentElement.style.backgroundColor = '#F8FAFC';
       localStorage.setItem('dientelink_theme', 'light');
+      // Old HashRouter links: /#/welcome → /welcome. Ignore OAuth hashes and #anchors.
+      if (location.hash.indexOf('#/') === 0) {
+        location.replace(location.hash.slice(1) + location.search);
+      }
     </script>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: wss: data: blob: 'unsafe-inline' 'unsafe-eval';">
@@ -109,4 +113,4 @@
 
 </body>
 
-</html>
+</html>

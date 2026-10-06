@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { HashRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { bookingService } from './services/bookingService';
@@ -61,7 +61,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = ({ subscription }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, clinicId, isGuest } = useAuth();
   const [servicesReady, setServicesReady] = useState(false);
@@ -99,18 +98,6 @@ const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = (
   }, [servicesReady]);
 
   useFocusManagement();
-
-  // Ensure app always starts on dashboard for first load
-  React.useEffect(() => {
-
-    if (location.pathname === '/#/' || location.pathname === '/') {
-      setTimeout(() => {
-        if (location.pathname !== '/') {
-          navigate('/', { replace: true });
-        }
-      }, 100);
-    }
-  }, []);
 
   const getActivePath = () => {
     if (location.pathname.startsWith('/patient')) return 'patients';

@@ -19,6 +19,9 @@ export default defineConfig({
       devOptions: {
         enabled: true, // Allow testing PWA in localhost
       },
+      workbox: {
+        navigateFallback: 'index.html',
+      },
       manifest: {
         name: 'DienteLink',
         short_name: 'DienteLink',
