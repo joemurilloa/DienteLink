@@ -7,6 +7,7 @@ import { useSubscription } from '../../hooks/useSubscription';
 import { useRoleAccess } from '../RoleGuard';
 import PriceCatalogSettings from './Settings/PriceCatalogSettings';
 import BackupSettings from './Settings/BackupSettings';
+import ClinicHoursSettings from './Settings/ClinicHoursSettings';
 import { openProblemReport } from '../../lib/support';
 import { isPlatformAdmin } from '../../lib/billing';
 
@@ -194,6 +195,8 @@ const SettingsView: React.FC = () => {
             </div>
           )}
         </div>
+
+        <ClinicHoursSettings />
 
         {canViewFinancial && <PriceCatalogSettings />}
 

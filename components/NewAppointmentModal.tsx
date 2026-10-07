@@ -5,6 +5,8 @@ import { useAppointments, useAppointmentMutations } from '../hooks/useAppointmen
 import { usePatients } from '../hooks/usePatients';
 import { Appointment, AppointmentType } from '../types';
 import { cn, generateId, getInitials, getLocalISODate } from '../lib/utils';
+import { generateAvailableSlots } from '../services/bookingUtils';
+import { bookingService } from '../services/bookingService';
 import { sileo } from 'sileo';
 
 const APPOINTMENT_TYPES: AppointmentType[] = ['Consulta', 'Seguimiento', 'Cirugía', 'Revisión'];
@@ -72,6 +74,11 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
   };
+  const availability = bookingService.getDoctorAvailability();
+  const [slotYear, slotMonth, slotDay] = newApt.date.split('-').map(Number);
+  const dayConfig = availability.weeklySchedule.find(d => d.dayOfWeek === new Date(slotYear, slotMonth - 1, slotDay).getDay());
+  const worksThatDay = !!(dayConfig?.enabled && dayConfig.timeSlots.length);
+  const slotTimes = generateAvailableSlots(newApt.date, availability);
   const monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -368,10 +375,12 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
               <div className="space-y-2.5">
                 <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Hora</label>
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
-                  {Array.from({ length: 27 }).map((_, i) => {
-                    const hour = Math.floor(i / 2) + 7;
-                    const mins = i % 2 === 0 ? '00' : '30';
-                    const timeStr = `${hour.toString().padStart(2, '0')}:${mins}`;
+                  {slotTimes.length === 0 && (
+                    <p className="col-span-full text-sm text-slate-500 py-2">
+                      {worksThatDay ? 'Hoy ya no quedan horas en tu horario.' : 'Ese día no atiendes. Cámbialo en Ajustes si hace falta.'}
+                    </p>
+                  )}
+                  {slotTimes.map((timeStr) => {
                     const isTaken = appointments.some(
                       a => a.date === newApt.date && a.time === timeStr && a.status !== 'Eliminada'
                     ) || isPastSlot(newApt.date, timeStr);

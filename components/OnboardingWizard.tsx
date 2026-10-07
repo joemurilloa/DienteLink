@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import { Loader2, ArrowRight, Building2, Coins } from 'lucide-react';
+import { bookingService } from '../services/bookingService';
+import { DEFAULT_CLINIC_HOURS, hoursError, scheduleFromHours, type ClinicHours } from '../lib/clinicHours';
+import ClinicHoursFields from './ClinicHoursFields';
 
 const OnboardingWizard: React.FC = () => {
     const { profile, updateProfile } = useAuth();
@@ -12,6 +15,7 @@ const OnboardingWizard: React.FC = () => {
     const [clinicName, setClinicName] = useState(profile?.clinic_name || '');
     const [currency, setCurrency] = useState(profile?.currency || 'HNL');
     const [phone, setPhone] = useState(profile?.phone || '');
+    const [hours, setHours] = useState<ClinicHours>(DEFAULT_CLINIC_HOURS);
 
     if (!profile || profile.has_completed_onboarding) return null;
 
@@ -26,6 +30,12 @@ const OnboardingWizard: React.FC = () => {
             return;
         }
 
+        const scheduleError = hoursError(hours);
+        if (scheduleError) {
+            sileo.error({ title: 'Revisa el horario', description: scheduleError });
+            return;
+        }
+
         setIsSaving(true);
         try {
             await updateProfile({
@@ -34,6 +44,14 @@ const OnboardingWizard: React.FC = () => {
                 currency,
                 locale: currency === 'HNL' ? 'es-HN' : currency === 'MXN' ? 'es-MX' : 'es-US',
                 has_completed_onboarding: true
+            });
+            const doctorId = profile.clinic_id || profile.id;
+            if (!bookingService.getDoctorId()) await bookingService.init(doctorId);
+            const current = bookingService.getDoctorAvailability();
+            await bookingService.saveDoctorAvailability({
+                ...current,
+                doctorId,
+                weeklySchedule: scheduleFromHours(hours),
             });
             sileo.success({ title: '¡Todo listo!', description: 'Bienvenido a DienteLink.' });
         } catch (error: any) {
@@ -46,7 +64,7 @@ const OnboardingWizard: React.FC = () => {
         }
     };
 
-    const TOTAL_STEPS = 2;
+    const TOTAL_STEPS = 3;
     const progressPercent = (step / TOTAL_STEPS) * 100;
 
     return (
@@ -72,7 +90,7 @@ const OnboardingWizard: React.FC = () => {
                             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">¡Bienvenido a DienteLink!</h1>
                             <p className="text-slate-500 text-base leading-relaxed">
                                 Tu nuevo centro de comando dental. Moderno, seguro y profesional.<br />
-                                Solo necesitamos dos datos para personalizar tu entorno.
+                                El nombre de tu clínica y el horario en que atiendes.
                             </p>
                         </div>
 
@@ -90,7 +108,7 @@ const OnboardingWizard: React.FC = () => {
                     <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
                         <div>
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-sm font-bold mb-4 uppercase tracking-wider">
-                                Último paso
+                                Paso 2 de 3
                             </div>
                             <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">Tu Clínica</h2>
                             <p className="text-slate-500 text-sm">El nombre y la moneda aparecerán en tus expedientes y cotizaciones.</p>
@@ -150,8 +168,39 @@ const OnboardingWizard: React.FC = () => {
                                 Volver
                             </button>
                             <button
+                                onClick={() => {
+                                    if (!clinicName.trim() || phone.replace(/\D/g, '').length < 8) {
+                                        sileo.error({ title: 'Falta información', description: 'Escribe el nombre de la clínica y un teléfono de 8 dígitos.' });
+                                        return;
+                                    }
+                                    setStep(3);
+                                }}
+                                disabled={!clinicName.trim()}
+                                className="flex-1 bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-[0_8px_16px_rgba(15,23,42,0.25)] active:scale-95 disabled:opacity-50"
+                            >
+                                Siguiente <ArrowRight size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 3 && (
+                    <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-sm font-bold mb-4 uppercase tracking-wider">
+                                Último paso
+                            </div>
+                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">¿Cuándo atiendes?</h2>
+                            <p className="text-slate-500 text-sm">Estos horarios salen al agendar una cita y en tu enlace de reservas. Después los cambias en Ajustes.</p>
+                        </div>
+                        <ClinicHoursFields value={hours} onChange={setHours} />
+                        <div className="pt-6 border-t border-slate-300 flex gap-4">
+                            <button onClick={() => setStep(2)} className="px-6 py-4 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-all">
+                                Volver
+                            </button>
+                            <button
                                 onClick={handleComplete}
-                                disabled={isSaving || !clinicName.trim()}
+                                disabled={isSaving}
                                 className="flex-1 bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-[0_8px_16px_rgba(15,23,42,0.25)] active:scale-95 disabled:opacity-50"
                             >
                                 {isSaving ? <Loader2 className="animate-spin" size={20} /> : 'Entrar al Sistema →'}

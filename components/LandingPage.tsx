@@ -100,17 +100,6 @@ const LandingPage: React.FC = () => {
           style={{ y: heroY, opacity: heroOpacity }}
           className="text-center max-w-4xl mx-auto mb-16"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white border border-slate-200/70 mb-10 shadow-sm"
-          >
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <span className="text-sm font-bold text-slate-600 tracking-widest uppercase">Hecho para consultorios dentales</span>
-          </motion.div>
-
           <motion.h1
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="text-5xl md:text-[5.5rem] font-black tracking-tighter mb-8 text-slate-900 leading-[1.05]"
