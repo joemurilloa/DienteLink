@@ -28,7 +28,7 @@ const PatientIdTab: React.FC<Props> = ({ patient, onUpdate, onExportPDF, isExpor
         <div className="space-y-8 animate-in-up duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Ficha del Paciente</h3>
+                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Historia clínica</h3>
                     <p className="text-slate-500 text-sm mt-1">Información personal y de contacto</p>
                 </div>
                 <button

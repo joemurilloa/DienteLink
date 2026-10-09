@@ -7,13 +7,14 @@ import DentalLogo from './DentalLogo';
 const AuthPage: React.FC = () => {
   const { user, loading: authLoading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const startsInSignup = new URLSearchParams(window.location.search).get('intent') === 'signup';
 
   useEffect(() => {
     if (!authLoading && user) {
       navigate('/', { replace: true });
     }
   }, [user, authLoading, navigate]);
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(!startsInSignup);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -186,6 +187,11 @@ const AuthPage: React.FC = () => {
             </svg>
             Continuar con Google
           </button>
+          <p className="-mt-3 mb-6 text-center text-xs leading-relaxed text-slate-500">
+            {isLogin
+              ? 'Si ya tienes una cuenta, entrarás directamente.'
+              : 'Si es tu primera vez, Google creará tu cuenta de DienteLink automáticamente.'}
+          </p>
 
           <div className="relative flex items-center mb-6">
             <div className="flex-grow border-t border-slate-300"></div>
@@ -275,7 +281,7 @@ const AuthPage: React.FC = () => {
                 />
                 <span>
                   Acepto los{' '}
-                  <a href="#/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">
+                  <a href="/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">
                     términos de uso y privacidad
                   </a>
                 </span>

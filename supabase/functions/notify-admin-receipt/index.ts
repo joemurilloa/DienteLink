@@ -8,6 +8,16 @@ import { Resend } from "https://esm.sh/resend@3.2.0"
 const ADMIN_EMAIL = 'joemurillo95@gmail.com';
 // ─────────────────────────────────────────────────────────────
 
+function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const getCorsHeaders = (req: Request) => {
   const ALLOWED_ORIGINS = ["https://diente-link.vercel.app", "http://localhost:3000", "http://localhost:5173"];
   const origin = req.headers.get("origin") || "";
@@ -24,16 +34,62 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: getCorsHeaders(req) });
   }
 
-  try {
-    const payload = await req.json();
-    const { clinicId, doctorEmail, doctorName, imageUrl, notes } = payload;
+  const jsonHeaders = { ...getCorsHeaders(req), "Content-Type": "application/json" };
 
-    if (!clinicId || !doctorEmail) {
-      return new Response(
-        JSON.stringify({ error: 'clinicId y doctorEmail son requeridos' }),
-        { status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
-      );
+  try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401, headers: jsonHeaders });
     }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401, headers: jsonHeaders });
+    }
+
+    // Only trust data already stored under RLS, never the request body.
+    const { data: receipt, error: receiptError } = await supabase
+      .from('payment_receipts')
+      .select('id, clinic_id, email_referencia, storage_path, notes, created_at')
+      .eq('clinic_id', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (receiptError || !receipt) {
+      return new Response(JSON.stringify({ error: 'No hay comprobante pendiente' }), { status: 404, headers: jsonHeaders });
+    }
+
+    if (Date.now() - new Date(receipt.created_at).getTime() > 10 * 60 * 1000) {
+      return new Response(JSON.stringify({ error: 'Comprobante ya notificado' }), { status: 409, headers: jsonHeaders });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    let imageUrl: string | null = null;
+    if (receipt.storage_path) {
+      const { data: signed } = await supabase.storage
+        .from('payment-receipts')
+        .createSignedUrl(receipt.storage_path, 60 * 60 * 24 * 7);
+      imageUrl = signed?.signedUrl ?? null;
+    }
+
+    const clinicId = escapeHtml(receipt.clinic_id);
+    const doctorEmail = escapeHtml(receipt.email_referencia || user.email);
+    const doctorName = escapeHtml(profile?.full_name);
+    const notes = escapeHtml(receipt.notes);
+    const safeImageUrl = imageUrl ? escapeHtml(imageUrl) : null;
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
@@ -95,13 +151,13 @@ Deno.serve(async (req) => {
           </table>
           
           <!-- Comprobante -->
-          ${imageUrl ? `
+          ${safeImageUrl ? `
           <div style="margin: 24px 0;">
-            <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">Comprobante adjunto:</p>
-            <a href="${imageUrl}" target="_blank" style="display: inline-block; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 10px 20px; color: #1d4ed8; text-decoration: none; font-weight: 600;">
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">Comprobante adjunto (enlace válido 7 días):</p>
+            <a href="${safeImageUrl}" target="_blank" style="display: inline-block; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 10px 20px; color: #1d4ed8; text-decoration: none; font-weight: 600;">
               📄 Ver comprobante
             </a>
-            <img src="${imageUrl}" alt="Comprobante" style="display: block; margin-top: 12px; max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid #e2e8f0;" />
+            <img src="${safeImageUrl}" alt="Comprobante" style="display: block; margin-top: 12px; max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid #e2e8f0;" />
           </div>
           ` : `
           <div style="margin: 24px 0; background: #fef2f2; border-radius: 8px; padding: 12px; color: #dc2626; font-size: 13px;">
@@ -132,22 +188,16 @@ Deno.serve(async (req) => {
     await resend.emails.send({
       from: 'DienteLink Admin <onboarding@resend.dev>',
       to: ADMIN_EMAIL,
-      subject: `💰 Nuevo comprobante de pago — ${doctorName || doctorEmail}`,
+      subject: `💰 Nuevo comprobante de pago — ${profile?.full_name || receipt.email_referencia || user.email}`,
       html: emailHtml,
     });
 
-    console.log(`[notify-admin-receipt] Email enviado al admin por pago de ${doctorEmail}`);
+    console.log(`[notify-admin-receipt] Email enviado al admin por comprobante ${receipt.id}`);
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: jsonHeaders });
 
   } catch (err) {
     console.error("[notify-admin-receipt] Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: 'Error interno' }), { status: 500, headers: jsonHeaders });
   }
 });

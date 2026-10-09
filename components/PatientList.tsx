@@ -1,32 +1,31 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PatientRecord } from '../types';
-import { Search, Plus, User, Phone, Calendar, ArrowRight, FileText, AlertCircle } from 'lucide-react';
-import { cn, formatCurrency } from '../lib/utils';
+import { Search, Plus, User, Phone, Calendar, ArrowRight, FileText } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { PatientCardSkeleton, generateSkeletons } from './LoadingSkeletons';
 import { useOptimizedSearch } from '../lib/PerformanceOptimizations';
-import { useRoleAccess } from './RoleGuard';
 import DentalLogo from './DentalLogo';
 
 interface Props {
     patients: PatientRecord[];
     onSelect: (patient: PatientRecord) => void;
     onAdd: () => void;
+    /** Carga real de datos */
+    loading?: boolean;
 }
 
-const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
-    const navigate = useNavigate();
-    const { canViewFinancial } = useRoleAccess();
+const SKELETON_DELAY_MS = 200;
 
+const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = false }) => {
     const [search, setSearch] = useState('');
-    const [filterDebt, setFilterDebt] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Simulate loading state for better UX
+    // Skeleton solo si la carga real supera SKELETON_DELAY_MS
+    const [showSkeleton, setShowSkeleton] = useState(false);
     React.useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 600);
+        if (!loading) { setShowSkeleton(false); return; }
+        const timer = setTimeout(() => setShowSkeleton(true), SKELETON_DELAY_MS);
         return () => clearTimeout(timer);
-    }, []);
+    }, [loading]);
+    const isLoading = loading && showSkeleton;
 
     // Optimized search with debouncing
     const baseFiltered = useOptimizedSearch(
@@ -35,15 +34,9 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
         ['identification.fullName', 'identification.phone']
     );
 
-    const filteredPatients = filterDebt 
-        ? baseFiltered.filter(p => {
-            const totalBudget = p.budget?.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
-            const totalPaid = (p.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
-            return (totalBudget - totalPaid) > 0;
-          })
-        : baseFiltered;
+    const filteredPatients = baseFiltered;
 
-    if (!isLoading && patients.length === 0) {
+    if (!loading && patients.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4 animate-in fade-in zoom-in-95 duration-700">
                 <div className="w-20 h-20 mb-6 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-[2rem] flex items-center justify-center rotate-3 shadow-xl shadow-blue-500/25">
@@ -90,7 +83,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
             <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 lg:gap-8 pt-4">
                 <div className="animate-in-up stagger-delay-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="px-3 py-1 bg-slate-100/80 text-slate-500 rounded-lg text-xs font-bold uppercase tracking-wider">{patients.length} Expedientes</div>
+                        <div className="px-3 py-1 bg-slate-100/80 text-slate-500 rounded-lg text-xs font-bold uppercase tracking-wider">{patients.length} pacientes</div>
                     </div>
                     <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Pacientes</h1>
                 </div>
@@ -107,28 +100,13 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
-                    {canViewFinancial && (
-                        <button
-                            onClick={() => setFilterDebt(!filterDebt)}
-                            className={cn(
-                                "h-[46px] md:h-12 px-3.5 md:px-5 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-semibold text-[13px] border transition-all flex-shrink-0 cursor-pointer",
-                                filterDebt 
-                                    ? "bg-amber-50 border-amber-500 text-amber-700 shadow-xs" 
-                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-xs"
-                            )}
-                            title="Pacientes con saldo pendiente"
-                        >
-                            <AlertCircle size={16} className={filterDebt ? "text-amber-500" : "text-slate-400"} />
-                            <span className="hidden sm:inline">Con Deuda</span>
-                        </button>
-                    )}
                     <button
                         onClick={onAdd}
                         data-new-patient
-                        className="bg-blue-600 text-white h-[46px] md:h-12 px-4 md:px-6 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-2 font-semibold text-[13px] shadow-sm shadow-blue-600/20 hover:bg-blue-700 transition-all flex-shrink-0 active:scale-95 cursor-pointer"
+                        className="bg-blue-600 text-white h-[46px] md:h-12 px-3 md:px-6 rounded-[12px] md:rounded-[14px] flex items-center justify-center gap-1.5 font-semibold text-[12px] md:text-[13px] whitespace-nowrap shadow-sm shadow-blue-600/20 hover:bg-blue-700 transition-all flex-shrink-0 active:scale-95 cursor-pointer"
                     >
                         <Plus size={16} strokeWidth={2.5} />
-                        <span className="hidden sm:inline">Nuevo Paciente</span>
+                        <span>Nuevo paciente</span>
                     </button>
                 </div>
             </header>
@@ -139,11 +117,13 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                     generateSkeletons(PatientCardSkeleton, 8)
                 ) : (
                     filteredPatients.map((patient, index) => (
-                    <div
+                    <button
+                        type="button"
                         key={patient.id}
                         onClick={() => onSelect(patient)}
+                        aria-label={`Abrir expediente de ${patient.identification.fullName}`}
                         className={cn(
-                            "bg-white p-5 rounded-[24px] border border-slate-300 cursor-pointer group hover:border-slate-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-300 animate-in-up",
+                            "bg-white p-5 rounded-[24px] border border-slate-300 cursor-pointer group hover:border-slate-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-300 animate-in-up text-left w-full",
                             index === 0 ? "stagger-1" : index === 1 ? "stagger-2" : "stagger-3"
                         )}
                     >
@@ -156,22 +136,6 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                                 <p className="text-[13px] text-slate-500 font-medium mt-0.5 truncate">{patient.identification.occupation || 'Sin ocupación'}</p>
                             </div>
                         </div>
-
-                        {canViewFinancial && (() => {
-                            const totalBudget = patient.budget?.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0) || 0;
-                            const totalPaid = (patient.payments || []).reduce((acc, pay) => acc + pay.amount, 0);
-                            const balance = Math.max(0, totalBudget - totalPaid);
-                            
-                            if (balance > 0) {
-                                return (
-                                    <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between">
-                                        <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">Saldo Pdte.</span>
-                                        <span className="text-[13px] font-bold text-amber-700">{formatCurrency(balance)}</span>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })()}
 
                         <div className="space-y-2 mb-6">
                             <div className="flex items-center gap-3">
@@ -190,10 +154,10 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd }) => {
                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Desde {new Date(patient.createdAt).toLocaleDateString('es-ES', {month: 'short', year: 'numeric'})}</span>
                             </div>
                             <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                                <ArrowRight size={14} className="text-slate-500 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                                <ArrowRight size={14} className="text-slate-500 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" aria-hidden="true" />
                             </div>
                         </div>
-                    </div>
+                    </button>
                 ))
                 )}
             </div>

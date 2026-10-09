@@ -342,37 +342,6 @@ class WhatsAppService {
     ].join('\n');
     return this.sendTo(phone, message, defaultDialCode);
   }
-
-  /**
-   * Builds a polite payment reminder with the pending balance.
-   */
-  buildPaymentReminderMessage(patientName: string, balanceFormatted: string, clinicName?: string): string {
-    const name = this.firstName(patientName);
-    const from = clinicName || 'la clínica';
-    return [
-      `Hola ${name}, le escribimos de ${from}.`,
-      '',
-      `Le recordamos un saldo pendiente de ${balanceFormatted}.`,
-      '',
-      'Si ya pagó, ignore este mensaje o envíenos el comprobante. Gracias.',
-    ].join('\n');
-  }
-
-  /**
-   * Opens WhatsApp with a payment reminder.
-   */
-  sendPaymentReminder(
-    phoneRaw: string | undefined | null,
-    patientName: string,
-    balanceFormatted: string,
-    clinicName?: string,
-    defaultDialCode: string = '504'
-  ): { success: boolean; error?: string; url?: string } {
-    const phone = this.sanitizePhone(phoneRaw, defaultDialCode);
-    if (!phone) return { success: false, error: 'Sin teléfono registrado' };
-
-    return this.sendTo(phone, this.buildPaymentReminderMessage(patientName, balanceFormatted, clinicName), defaultDialCode);
-  }
 }
 
 export const whatsappService = new WhatsAppService();

@@ -80,9 +80,7 @@ const SubscriptionPage: React.FC = () => {
       if (dbErr) throw new Error(dbErr.message);
 
       // Notify admin
-      await supabase.functions.invoke('notify-admin-receipt', {
-        body: { clinicId, doctorEmail: userEmail, doctorName: profile.full_name, imageUrl, notes: notes.trim() },
-      }).catch(() => {}); // non-fatal
+      await supabase.functions.invoke('notify-admin-receipt').catch(() => {}); // non-fatal
 
       setStep('done');
     } catch (err) {

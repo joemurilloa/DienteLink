@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authService';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, CalendarDays, Cloud, Download, LockKeyhole, ShieldCheck, Users } from 'lucide-react';
 import DentalLogo from './DentalLogo';
 import { BILLING } from '../lib/billing';
+import { SUPPORT_WHATSAPP } from '../lib/support';
 
 const INCLUDED = [
   'Agenda del día',
@@ -68,6 +69,56 @@ const ChartTooth: React.FC<{ id: number; caries?: boolean }> = ({ id, caries }) 
   </div>
 );
 
+const ProductPreview: React.FC = () => (
+  <div
+    id="producto"
+    className="relative overflow-hidden rounded-[24px] border border-blue-200/80 bg-white shadow-2xl shadow-blue-900/15"
+    aria-label="Vista previa del panel de DienteLink"
+  >
+    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+      <div className="flex items-center gap-1.5" aria-hidden>
+        <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+      </div>
+      <span className="text-[10px] font-semibold tracking-wide text-slate-400">TU CONSULTORIO HOY</span>
+      <span className="h-2 w-2 rounded-full bg-emerald-400" title="En línea" />
+    </div>
+    <div className="grid grid-cols-[60px_1fr] sm:grid-cols-[78px_1fr]">
+      <div className="flex flex-col items-center gap-5 border-r border-slate-100 bg-slate-950 px-2 py-5 text-blue-200">
+        <DentalLogo size={22} variant="white" />
+        <CalendarDays size={17} />
+        <Users size={17} className="opacity-60" />
+        <span className="mt-auto h-7 w-7 rounded-full bg-blue-500/30" />
+      </div>
+      <div className="min-w-0 bg-slate-50 p-4 sm:p-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Viernes, 9 de octubre</p>
+        <p className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Buenos días, Alejandro.</p>
+        <div className="mt-4 rounded-xl border border-blue-100 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-wide text-blue-600">Próximo paciente</p>
+              <p className="mt-1 truncate text-sm font-semibold text-slate-900">María Fernández</p>
+              <p className="text-xs text-slate-500">08:30 · Consulta</p>
+            </div>
+            <span className="rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-bold text-white">Iniciar</span>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-slate-100 bg-white p-3">
+            <p className="text-[9px] font-semibold uppercase text-slate-400">Citas de hoy</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">6</p>
+          </div>
+          <div className="rounded-lg border border-slate-100 bg-white p-3">
+            <p className="text-[9px] font-semibold uppercase text-slate-400">Por cobrar</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">L 800</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -83,7 +134,7 @@ const LandingPage: React.FC = () => {
     if (user) {
       navigate('/', { replace: true });
     } else {
-      navigate('/login');
+      navigate('/login?intent=signup');
     }
   };
 
@@ -106,17 +157,26 @@ const LandingPage: React.FC = () => {
     <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-[linear-gradient(180deg,#e8f1ff_0%,#f7faff_220px,#ffffff_520px)] font-sans text-slate-900" ref={targetRef}>
       <nav className="sticky top-0 z-50 border-b border-blue-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
+          <a href="#inicio" className="flex items-center gap-2.5" aria-label="DienteLink, volver al inicio">
             <DentalLogo size={22} variant="blue" />
             <span className="text-lg font-semibold tracking-tight text-slate-900">DienteLink</span>
-          </div>
+          </a>
           <div className="flex items-center gap-6">
+            <a href="#funciones" className="hidden text-sm text-slate-600 hover:text-slate-900 lg:block">
+              Funciones
+            </a>
+            <a href="#seguridad" className="hidden text-sm text-slate-600 hover:text-slate-900 lg:block">
+              Seguridad
+            </a>
+            <a href="#precio" className="hidden text-sm text-slate-600 hover:text-slate-900 lg:block">
+              Precio
+            </a>
             <button onClick={handleDemo} className="hidden text-sm text-slate-600 hover:text-slate-900 md:block">
               Ver demo
             </button>
-            <button onClick={handleCTA} className="hidden text-sm text-slate-600 hover:text-slate-900 md:block">
+            <a href="/login" className="hidden text-sm text-slate-600 hover:text-slate-900 md:block">
               {user ? 'Ir a mi clínica' : 'Iniciar sesión'}
-            </button>
+            </a>
             <button
               onClick={handleCTA}
               className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700"
@@ -129,35 +189,41 @@ const LandingPage: React.FC = () => {
       </nav>
 
       <main className="mx-auto max-w-6xl px-6">
-        <header className="relative max-w-3xl py-20 md:py-28">
+        <header id="inicio" className="relative grid items-center gap-10 py-14 md:py-24 lg:grid-cols-[1.05fr_.95fr]">
           <div aria-hidden className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full bg-blue-400/25 blur-3xl" />
           <div className="relative">
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl sm:leading-[1.05]">
-            La agenda y el odontograma de tu consultorio.
-          </h1>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
-            Ves quién sigue, marcas la pieza y cobras en la visita. Tus pacientes también pueden pedir cita por un enlace.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-            <button
-              onClick={handleCTA}
-              className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 hover:bg-blue-700"
-            >
-              {user ? 'Entrar a mi clínica' : 'Comenzar prueba gratis'}
-            </button>
-            <p className="text-sm text-slate-600">{BILLING.trialDays} días · sin tarjeta</p>
-            <button onClick={handleDemo} className="text-sm font-semibold text-blue-700 md:hidden">
-              Ver demo
-            </button>
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Gestión dental simple</p>
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl sm:leading-[1.05]">
+              La agenda y el odontograma de tu consultorio.
+            </h1>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
+              Ves quién sigue, marcas la pieza y cobras en la visita. Tus pacientes también pueden pedir cita por un enlace.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <button
+                onClick={handleCTA}
+                className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 hover:bg-blue-700"
+              >
+                {user ? 'Entrar a mi clínica' : 'Comenzar prueba gratis'}
+              </button>
+              <p className="text-sm text-slate-600">{BILLING.trialDays} días · sin tarjeta</p>
+              <button onClick={handleDemo} className="text-sm font-semibold text-blue-700 md:hidden">
+                Ver demo
+              </button>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-slate-500">
+              Continúa con Google. Si es tu primera vez, tu cuenta se crea automáticamente.
+            </p>
           </div>
-          </div>
+          <ProductPreview />
         </header>
 
-        <Block
-          n="01"
-          title="Agenda"
-          text="Ves quién viene hoy. No se cruzan dos citas a la misma hora, y puedes avisarle por WhatsApp."
-        >
+        <div id="funciones">
+          <Block
+            n="01"
+            title="Agenda"
+            text="Ves quién viene hoy. No se cruzan dos citas a la misma hora, y puedes avisarle por WhatsApp."
+          >
           <div className="mb-4 grid grid-cols-7 gap-1.5">
             {[
               { d: 'L', on: false },
@@ -195,13 +261,13 @@ const LandingPage: React.FC = () => {
               </div>
             ))}
           </div>
-        </Block>
+          </Block>
 
-        <Block
-          n="02"
-          title="Odontograma"
-          text="El mismo del expediente: la pieza y su superficie. La caries queda en rojo."
-        >
+          <Block
+            n="02"
+            title="Odontograma"
+            text="El mismo del expediente: la pieza y su superficie. La caries queda en rojo."
+          >
           <div className="overflow-x-auto">
             <div className="min-w-[520px]">
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-500">Arcada superior</p>
@@ -222,13 +288,13 @@ const LandingPage: React.FC = () => {
           <p className="mt-4 text-sm text-slate-700">
             Pieza 14 · <span className="font-semibold text-red-500">caries en oclusal</span>
           </p>
-        </Block>
+          </Block>
 
-        <Block
-          n="03"
-          title="Cobro y reservas"
-          text="Al terminar, un toque registra el pago. Si quieres, el paciente pide cita por tu enlace, en los horarios que elegiste."
-        >
+          <Block
+            n="03"
+            title="Cobro y reservas"
+            text="Al terminar, un toque registra el pago. Si quieres, el paciente pide cita por tu enlace, en los horarios que elegiste."
+          >
           <div className="grid gap-px overflow-hidden rounded-xl border border-blue-100 bg-blue-100 sm:grid-cols-2">
             <div className="bg-white px-5 py-4">
               <p className="text-xs font-medium text-blue-600">Esta visita</p>
@@ -244,9 +310,36 @@ const LandingPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </Block>
+          </Block>
+        </div>
 
-        <section className="grid items-center gap-10 border-t border-blue-100 py-16 md:grid-cols-12">
+        <section id="seguridad" className="border-t border-blue-100 py-16">
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-blue-600">TUS DATOS SON TUYOS</p>
+            <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Tu información clínica, protegida y bajo tu control.</h2>
+            <p className="mt-4 leading-relaxed text-slate-600">
+              DienteLink almacena la información para prestarte el servicio. No vendemos los datos de tu clínica ni los de tus pacientes.
+            </p>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: LockKeyhole, title: 'Acceso privado', text: 'Tu cuenta se protege con autenticación segura.' },
+              { icon: Cloud, title: 'En la nube', text: 'Consulta tu información desde tus dispositivos.' },
+              { icon: Download, title: 'Respaldo descargable', text: 'Puedes exportar una copia de tus datos.' },
+              { icon: ShieldCheck, title: 'Sin venta de datos', text: 'Tu información no se usa para publicidad.' },
+            ].map(({ icon: Icon, title, text }) => (
+              <div key={title} className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm shadow-blue-900/5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Icon size={19} />
+                </span>
+                <h3 className="mt-4 text-sm font-semibold text-slate-900">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="precio" className="grid items-center gap-10 border-t border-blue-100 py-16 md:grid-cols-12">
           <div className="md:col-span-5">
             <p className="text-sm font-medium text-blue-600">{BILLING.planName}</p>
             <p className="mt-2 text-5xl font-semibold tracking-tight text-slate-900">
@@ -273,11 +366,24 @@ const LandingPage: React.FC = () => {
       </main>
 
       <footer className="border-t border-blue-100">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-3 px-6 py-8 sm:flex-row sm:items-center">
-          <span className="text-sm font-semibold text-slate-900">DienteLink</span>
-          <p className="text-sm text-slate-400">
-            © {new Date().getFullYear()} DienteLink
-          </p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <a href="#inicio" className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <DentalLogo size={18} variant="blue" />
+              DienteLink
+            </a>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-500">
+              Agenda, expediente y cobros para consultorios dentales.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
+            <a href="/terminos" className="text-slate-500 hover:text-slate-900">Términos y privacidad</a>
+            <a href={`https://wa.me/${SUPPORT_WHATSAPP}`} target="_blank" rel="noreferrer" className="text-slate-500 hover:text-slate-900">
+              Soporte
+            </a>
+            <a href="/login" className="text-slate-500 hover:text-slate-900">Iniciar sesión</a>
+            <span className="text-slate-400">© {new Date().getFullYear()} DienteLink</span>
+          </div>
         </div>
       </footer>
     </div>

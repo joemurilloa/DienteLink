@@ -362,6 +362,25 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
             </div>
             <p className="text-slate-500 font-medium text-sm sm:text-base">Reservas que llegaron por tu enlace. Aprueba las que sí vas a atender.</p>
           </div>
+          <div className={cn('flex self-start md:self-auto bg-slate-100/80 p-1 rounded-xl', !settings.isActive && 'pointer-events-none select-none opacity-40')}>
+            {([
+              { key: 'requests', label: 'Buzón', icon: Bell },
+              { key: 'config', label: 'Horarios', icon: Settings },
+              { key: 'share', label: 'Enlace', icon: Link2 },
+            ] as const).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                  activeTab === tab.key ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden"><tab.icon size={16}/></span>
+              </button>
+            ))}
+          </div>
         </header>
 
         <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5">
@@ -398,27 +417,6 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
         </div>
 
         <div className={cn('space-y-6 sm:space-y-10', !settings.isActive && 'pointer-events-none select-none opacity-40')}>
-          <div className="flex items-center gap-3 justify-end">
-             <div className="flex bg-slate-100/80 p-1 rounded-xl">
-               {([
-                { key: 'requests', label: 'Buzón', icon: Bell },
-                { key: 'config', label: 'Horarios', icon: Settings },
-                { key: 'share', label: 'Enlace', icon: Link2 },
-               ] as const).map(tab => (
-                 <button
-                   key={tab.key}
-                   onClick={() => setActiveTab(tab.key)}
-                   className={cn(
-                     "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
-                     activeTab === tab.key ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : "text-slate-500 hover:text-slate-700"
-                   )}
-                 >
-                   <span className="hidden sm:inline">{tab.label}</span>
-                   <span className="sm:hidden"><tab.icon size={16}/></span>
-                 </button>
-               ))}
-             </div>
-          </div>
 
         {/* TAB: REQUESTS */}
         {activeTab === 'requests' && (

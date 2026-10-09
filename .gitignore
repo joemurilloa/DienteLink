@@ -37,6 +37,16 @@ Thumbs.db
 coverage/
 
 test-*.mjs
-
-test-*.mjs
 test-*.js
+
+# Generated build / PWA output
+dev-dist/
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# Keys and certificates
+*.pem
+*.key
+*.p12

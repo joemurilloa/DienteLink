@@ -35,8 +35,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
     const clinicName = profile?.clinic_name || 'Clínica Dental';
 
     const [newTreatment, setNewTreatment] = useState({ treatment: '', unitCost: '', quantity: '1', toothId: '' });
-    const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash' as Payment['method'], note: '' });
-    const [customAmount, setCustomAmount] = useState(false);
+    const [newPayment, setNewPayment] = useState({ method: 'cash' as Payment['method'] });
     useEffect(() => {
         if (!prefill) return;
         setNewTreatment(p => ({
@@ -56,17 +55,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
     const payments = patient.payments || [];
     const totalBudget = budgetItems.reduce((sum, b) => sum + (b.unitCost * b.quantity), 0);
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const pendingBalance = totalBudget - totalPaid;
-    const chargeAmount = parseFloat(newPayment.amount);
-    const resolvedCharge = !customAmount || isNaN(chargeAmount) || chargeAmount <= 0
-      ? pendingBalance
-      : chargeAmount;
-
-    useEffect(() => {
-        if (!customAmount && pendingBalance > 0) {
-            setNewPayment(p => (p.amount === String(pendingBalance) ? p : { ...p, amount: String(pendingBalance) }));
-        }
-    }, [pendingBalance, customAmount]);
+    const amountDue = Math.max(0, totalBudget - totalPaid);
 
     const handleAddTreatment = () => {
         setBudgetError('');
@@ -104,21 +93,18 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
 
     const handleAddPayment = () => {
         setPaymentError('');
-        const amount = resolvedCharge;
-        if (isNaN(amount) || amount <= 0) { setPaymentError('Ingresa un monto válido mayor a 0'); return; }
-        if (amount > pendingBalance && pendingBalance > 0) { setPaymentError(`El monto excede el saldo pendiente (${formatCurrency(pendingBalance)})`); return; }
+        if (amountDue <= 0) { setPaymentError('El presupuesto ya está pagado'); return; }
 
         const payment: Payment = {
             id: crypto.randomUUID(),
-            amount,
+            amount: amountDue,
             method: newPayment.method,
-            note: newPayment.note.trim(),
+            note: '',
             date: getLocalISODate(new Date()),
         };
         onUpdate({ ...patient, payments: [...payments, payment] });
-        setNewPayment({ amount: '', method: 'cash', note: '' });
-        setCustomAmount(false);
-        sileo.success({ title: 'Pago registrado', description: `${formatCurrency(amount)} · ${paymentMethodLabel(payment.method)}` });
+        setNewPayment({ method: 'cash' });
+        sileo.success({ title: 'Pago registrado', description: `${formatCurrency(amountDue)} · ${paymentMethodLabel(payment.method)}` });
     };
 
     const handleDeletePayment = (id: string) => {
@@ -129,8 +115,8 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
         <div className="space-y-8 animate-in-up duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Finanzas</h3>
-                    <p className="text-slate-500 text-sm mt-1">Presupuesto, abonos y recibos del paciente</p>
+                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Pagos y presupuestos</h3>
+                    <p className="text-slate-500 text-sm mt-1">Presupuesto, pagos y recibos del paciente</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     {budgetItems.length > 0 && (
@@ -179,36 +165,16 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">Total</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">Presupuesto</p>
                     <p className="text-lg font-bold text-blue-700">{formatCurrency(totalBudget)}</p>
                 </div>
                 <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                     <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500 mb-1">Pagado</p>
                     <p className="text-lg font-bold text-emerald-700">{formatCurrency(totalPaid)}</p>
                 </div>
-                <div className={cn("p-4 rounded-xl border", pendingBalance > 0 ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-300")}>
-                    <p className={cn("text-xs font-semibold uppercase tracking-wider mb-1", pendingBalance > 0 ? "text-amber-500" : "text-slate-500")}>Saldo</p>
-                    <p className={cn("text-lg font-bold", pendingBalance > 0 ? "text-amber-700" : "text-slate-500")}>{formatCurrency(pendingBalance)}</p>
-                </div>
             </div>
-
-            {/* Progress Bar */}
-            {totalBudget > 0 && (
-                <div>
-                    <div className="flex justify-between text-sm text-slate-500 mb-2">
-                        <span className="font-medium">Progreso de pago</span>
-                        <span className="font-semibold">{Math.min(100, Math.round((totalPaid / totalBudget) * 100))}%</span>
-                    </div>
-                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                            className={cn("h-full rounded-full transition-all duration-500", totalPaid >= totalBudget ? "bg-emerald-500" : "bg-blue-500")}
-                            style={{ width: `${Math.min(100, (totalPaid / totalBudget) * 100)}%` }}
-                        />
-                    </div>
-                </div>
-            )}
 
             {/* Add Treatment Form */}
             <div className="p-5 bg-slate-50 border border-slate-300 rounded-2xl">
@@ -281,7 +247,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                                         item.status === 'in_progress' ? "bg-amber-100 text-amber-600" :
                                         "bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600"
                                     )}
-                                    title={item.status === 'pending' ? 'Pendiente → En progreso' : item.status === 'in_progress' ? 'En progreso → Completado' : 'Completado → Pendiente'}
+                                    aria-label={item.status === 'pending' ? 'Marcar en progreso' : item.status === 'in_progress' ? 'Marcar completado' : 'Marcar pendiente'}
                                 >
                                     {item.status === 'completed' ? <Check size={16} /> :
                                      item.status === 'in_progress' ? <Loader2 size={16} /> :
@@ -307,8 +273,8 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="font-bold text-sm text-slate-800">{formatCurrency(item.unitCost * item.quantity)}</span>
-                                <button onClick={() => setDeleteTarget({ type: 'treatment', id: item.id })} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
-                                    <Trash2 size={14} />
+                                <button type="button" onClick={() => setDeleteTarget({ type: 'treatment', id: item.id })} aria-label={`Eliminar ${item.treatment}`} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all">
+                                    <Trash2 size={14} aria-hidden="true" />
                                 </button>
                             </div>
                         </div>
@@ -318,96 +284,43 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
 
             {/* Payments Section */}
             <div className="border-t border-slate-300 pt-8">
-                {pendingBalance > 0 ? (
+                {amountDue > 0 ? (
                     <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm mb-6">
-                        <div className="flex items-start justify-between gap-3 mb-4">
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">¿Ya pagó?</p>
-                                <p className="text-3xl font-black text-slate-900 tabular-nums leading-none">{formatCurrency(customAmount ? resolvedCharge : pendingBalance)}</p>
-                                <p className="text-sm text-slate-500 mt-1.5">
-                                    {customAmount ? `Saldo ${formatCurrency(pendingBalance)}` : 'Se registra el saldo completo'}
-                                </p>
-                            </div>
-                            <WhatsAppAction
-                                storageKey={`cobro_${patient.id}`}
-                                variant="icon"
-                                label="Recordar saldo por WhatsApp"
-                                sentLabel="Avisado"
-                                title="Abrir WhatsApp con el recordatorio de pago"
-                                send={() => whatsappService.sendPaymentReminder(
-                                    patient.identification.phone,
-                                    patient.identification.fullName,
-                                    formatCurrency(pendingBalance),
-                                    clinicName,
-                                )}
-                            />
+                        <div className="mb-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Cobro del presupuesto</p>
+                            <p className="text-3xl font-black text-slate-900 tabular-nums leading-none">{formatCurrency(amountDue)}</p>
+                            <p className="text-sm text-slate-500 mt-1.5">Se registra el pago completo.</p>
                         </div>
 
                         {paymentError && (
                             <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium mb-4">{paymentError}</div>
                         )}
 
-                        {customAmount && (
-                            <>
-                                <div className="grid grid-cols-3 gap-2 mb-4">
-                                    {PAYMENT_METHOD_OPTIONS.map(opt => (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => setNewPayment(p => ({ ...p, method: opt.value }))}
-                                            className={cn(
-                                                'py-3 rounded-xl text-sm font-bold border transition-all',
-                                                newPayment.method === opt.value
-                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300'
-                                            )}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                                <input
-                                    placeholder="Monto que pagó"
-                                    type="number"
-                                    inputMode="decimal"
-                                    step="0.01"
-                                    min="0"
-                                    className="w-full bg-slate-50 px-4 py-3 rounded-xl border border-slate-300 outline-none text-base font-semibold text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-slate-400 mb-3"
-                                    value={newPayment.amount}
-                                    onChange={e => { setNewPayment(p => ({ ...p, amount: e.target.value })); setPaymentError(''); }}
-                                />
-                            </>
-                        )}
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                            {PAYMENT_METHOD_OPTIONS.map(opt => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setNewPayment({ method: opt.value })}
+                                    className={cn(
+                                        'py-3 rounded-xl text-sm font-bold border transition-all',
+                                        newPayment.method === opt.value
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300'
+                                    )}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
 
                         <button
                             type="button"
                             onClick={handleAddPayment}
                             className="w-full py-4 bg-blue-600 text-white rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 font-bold text-base active:scale-[0.98]"
                         >
-                            <Check size={18} /> {customAmount ? `Registrar ${formatCurrency(resolvedCharge)}` : 'Sí, ya pagó'}
+                            <Check size={18} /> Registrar pago
                         </button>
-
-                        {!customAmount ? (
-                            <button
-                                type="button"
-                                onClick={() => setCustomAmount(true)}
-                                className="w-full mt-2 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800"
-                            >
-                                Fue otro monto
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setCustomAmount(false);
-                                    setNewPayment(p => ({ ...p, amount: String(pendingBalance) }));
-                                    setPaymentError('');
-                                }}
-                                className="w-full mt-2 py-2 text-sm font-semibold text-emerald-700 hover:text-emerald-900"
-                            >
-                                Volver al pago total
-                            </button>
-                        )}
                     </div>
                 ) : budgetItems.length > 0 ? (
                     <div className="p-4 mb-6 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3">
@@ -415,8 +328,8 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                             <Check size={18} />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-emerald-800">Cuenta al día</p>
-                            <p className="text-xs text-emerald-700/80">No hay saldo pendiente para cobrar.</p>
+                            <p className="text-sm font-bold text-emerald-800">Presupuesto pagado</p>
+                            <p className="text-xs text-emerald-700/80">El cobro completo ya está registrado.</p>
                         </div>
                     </div>
                 ) : null}
@@ -446,18 +359,20 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                                 </div>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                     <button 
+                                        type="button"
                                         onClick={() => generatePaymentReceiptPDF(patient, pay, clinicName, doctorName)}
                                         className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                                        title="Generar Recibo"
+                                        aria-label="Generar recibo"
                                     >
-                                        <Download size={14} />
+                                        <Download size={14} aria-hidden="true" />
                                     </button>
                                     <button 
+                                        type="button"
                                         onClick={() => setDeleteTarget({ type: 'payment', id: pay.id })} 
                                         className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all"
-                                        title="Eliminar Pago"
+                                        aria-label="Eliminar pago"
                                     >
-                                        <Trash2 size={14} />
+                                        <Trash2 size={14} aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
@@ -470,7 +385,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                 <ConfirmModal
                     isOpen={true}
                     title={deleteTarget.type === 'treatment' ? "Eliminar Tratamiento" : "Eliminar Pago"}
-                    description={`¿Estás seguro de que deseas eliminar este ${deleteTarget.type === 'treatment' ? 'tratamiento del presupuesto' : 'registro de pago'}? Esta acción no se puede deshacer y alterará el balance de la cuenta.`}
+                    description={`¿Estás seguro de que deseas eliminar este ${deleteTarget.type === 'treatment' ? 'tratamiento del presupuesto' : 'registro de pago'}? Esta acción no se puede deshacer.`}
                     confirmLabel="Eliminar"
                     cancelLabel="Cancelar"
                     onConfirm={() => {

@@ -56,13 +56,26 @@ export default defineConfig({
     }
   },
   build: {
-    // Raise warning threshold — we're splitting manually
-    chunkSizeWarningLimit: 600,
-    // Use esbuild (default, faster) with aggressive minification
+    chunkSizeWarningLimit: 500,
     minify: 'esbuild',
     rollupOptions: {
       output: {
-        // manualChunks removed to prevent execution order issues with React and framer-motion
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'framework';
+          }
+
+          if (id.includes('/@supabase/') || id.includes('/@tanstack/')) {
+            return 'data-client';
+          }
+        },
       },
     },
   },

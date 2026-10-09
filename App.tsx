@@ -1,37 +1,17 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
-import BottomNav from './components/BottomNav';
-import { bookingService } from './services/bookingService';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './services/authService';
-import { useFocusManagement } from './lib/KeyboardShortcuts';
-import GlobalSearch from './components/GlobalSearch';
-import OnboardingWizard from './components/OnboardingWizard';
-import InstallPrompt from './components/InstallPrompt';
-import ConnectionStatus from './components/ConnectionStatus';
-import TrialBanner from './components/TrialBanner';
-import DemoBanner from './components/DemoBanner';
-import SubscriptionGate from './components/SubscriptionGate';
 import { useSubscription } from './hooks/useSubscription';
-import { sileo, Toaster } from 'sileo';
+import { Toaster } from 'sileo';
 import 'sileo/styles.css';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// View components extracted to separate files and lazy loaded
-const Dashboard = lazy(() => import('./components/views/DashboardView'));
-const PatientsView = lazy(() => import('./components/views/PatientsView'));
-const PatientDetailView = lazy(() => import('./components/views/PatientDetailView'));
-const CalendarView = lazy(() => import('./components/views/CalendarView'));
-const SettingsView = lazy(() => import('./components/views/SettingsView'));
-const PatientConsultationView = lazy(() => import('./components/PatientConsultationView'));
+const AppLayout = lazy(() => import('./components/AppLayout'));
 const PublicBookingPage = lazy(() => import('./components/PublicBookingPage'));
-const BookingManagementView = lazy(() => import('./components/BookingManagementView'));
 const AuthPage = lazy(() => import('./components/AuthPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
 const TermsPage = lazy(() => import('./components/TermsPage'));
-const SubscriptionPage = lazy(() => import('./components/views/SubscriptionPage'));
-const AdminBillingView = lazy(() => import('./components/views/AdminBillingView'));
 
-// Enters guest/demo mode and redirects to the dashboard
 const DemoRoute: React.FC = () => {
   const { enterGuestMode, isGuest } = useAuth();
   const navigate = useNavigate();
@@ -47,129 +27,6 @@ const DemoRoute: React.FC = () => {
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
         <p className="text-sm text-slate-400 font-medium">Preparando demo...</p>
       </div>
-    </div>
-  );
-};
-
-// Booking Wrapper Components
-const BookingManagementWrapper: React.FC = () => {
-  const navigate = useNavigate();
-  return <BookingManagementView onBack={() => navigate('/')} />;
-};
-
-import ErrorBoundary from './components/ErrorBoundary';
-
-const Layout: React.FC<{ subscription: ReturnType<typeof useSubscription> }> = ({ subscription }) => {
-  const location = useLocation();
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { user, clinicId, isGuest } = useAuth();
-  const [servicesReady, setServicesReady] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-
-  // Initialize booking services when clinicId is available
-  useEffect(() => {
-    if (!clinicId) { setServicesReady(false); return; }
-
-    // Guest mode: skip Supabase booking service init
-    if (isGuest) {
-      setServicesReady(true);
-      setPendingCount(0);
-      return;
-    }
-
-    const initServices = async () => {
-      await bookingService.init(clinicId);
-      setPendingCount(bookingService.getPendingRequests().length);
-      setServicesReady(true);
-    };
-    initServices().catch(console.error);
-  }, [clinicId, isGuest]);
-
-  // Keep pending count in sync when requests change
-  useEffect(() => {
-    const refresh = () => setPendingCount(bookingService.getPendingRequests().length);
-    window.addEventListener('bookingRequestsUpdated', refresh);
-    window.addEventListener('newAppointmentRequest', refresh);
-    
-    return () => {
-      window.removeEventListener('bookingRequestsUpdated', refresh);
-      window.removeEventListener('newAppointmentRequest', refresh);
-    };
-  }, [servicesReady]);
-
-  useFocusManagement();
-
-  const getActivePath = () => {
-    if (location.pathname.startsWith('/patient')) return 'patients';
-    if (location.pathname === '/consultation') return 'consultation';
-    if (location.pathname === '/calendar') return 'calendar';
-    if (location.pathname.startsWith('/booking/manage')) return 'solicitudes';
-    if (location.pathname === '/settings' || location.pathname === '/admin') return 'settings';
-    return 'dashboard';
-  };
-
-  return (
-    <div className="app-shell flex h-screen overflow-hidden bg-slate-50">
-      <OnboardingWizard />
-      {/* Skip link for accessibility */}
-      <a 
-        href="#main-content" 
-        className="skip-link"
-        onFocus={(e) => e.target.scrollIntoView()}
-      >
-        Saltar al contenido principal
-      </a>
-      
-      {!servicesReady ? (
-        <div className="flex items-center justify-center w-full h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-sm text-slate-400 font-medium">Cargando datos...</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <Sidebar activePath={getActivePath()} pendingRequestsCount={pendingCount} />
-          <main 
-            id="main-content"
-            className="flex-1 flex flex-col relative overflow-hidden" 
-            role="main"
-            aria-label="Contenido principal"
-          >
-            <DemoBanner />
-            <TrialBanner subscription={subscription} />
-            <InstallPrompt />
-            <ConnectionStatus />
-            <SubscriptionGate subscription={subscription}>
-            <Suspense fallback={
-              <div className="flex items-center justify-center w-full h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-sm text-slate-500 font-medium">Cargando vista...</p>
-                </div>
-              </div>
-            }>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/patients" element={<PatientsView />} />
-                <Route path="/patient/:id" element={<PatientDetailView />} />
-                <Route path="/consultation" element={<PatientConsultationView />} />
-                <Route path="/calendar" element={<CalendarView />} />
-                <Route path="/booking/manage" element={<BookingManagementWrapper />} />
-                <Route path="/settings" element={<SettingsView />} />
-                <Route path="/admin" element={<AdminBillingView />} />
-                <Route path="/subscription" element={<SubscriptionPage />} />
-                <Route path="*" element={<Dashboard />} />
-              </Routes>
-            </Suspense>
-            </SubscriptionGate>
-            <BottomNav activePath={getActivePath()} onSearchOpen={() => setIsSearchOpen(true)} pendingRequestsCount={pendingCount} />
-          </main>
-          <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-          
-
-        </>
-      )}
     </div>
   );
 };
@@ -193,7 +50,7 @@ const AuthGuard: React.FC = () => {
   // Allow both authenticated users and guests through
   if (!user && !isGuest) return <Navigate to="/welcome" replace />;
 
-  return <Layout subscription={subscription} />;
+  return <AppLayout subscription={subscription} />;
 };
 
 const App: React.FC = () => (

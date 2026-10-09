@@ -4,7 +4,6 @@
  * Fuentes de notificaciones:
  *  1. Solicitudes de reserva en tiempo real (window event 'newAppointmentRequest')
  *  2. Citas del día que faltan ≤ 30 min (polled on mount)
- *  3. Saldo pendiente global alto (calculado de pacientes)
  *
  * Persistencia: localStorage (últimas 50 notificaciones, 7 días de retención)
  */

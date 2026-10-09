@@ -137,9 +137,9 @@ const CalendarView: React.FC = () => {
             </div>
             <button
                onClick={() => setIsAdding(true)}
-               className="h-10 px-5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-sm shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+               className="h-10 px-3 sm:px-5 rounded-xl bg-blue-600 text-white font-bold text-sm whitespace-nowrap shadow-sm shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
             >
-              <Plus size={16} /> <span className="hidden sm:inline">Nueva Cita</span>
+              <Plus size={16} /> <span>Nueva cita</span>
             </button>
           </div>
         </header>
@@ -151,13 +151,13 @@ const CalendarView: React.FC = () => {
           </button>
           
           <div className="flex items-center gap-1 sm:gap-8">
-            <button onClick={handlePrev} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer" title="Anterior">
+            <button type="button" onClick={handlePrev} aria-label="Periodo anterior" className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer">
               <ChevronLeft size={20} />
             </button>
             <h2 className="text-sm sm:text-lg font-bold text-slate-900 tracking-tight sm:min-w-[200px] text-center">
               {headerLabel}
             </h2>
-            <button onClick={handleNext} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer" title="Siguiente">
+            <button type="button" onClick={handleNext} aria-label="Periodo siguiente" className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer">
               <ChevronRight size={20} />
             </button>
           </div>
@@ -189,16 +189,18 @@ const CalendarView: React.FC = () => {
                 return (
                   <div
                     key={d}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { setCurrentDate(new Date(year, month, d)); setViewMode('day'); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCurrentDate(new Date(year, month, d)); setViewMode('day'); } }}
                     className={cn(
-                        "flex flex-col items-center sm:items-stretch min-h-[48px] sm:min-h-[88px] border-r border-b border-slate-200 p-1 sm:p-1.5 cursor-pointer transition-colors",
-                        isPast ? "bg-slate-50 opacity-60" : "bg-white hover:bg-blue-50/40",
+                        "flex flex-col items-center sm:items-stretch min-h-[48px] sm:min-h-[88px] border-r border-b border-slate-200 p-1 sm:p-1.5 transition-colors",
+                        isPast ? "bg-slate-50 opacity-60" : "bg-white",
                         isToday && !isPast && "bg-blue-50/40"
                     )}
                   >
+                    <button
+                      type="button"
+                      onClick={() => { setCurrentDate(new Date(year, month, d)); setViewMode('day'); }}
+                      aria-label={`Ver citas del día ${d}`}
+                      className={cn("flex flex-col items-center w-full rounded-lg cursor-pointer", !isPast && "hover:bg-blue-50/40")}
+                    >
                     <span className={cn(
                       "w-7 h-7 flex items-center justify-center rounded-full text-sm",
                       isToday
@@ -219,18 +221,21 @@ const CalendarView: React.FC = () => {
                         )}
                       </span>
                     )}
+                    </button>
 
                     <div className="hidden sm:block flex-1 space-y-1 px-0.5 overflow-hidden mt-1 w-full">
                       {dayApts.slice(0, 2).map(a => (
-                        <div 
-                          key={a.id} 
-                          onClick={(e) => { e.stopPropagation(); if (a.patientId) navigate(`/patient/${a.patientId}`); }}
-                          className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200/70 rounded-md flex items-center justify-between group/apt cursor-pointer transition-colors"
-                          title={`${a.time} - ${a.patientName} (${a.type})`}
-                        >
-                          <span className="text-[10px] font-semibold text-blue-800 truncate">{a.time} {a.patientName.split(' ')[0]}</span>
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} title="Eliminar cita" className="w-6 h-6 -my-1 -mr-1 rounded-md flex items-center justify-center text-blue-400 hover:text-red-600 hover:bg-red-50 lg:opacity-40 lg:group-hover/apt:opacity-100 flex-shrink-0 ml-1 transition-colors">
-                            <Trash2 size={13} />
+                        <div key={a.id} className="px-1.5 py-0.5 bg-blue-50 border border-blue-200/70 rounded-md flex items-center justify-between group/apt">
+                          <button
+                            type="button"
+                            onClick={() => { if (a.patientId) navigate(`/patient/${a.patientId}`); }}
+                            className="min-w-0 text-left text-[10px] font-semibold text-blue-800 truncate hover:underline"
+                            aria-label={`Abrir expediente de ${a.patientName}, ${a.time}`}
+                          >
+                            {a.time} {a.patientName.split(' ')[0]}
+                          </button>
+                          <button type="button" onClick={() => setDeleteTarget(a.id)} aria-label={`Eliminar cita de ${a.patientName}`} className="w-6 h-6 -my-1 -mr-1 rounded-md flex items-center justify-center text-blue-400 hover:text-red-600 hover:bg-red-50 lg:opacity-40 lg:group-hover/apt:opacity-100 flex-shrink-0 ml-1 transition-colors">
+                            <Trash2 size={13} aria-hidden="true" />
                           </button>
                         </div>
                       ))}
@@ -314,31 +319,34 @@ const CalendarView: React.FC = () => {
                         return (
                           <div 
                             key={`${hour}-${di}`} 
-                            onClick={() => { 
-                              if (!isPast) {
-                                setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); 
-                                setIsAdding(true); 
-                              }
-                            }}
                             className={cn(
                               "h-24 border-r border-b border-slate-50 p-1 transition-colors",
-                              isPast ? "bg-slate-50/50 cursor-not-allowed" : "cursor-pointer group hover:bg-blue-50/40",
+                              isPast ? "bg-slate-50/50" : "group hover:bg-blue-50/40",
                               isToday && !isPast && "bg-blue-50/10"
                             )}
                           >
+                            {hourApts.length === 0 && !isPast && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)}));
+                                  setIsAdding(true);
+                                }}
+                                aria-label={`Agendar el ${dateStr} a las ${fmtHour(hour)}`}
+                                className="w-full h-full rounded-lg"
+                              />
+                            )}
                             {hourApts.map(a => (
-                              <div 
-                                key={a.id} 
-                                onClick={(e) => { e.stopPropagation(); if (a.patientId) navigate(`/patient/${a.patientId}`); }}
-                                className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)] hover:shadow-sm cursor-pointer hover:bg-blue-100 transition-colors"
-                              >
+                              <div key={a.id} className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)]">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-blue-600">{a.time}</span>
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} title="Eliminar cita" className="w-8 h-8 -my-1 -mr-1 rounded-lg flex items-center justify-center text-red-300 hover:text-red-600 hover:bg-red-50 lg:opacity-50 lg:group-hover:opacity-100 transition-all">
-                                    <Trash2 size={15} />
+                                  <button type="button" onClick={() => setDeleteTarget(a.id)} aria-label={`Eliminar cita de ${a.patientName}`} className="w-8 h-8 -my-1 -mr-1 rounded-lg flex items-center justify-center text-red-300 hover:text-red-600 hover:bg-red-50 lg:opacity-50 lg:group-hover:opacity-100 transition-all">
+                                    <Trash2 size={15} aria-hidden="true" />
                                   </button>
                                 </div>
-                                <span className="text-sm font-semibold text-slate-800 line-clamp-2 mt-0.5 leading-tight">{a.patientName}</span>
+                                <button type="button" onClick={() => { if (a.patientId) navigate(`/patient/${a.patientId}`); }} className="text-left text-sm font-semibold text-slate-800 line-clamp-2 mt-0.5 leading-tight hover:text-blue-700">
+                                  {a.patientName}
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -372,49 +380,50 @@ const CalendarView: React.FC = () => {
                       isNow ? "border-t-blue-200 bg-blue-50/5" : ""
                     )}>
                       {hourApts.map(a => (
-                          <div 
+                          <article 
                             key={a.id} 
-                            onClick={() => { if (a.patientId) navigate(`/patient/${a.patientId}`); }}
-                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-300/60 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all group/apt cursor-pointer hover:border-blue-200"
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-300/60 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all group/apt hover:border-blue-200"
                           >
                             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                               <div className="w-12 h-12 bg-blue-50 rounded-[14px] flex items-center justify-center text-blue-600 font-bold text-sm">
                                 {getInitials(a.patientName)}
                               </div>
                               <div>
-                                <h4 className="font-bold text-slate-900 text-[15px]">{a.patientName}</h4>
+                                {a.patientId ? (
+                                  <button type="button" onClick={() => navigate(`/patient/${a.patientId}`)} className="font-bold text-slate-900 text-[15px] text-left hover:text-blue-700">
+                                    {a.patientName}
+                                  </button>
+                                ) : (
+                                  <h4 className="font-bold text-slate-900 text-[15px]">{a.patientName}</h4>
+                                )}
                                 <p className="text-sm text-slate-500 font-medium mt-0.5">{a.time} · {a.type} · {a.status}</p>
                               </div>
                             </div>
                           
                           <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:opacity-0 group-hover/apt:opacity-100 transition-opacity justify-end">
                             {a.patientId && (
-                              <button onClick={(e) => { e.stopPropagation(); navigate(`/patient/${a.patientId}`); }} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all">
-                                Ficha Clínica
+                              <button type="button" onClick={() => navigate(`/patient/${a.patientId}`)} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all">
+                                Historia clínica
                               </button>
                             )}
-                            <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(a.id); }} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl text-sm font-bold transition-all">
+                            <button type="button" onClick={() => setDeleteTarget(a.id)} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl text-sm font-bold transition-all">
                               Eliminar
                             </button>
                           </div>
-                        </div>
+                        </article>
                       ))}
                       
-                      {hourApts.length === 0 && (
-                        <div 
-                          onClick={() => { 
-                            if (!(dateStr < todayStr)) {
-                              setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)})); 
-                              setIsAdding(true); 
-                            }
+                      {dateStr >= todayStr && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)}));
+                            setIsAdding(true);
                           }}
-                          className={cn(
-                            "h-full border-2 border-dashed border-slate-300 rounded-2xl flex items-center px-4 transition-all",
-                            dateStr < todayStr ? "hidden" : "hover:border-slate-300 opacity-0 group-hover:opacity-100 cursor-pointer"
-                          )}
+                          className="h-full w-full border-2 border-dashed border-slate-300 rounded-2xl flex items-center px-4 transition-all hover:border-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100"
                         >
-                          <span className="text-sm font-bold text-slate-500 flex items-center gap-2"><Plus size={14}/> Agendar aquí</span>
-                        </div>
+                          <span className="text-sm font-bold text-slate-500 flex items-center gap-2"><Plus size={14} aria-hidden="true"/> Agendar aquí</span>
+                        </button>
                       )}
                     </div>
                   </div>

@@ -11,7 +11,6 @@ import { useAuth } from '../../services/authService';
 import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
 import { cn, getLocalISODate } from '../../lib/utils';
 import { Search, Plus, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
-import { useWelcomeTip, useDashboardTip } from '../ContextualTips';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useRoleAccess } from '../RoleGuard';
 import GettingStarted from '../GettingStarted';
@@ -65,9 +64,6 @@ const Dashboard: React.FC = () => {
   const [isNewAptOpen, setIsNewAptOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
   const navigate = useNavigate();
-
-  useWelcomeTip();
-  useDashboardTip();
 
   const { addNotification } = useNotifications();
 
@@ -159,6 +155,15 @@ const Dashboard: React.FC = () => {
     return { groupedAppointments: groups };
   }, [allAppointments, today]);
 
+  // Próximo paciente: primera cita de hoy sin completar a partir de ahora (o la primera pendiente del día)
+  const nextAppointment = useMemo(() => {
+    const open = allAppointments
+      .filter(a => a.date === today && a.status !== 'Eliminada' && a.status !== 'Completada')
+      .sort((a, b) => a.time.localeCompare(b.time));
+    const nowHM = new Date().toTimeString().slice(0, 5);
+    return open.find(a => a.time >= nowHM) || open[0] || null;
+  }, [allAppointments, today]);
+
   const loadPendingRequests = useCallback(async () => {
     try { await bookingService.refreshRequests(); } catch (e) {}
     setPendingRequests(bookingService.getPendingRequests());
@@ -206,7 +211,7 @@ const Dashboard: React.FC = () => {
             {/* Nueva Cita */}
             <button
               onClick={() => setIsNewAptOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold text-[13px] transition-all duration-200 ease-out active:scale-[0.97] shadow-sm shadow-blue-500/25 whitespace-nowrap cursor-pointer hover:shadow-md hover:shadow-blue-500/30"
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-semibold text-[13px] transition-all duration-200 ease-out active:scale-[0.97] shadow-sm shadow-blue-500/25 whitespace-nowrap cursor-pointer hover:shadow-md hover:shadow-blue-500/30"
             >
               <Plus size={15} strokeWidth={2.5} />
               Nueva Cita
@@ -218,6 +223,7 @@ const Dashboard: React.FC = () => {
         {pendingRequests.length > 0 && (
           <div
             onClick={() => navigate('/booking/manage')}
+            style={{ order: 2 }}
             className="flex items-center justify-between p-3.5 sm:p-4 bg-blue-50/80 border border-blue-200 rounded-2xl cursor-pointer hover:bg-blue-100/70 transition-all duration-200 active:scale-[0.99] group shadow-sm"
           >
             <div className="flex items-center gap-3">
@@ -238,25 +244,32 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ── Stats row ───────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
-          <StatPill label="Citas hoy" value={todayCount} sub="agendadas" />
-          <StatPill label="Pendientes" value={pendingCount} sub="por atender" />
-          <StatPill label="Pacientes" value={allPatients.length} sub="en total" />
-        </div>
-
-        {/* ── Primeros pasos (cuentas nuevas) ─────────────────────────────── */}
-        {isAdmin && !isGuest && (
-          <GettingStarted
-            hasPatient={allPatients.length > 0}
-            hasAppointment={allAppointments.some(a => a.status !== 'Eliminada')}
-            hasPayment={allPatients.some(p => (p.payments || []).length > 0)}
-            onNewAppointment={() => setIsNewAptOpen(true)}
-          />
+        {/* ── Próximo paciente ────────────────────────────────────────────── */}
+        {nextAppointment && (
+          <section className="card-premium flex flex-row items-center justify-between gap-3 p-3.5 sm:p-6 border-l-4 border-l-blue-600">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 mb-1">Próximo paciente</p>
+              <p className="text-base sm:text-2xl font-bold text-slate-900 truncate">{nextAppointment.patientName}</p>
+              <p className="text-[13px] sm:text-[14px] text-slate-500 mt-0.5 sm:mt-1 truncate">
+                <span className="font-semibold text-slate-800 tabular-nums">{nextAppointment.time}</span>
+                {nextAppointment.type ? ` · ${nextAppointment.type}` : ''}
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                nextAppointment.patientId
+                  ? navigate(`/consultation?patientId=${nextAppointment.patientId}&appointmentId=${nextAppointment.id}`)
+                  : navigate('/calendar')
+              }
+              className="flex-shrink-0 px-3.5 sm:px-5 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-[13px] sm:text-[14px] transition-all active:scale-[0.97] shadow-sm whitespace-nowrap cursor-pointer"
+            >
+              Iniciar<span className="hidden sm:inline"> consulta</span>
+            </button>
+          </section>
         )}
 
         {/* ── Agenda ──────────────────────────────────────────────────────── */}
-        <section className="flex flex-col gap-3 min-w-0">
+        <section className="flex flex-col gap-3 min-w-0" style={{ order: 1 }}>
           <SectionHeader
             title="Tu Agenda"
             action={{ label: 'Ver agenda completa', onClick: () => navigate('/calendar') }}
@@ -302,6 +315,25 @@ const Dashboard: React.FC = () => {
           )}
         </section>
 
+        {/* ── Métricas secundarias ────────────────────────────────────────── */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-4" style={{ order: 3 }}>
+          <StatPill label="Citas hoy" value={todayCount} sub="agendadas" />
+          <StatPill label="Pendientes" value={pendingCount} sub="por atender" />
+          <StatPill label="Pacientes" value={allPatients.length} sub="en total" />
+        </div>
+
+        {/* ── Primeros pasos (cuentas nuevas) ─────────────────────────────── */}
+        {isAdmin && !isGuest && (
+          <div style={{ order: 4 }}>
+          <GettingStarted
+            hasPatient={allPatients.length > 0}
+            hasAppointment={allAppointments.some(a => a.status !== 'Eliminada')}
+            hasPayment={allPatients.some(p => (p.payments || []).length > 0)}
+            onNewAppointment={() => setIsNewAptOpen(true)}
+          />
+          </div>
+        )}
+
         {/* ── Recordatorio de respaldo (>30 días o nunca): discreto, al final ── */}
         {isAdmin && !isGuest && allPatients.length > 0 && (() => {
           const last = getLastBackupDate();
@@ -311,6 +343,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/settings')}
+              style={{ order: 5 }}
               className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-left hover:border-amber-300 transition-all cursor-pointer"
             >
               <p className="text-[13px] text-slate-600">

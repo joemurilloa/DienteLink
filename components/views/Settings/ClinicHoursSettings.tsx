@@ -3,8 +3,10 @@ import { sileo } from 'sileo';
 import { bookingService } from '../../../services/bookingService';
 import { hoursError, hoursFromAvailability, scheduleFromHours, type ClinicHours } from '../../../lib/clinicHours';
 import ClinicHoursFields from '../../ClinicHoursFields';
+import { useAuth } from '../../../services/authService';
 
 const ClinicHoursSettings: React.FC = () => {
+  const { clinicId, user } = useAuth();
   const [hours, setHours] = useState<ClinicHours>(() => hoursFromAvailability(bookingService.getDoctorAvailability()));
   const [saving, setSaving] = useState(false);
 
@@ -21,6 +23,8 @@ const ClinicHoursSettings: React.FC = () => {
         ...current,
         weeklySchedule: scheduleFromHours(hours),
       });
+      const progressKey = `dientelink_hours_reviewed_${clinicId || user?.id || 'default'}`;
+      try { localStorage.setItem(progressKey, '1'); } catch { /* ignore */ }
       sileo.success({ title: 'Horario guardado', description: 'Se usa al agendar y en las reservas en línea.' });
     } catch {
       sileo.error({ title: 'No se pudo guardar el horario' });

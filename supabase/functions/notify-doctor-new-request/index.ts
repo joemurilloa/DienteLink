@@ -18,6 +18,11 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: getCorsHeaders(req) })
   }
 
+  const webhookSecret = Deno.env.get("WEBHOOK_SECRET")
+  if (!webhookSecret || req.headers.get("x-webhook-secret") !== webhookSecret) {
+    return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } })
+  }
+
   try {
     const payload = await req.json()
 
@@ -25,7 +30,7 @@ Deno.serve(async (req) => {
     const record = payload.record;
 
     if (!record || (record.status !== 'pending' && record.status !== 'Programada')) {
-      return new Response("Not a pending or scheduled appointment, or invalid payload", { status: 200, headers: corsHeaders });
+      return new Response("Not a pending or scheduled appointment, or invalid payload", { status: 200, headers: getCorsHeaders(req) });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
       const emailHtml = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #2563eb;">${title}</h2>
-          <p>Hola Dr. ${doctor.full_name},</p>
+          <p>Hola Dr. ${escapeHtml(doctor.full_name)},</p>
           ${greetingText}
           <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <p style="margin: 0 0 8px 0;"><strong>Fecha:</strong> ${date}</p>
@@ -111,7 +116,7 @@ Deno.serve(async (req) => {
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #2563eb;">Solicitud de Cita Recibida</h2>
             <p>Hola ${escapeHtml(record.patient_name)},</p>
-            <p>Hemos recibido exitosamente tu solicitud de cita para la clínica del Dr(a). <strong>${doctor.full_name}</strong>.</p>
+            <p>Hemos recibido exitosamente tu solicitud de cita para la clínica del Dr(a). <strong>${escapeHtml(doctor.full_name)}</strong>.</p>
             <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 0 0 8px 0;"><strong>Fecha solicitada:</strong> ${date}</p>
               <p style="margin: 0 0 8px 0;"><strong>Hora solicitada:</strong> ${time}</p>
@@ -149,6 +154,6 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error("Webhook Error:", err.message)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } })
+    return new Response(JSON.stringify({ error: "Error interno" }), { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } })
   }
 })

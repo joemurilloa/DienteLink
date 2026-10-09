@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /welcome
+Allow: /terminos
+Disallow: /login
+Disallow: /demo
+
+Sitemap: https://diente-link.vercel.app/sitemap.xml

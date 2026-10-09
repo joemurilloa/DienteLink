@@ -90,7 +90,7 @@ export const generatePaymentReceiptPDF = async (
             head: [['Concepto', 'Método de Pago', 'Importe Neto']],
             body: [
                 [
-                    payment.note || 'Abono a tratamiento odontológico', 
+                    payment.note || 'Pago de tratamiento odontológico', 
                     getMethodLabel(payment.method), 
                     formatCurrency(payment.amount)
                 ]
@@ -127,13 +127,12 @@ export const generatePaymentReceiptPDF = async (
         // Current Balance Status
         const totalBudget = (patient.budget || []).reduce((acc, item) => acc + (item.unitCost * item.quantity), 0);
         const totalPaid = (patient.payments || []).reduce((acc, p) => acc + p.amount, 0);
-        const balance = Math.max(0, totalBudget - totalPaid);
 
         doc.setFontSize(9);
         doc.setTextColor(SECONDARY[0], SECONDARY[1], SECONDARY[2]);
         doc.text(`Estado de Cuenta Actualizado:`, 15, y);
         doc.text(`Total del Presupuesto: ${formatCurrency(totalBudget)}`, 15, y + 5);
-        doc.text(`Saldo Pendiente (Deuda): ${formatCurrency(balance)}`, 15, y + 10);
+        doc.text(`Total Pagado: ${formatCurrency(totalPaid)}`, 15, y + 10);
 
         y += 40;
 
@@ -225,7 +224,6 @@ export const generateAccountStatementPDF = async (
         // Balance Summary
         const totalBudget = (patient.budget || []).reduce((acc, item) => acc + (item.unitCost * item.quantity), 0);
         const totalPaid = (patient.payments || []).reduce((acc, p) => acc + p.amount, 0);
-        const balance = Math.max(0, totalBudget - totalPaid);
 
         doc.setFillColor(LIGHT_BG[0], LIGHT_BG[1], LIGHT_BG[2]);
         doc.rect(15, y - 5, pageW - 30, 20, 'F');
@@ -233,10 +231,8 @@ export const generateAccountStatementPDF = async (
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
         doc.text(`Total Tratamientos: ${formatCurrency(totalBudget)}`, 20, y + 2);
-        doc.text(`Total Pagado: ${formatCurrency(totalPaid)}`, pageW / 2 - 20, y + 2);
-        
-        doc.setTextColor(balance > 0 ? 220 : ACCENT[0], balance > 0 ? 38 : ACCENT[1], balance > 0 ? 38 : ACCENT[2]);
-        doc.text(`Saldo Pendiente: ${formatCurrency(balance)}`, pageW - 60, y + 2);
+        doc.setTextColor(ACCENT[0], ACCENT[1], ACCENT[2]);
+        doc.text(`Total Pagado: ${formatCurrency(totalPaid)}`, pageW - 20, y + 2, { align: 'right' });
 
         y += 25;
 
@@ -290,7 +286,7 @@ export const generateAccountStatementPDF = async (
 
         const paymentRows = (patient.payments || []).map(p => [
             p.date,
-            p.note || 'Abono',
+            p.note || 'Pago',
             getMethodLabel(p.method),
             formatCurrency(p.amount)
         ]);

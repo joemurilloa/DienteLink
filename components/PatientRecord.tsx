@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { PatientRecord as PatientRecordType } from '../types';
@@ -17,7 +17,9 @@ import {
     Minimize2,
     Calendar,
     DollarSign,
-    Shield
+    Shield,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import DentalLogo from './DentalLogo';
 import DemoBanner from './DemoBanner';
@@ -47,11 +49,11 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                     <DentalLogo size={18} variant="white" />
                 </div>
                 <div>
-                    <h3 className="font-bold text-base tracking-tight">Expediente creado</h3>
+                    <h3 className="font-bold text-base tracking-tight">Paciente creado</h3>
                     <p className="text-blue-200 text-xs mt-0.5">Siguientes pasos recomendados para este paciente:</p>
                 </div>
             </div>
-            <button onClick={onDismiss} className="p-1 rounded-lg hover:bg-white/20 transition-all text-blue-200 hover:text-white" title="Cerrar sugerencia">
+            <button type="button" onClick={onDismiss} className="p-1 rounded-lg hover:bg-white/20 transition-all text-blue-200 hover:text-white" aria-label="Cerrar sugerencia">
                 <X size={16} />
             </button>
         </div>
@@ -89,7 +91,7 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                     <DollarSign size={16} className="text-blue-100" />
                 </div>
                 <div>
-                    <p className="font-bold text-xs sm:text-sm">Presupuesto</p>
+                    <p className="font-bold text-xs sm:text-sm">Pagos y presupuestos</p>
                     <p className="text-[11px] text-blue-200 line-clamp-1">Plan de tratamiento y costos</p>
                 </div>
             </button>
@@ -156,14 +158,34 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 const ENABLE_PERIODONTOGRAM = false;
 
     const tabs = [
-        { id: 'history',        label: 'Historial y Citas',     labelShort: 'Historial',   icon: Activity,    allowed: canViewClinical },
-        { id: 'odontogram',     label: 'Odontograma',          labelShort: 'Odonto',      icon: LayoutGrid,  allowed: canViewClinical },
+        { id: 'history',        label: 'Resumen',                 icon: Activity,    allowed: canViewClinical },
+        { id: 'id',             label: 'Historia clínica',        icon: User,        allowed: true },
+        { id: 'odontogram',     label: 'Odontograma',             icon: LayoutGrid,  allowed: canViewClinical },
         ...(ENABLE_PERIODONTOGRAM ? [
-            { id: 'periodontogram', label: 'Periodonto',       labelShort: 'Perio',       icon: BarChart3,   allowed: canViewClinical },
+            { id: 'periodontogram', label: 'Periodontograma',     icon: BarChart3,   allowed: canViewClinical },
         ] : []),
-        { id: 'id',             label: 'Ficha y Anamnesis',    labelShort: 'Ficha',       icon: User,        allowed: true },
-        { id: 'budget',         label: 'Finanzas',              labelShort: 'Finanzas',    icon: DollarSign,  allowed: canViewFinancial },
+        { id: 'budget',         label: 'Pagos y presupuestos',    icon: DollarSign,  allowed: canViewFinancial },
     ].filter(t => t.allowed);
+
+    const tabScrollerRef = useRef<HTMLElement>(null);
+    const [tabOverflow, setTabOverflow] = useState({ left: false, right: false });
+    const updateTabOverflow = () => {
+        const el = tabScrollerRef.current;
+        if (!el) return;
+        setTabOverflow({
+            left: el.scrollLeft > 4,
+            right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+        });
+    };
+    useEffect(() => {
+        updateTabOverflow();
+        window.addEventListener('resize', updateTabOverflow);
+        return () => window.removeEventListener('resize', updateTabOverflow);
+    }, [tabs.length]);
+
+    const scrollTabs = (direction: -1 | 1) => {
+        tabScrollerRef.current?.scrollBy({ left: direction * 180, behavior: 'smooth' });
+    };
 
     const handleExportPDF = async () => {
         if (isExporting) return;
@@ -230,7 +252,7 @@ const ENABLE_PERIODONTOGRAM = false;
                             <div className="relative flex justify-center">
                                 <span className="bg-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-slate-500 border border-slate-200 shadow-xs flex items-center gap-2">
                                     <Activity size={14} className="text-blue-600" />
-                                    Historia Clínica & Anamnesis
+                                    Anamnesis
                                 </span>
                             </div>
                         </div>
@@ -273,9 +295,10 @@ const ENABLE_PERIODONTOGRAM = false;
                     <span className="text-xs text-slate-400 font-medium hidden sm:inline">— Pantalla Completa</span>
                 </div>
                 <button
+                    type="button"
                     onClick={() => setIsFocusMode(false)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-lg text-xs font-semibold transition-all"
-                    title="Salir de Pantalla Completa (Esc)"
+                    aria-label="Salir de pantalla completa"
                 >
                     <Minimize2 size={14} />
                     <span className="hidden sm:inline">Salir</span>
@@ -297,27 +320,49 @@ const ENABLE_PERIODONTOGRAM = false;
                 isFocusMode ? "h-0 opacity-0 pointer-events-none mb-0 overflow-hidden" : "opacity-100"
             )}>
                 <div className="relative">
-                    <div className="flex items-center justify-between mb-2.5 px-0.5">
-                        <span className="text-[11px] font-bold uppercase tracking-[1.5px] text-slate-500">Expediente Clínico</span>
-                    </div>
-                    <nav className="flex flex-row gap-2 overflow-x-auto pb-1 pt-0.5 hide-scrollbar">
+                    <label className="md:hidden block">
+                        <span className="sr-only">Sección del expediente</span>
+                        <select
+                            value={activeTab}
+                            onChange={(e) => setActiveTab(e.target.value as TabId)}
+                            className="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 shadow-xs outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        >
+                            {tabs.map((tab) => (
+                                <option key={tab.id} value={tab.id}>{tab.label}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <div className="hidden md:flex items-center gap-1">
+                    {(tabOverflow.left || tabOverflow.right) && (
+                        <button type="button" onClick={() => scrollTabs(-1)} disabled={!tabOverflow.left} aria-label="Secciones anteriores" className="w-9 h-9 shrink-0 rounded-lg border border-slate-200 text-slate-600 disabled:opacity-30">
+                            <ChevronLeft size={16} className="mx-auto" aria-hidden="true" />
+                        </button>
+                    )}
+                    <nav ref={tabScrollerRef} onScroll={updateTabOverflow} aria-label="Secciones del expediente" className="flex flex-row gap-2 overflow-x-auto pb-1 pt-0.5 hide-scrollbar min-w-0">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
+                                type="button"
                                 onClick={() => setActiveTab(tab.id as TabId)}
+                                aria-current={activeTab === tab.id ? 'page' : undefined}
                                 className={cn(
-                                    "flex items-center gap-2 px-3.5 md:px-5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all min-w-max shrink-0 whitespace-nowrap border cursor-pointer",
+                                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all min-w-max shrink-0 whitespace-nowrap border cursor-pointer",
                                     activeTab === tab.id
                                         ? "bg-blue-600 border-blue-600 text-white shadow-sm"
                                         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50/80 shadow-xs"
                                 )}
                             >
-                                <tab.icon size={15} strokeWidth={activeTab === tab.id ? 2.2 : 1.8} />
-                                <span className="md:hidden">{tab.labelShort}</span>
-                                <span className="hidden md:inline">{tab.label}</span>
+                                <tab.icon size={15} strokeWidth={activeTab === tab.id ? 2.2 : 1.8} aria-hidden="true" />
+                                {tab.label}
                             </button>
                         ))}
                     </nav>
+                    {(tabOverflow.left || tabOverflow.right) && (
+                        <button type="button" onClick={() => scrollTabs(1)} disabled={!tabOverflow.right} aria-label="Secciones siguientes" className="w-9 h-9 shrink-0 rounded-lg border border-slate-200 text-slate-600 disabled:opacity-30">
+                            <ChevronRight size={16} className="mx-auto" aria-hidden="true" />
+                        </button>
+                    )}
+                    </div>
                 </div>
             </div>
 
@@ -334,7 +379,7 @@ const ENABLE_PERIODONTOGRAM = false;
                         <button
                             onClick={() => setIsFocusMode(true)}
                             className="absolute top-5 right-5 z-10 w-11 h-11 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md shadow-blue-500/20 flex items-center justify-center transition-all active:scale-95"
-                            title="Ver en Pantalla Completa"
+                            aria-label="Ver en pantalla completa"
                         >
                             <Maximize2 size={18} />
                         </button>

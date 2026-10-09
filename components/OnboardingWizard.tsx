@@ -2,20 +2,18 @@ import React, { useState } from 'react';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import { Loader2, ArrowRight, Building2, Coins } from 'lucide-react';
-import { bookingService } from '../services/bookingService';
-import { DEFAULT_CLINIC_HOURS, hoursError, scheduleFromHours, type ClinicHours } from '../lib/clinicHours';
-import ClinicHoursFields from './ClinicHoursFields';
 
+const inputClass =
+    'w-full px-4 py-3 bg-white border border-slate-300 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-slate-900 placeholder:text-slate-500';
+
+/** Onboarding de un solo paso: datos mínimos. El horario se ajusta después en Ajustes. */
 const OnboardingWizard: React.FC = () => {
     const { profile, updateProfile } = useAuth();
-    const [step, setStep] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Form state
     const [clinicName, setClinicName] = useState(profile?.clinic_name || '');
     const [currency, setCurrency] = useState(profile?.currency || 'HNL');
     const [phone, setPhone] = useState(profile?.phone || '');
-    const [hours, setHours] = useState<ClinicHours>(DEFAULT_CLINIC_HOURS);
 
     if (!profile || profile.has_completed_onboarding) return null;
 
@@ -30,12 +28,6 @@ const OnboardingWizard: React.FC = () => {
             return;
         }
 
-        const scheduleError = hoursError(hours);
-        if (scheduleError) {
-            sileo.error({ title: 'Revisa el horario', description: scheduleError });
-            return;
-        }
-
         setIsSaving(true);
         try {
             await updateProfile({
@@ -45,15 +37,7 @@ const OnboardingWizard: React.FC = () => {
                 locale: currency === 'HNL' ? 'es-HN' : currency === 'MXN' ? 'es-MX' : 'es-US',
                 has_completed_onboarding: true
             });
-            const doctorId = profile.clinic_id || profile.id;
-            if (!bookingService.getDoctorId()) await bookingService.init(doctorId);
-            const current = bookingService.getDoctorAvailability();
-            await bookingService.saveDoctorAvailability({
-                ...current,
-                doctorId,
-                weeklySchedule: scheduleFromHours(hours),
-            });
-            sileo.success({ title: '¡Todo listo!', description: 'Bienvenido a DienteLink.' });
+            sileo.success({ title: '¡Todo listo!', description: 'Puedes ajustar tu horario en Ajustes cuando quieras.' });
         } catch (error: any) {
             sileo.error({
                 title: 'No pudimos guardar',
@@ -64,150 +48,82 @@ const OnboardingWizard: React.FC = () => {
         }
     };
 
-    const TOTAL_STEPS = 3;
-    const progressPercent = (step / TOTAL_STEPS) * 100;
-
     return (
-        <div className="fixed inset-0 z-[200] bg-slate-100 flex items-start sm:items-center justify-center p-4 overflow-y-auto selection:bg-blue-100 selection:text-blue-900 animate-in fade-in duration-500">
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#1e293b 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-
-            <div className="relative bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl p-8 md:p-14 border border-slate-300/60 my-6 animate-in zoom-in-95 duration-700">
-                {/* Progress bar */}
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-100">
-                    <div
-                        className="h-full bg-blue-600 transition-all duration-700 ease-out"
-                        style={{ width: `${progressPercent}%` }}
-                    />
-                </div>
-
-                {/* ── Step 1: Bienvenida ── */}
-                {step === 1 && (
-                    <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                        <div>
-                            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-                                <span className="text-3xl">👋</span>
-                            </div>
-                            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">¡Bienvenido a DienteLink!</h1>
-                            <p className="text-slate-500 text-base leading-relaxed">
-                                Tu nuevo centro de comando dental. Moderno, seguro y profesional.<br />
-                                El nombre de tu clínica y el horario en que atiendes.
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={() => setStep(2)}
-                            className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
-                        >
-                            Comenzar <ArrowRight size={18} />
-                        </button>
+        <div className="fixed inset-0 z-[200] bg-slate-100 flex items-start sm:items-center justify-center p-4 overflow-y-auto selection:bg-blue-100 selection:text-blue-900 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-lg p-6 sm:p-10 border border-slate-200 my-6">
+                <form
+                    className="space-y-6"
+                    onSubmit={e => { e.preventDefault(); handleComplete(); }}
+                >
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Configura tu clínica</h1>
+                        <p className="text-slate-600 text-sm">Solo 3 datos. El horario de atención lo ajustas después en Ajustes.</p>
                     </div>
-                )}
 
-                {/* ── Step 2: Datos de la clínica ── */}
-                {step === 2 && (
-                    <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-sm font-bold mb-4 uppercase tracking-wider">
-                                Paso 2 de 3
-                            </div>
-                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">Tu Clínica</h2>
-                            <p className="text-slate-500 text-sm">El nombre y la moneda aparecerán en tus expedientes y cotizaciones.</p>
+                    <div className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label htmlFor="onb-clinic" className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                <Building2 size={14} /> Nombre de la clínica
+                            </label>
+                            <input
+                                id="onb-clinic"
+                                type="text"
+                                autoFocus
+                                value={clinicName}
+                                onChange={e => setClinicName(e.target.value)}
+                                placeholder="Ej. Clínica Dental Sonrisas"
+                                className={inputClass}
+                            />
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                                    <Building2 size={14} /> Nombre Comercial
-                                </label>
-                                <input
-                                    type="text"
-                                    value={clinicName}
-                                    onChange={e => setClinicName(e.target.value)}
-                                    placeholder="Ej. Clínica Dental Sonrisas"
-                                    className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-slate-900 placeholder:text-slate-500 text-lg"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">Tu teléfono (WhatsApp)</label>
-                                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="9999-9999" className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-slate-900 text-lg" />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                                    <Coins size={14} /> Moneda Principal
-                                </label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {['HNL', 'MXN', 'USD'].map(c => (
-                                        <button
-                                            key={c}
-                                            onClick={() => setCurrency(c)}
-                                            className={`py-3 px-4 rounded-xl font-bold text-sm border-2 transition-all ${
-                                                currency === c
-                                                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                                    : 'border-slate-300 bg-white text-slate-500 hover:border-slate-300'
-                                            }`}
-                                        >
-                                            {c}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                        <div className="space-y-1.5">
+                            <label htmlFor="onb-phone" className="text-sm font-semibold text-slate-700">Tu teléfono (WhatsApp)</label>
+                            <input
+                                id="onb-phone"
+                                type="tel"
+                                value={phone}
+                                onChange={e => setPhone(e.target.value)}
+                                placeholder="9999-9999"
+                                className={inputClass}
+                            />
                         </div>
 
-                        <p className="text-xs text-slate-500">
-                            Al continuar aceptas los{' '}
-                            <a href="#/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">términos de uso y privacidad</a>.
-                        </p>
-
-                        <div className="pt-6 border-t border-slate-300 flex gap-4">
-                            <button
-                                onClick={() => setStep(1)}
-                                className="px-6 py-4 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-all"
-                            >
-                                Volver
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (!clinicName.trim() || phone.replace(/\D/g, '').length < 8) {
-                                        sileo.error({ title: 'Falta información', description: 'Escribe el nombre de la clínica y un teléfono de 8 dígitos.' });
-                                        return;
-                                    }
-                                    setStep(3);
-                                }}
-                                disabled={!clinicName.trim()}
-                                className="flex-1 bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-[0_8px_16px_rgba(15,23,42,0.25)] active:scale-95 disabled:opacity-50"
-                            >
-                                Siguiente <ArrowRight size={18} />
-                            </button>
+                        <div className="space-y-1.5">
+                            <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                <Coins size={14} /> Moneda
+                            </span>
+                            <div className="grid grid-cols-3 gap-2">
+                                {['HNL', 'MXN', 'USD'].map(c => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => setCurrency(c)}
+                                        className={`py-2.5 rounded-xl font-semibold text-sm border transition-all ${
+                                            currency === c
+                                                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                                : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+                                        }`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                )}
 
-                {step === 3 && (
-                    <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-sm font-bold mb-4 uppercase tracking-wider">
-                                Último paso
-                            </div>
-                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">¿Cuándo atiendes?</h2>
-                            <p className="text-slate-500 text-sm">Estos horarios salen al agendar una cita y en tu enlace de reservas. Después los cambias en Ajustes.</p>
-                        </div>
-                        <ClinicHoursFields value={hours} onChange={setHours} />
-                        <div className="pt-6 border-t border-slate-300 flex gap-4">
-                            <button onClick={() => setStep(2)} className="px-6 py-4 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-all">
-                                Volver
-                            </button>
-                            <button
-                                onClick={handleComplete}
-                                disabled={isSaving}
-                                className="flex-1 bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-[0_8px_16px_rgba(15,23,42,0.25)] active:scale-95 disabled:opacity-50"
-                            >
-                                {isSaving ? <Loader2 className="animate-spin" size={20} /> : 'Entrar al Sistema →'}
-                            </button>
-                        </div>
-                    </div>
-                )}
+                    <p className="text-xs text-slate-600">
+                        Al continuar aceptas los{' '}
+                        <a href="#/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">términos de uso y privacidad</a>.
+                    </p>
+
+                    <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="w-full bg-blue-600 text-white px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                    >
+                        {isSaving ? <Loader2 className="animate-spin" size={20} /> : <>Entrar a DienteLink <ArrowRight size={18} /></>}
+                    </button>
+                </form>
             </div>
         </div>
     );

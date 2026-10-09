@@ -10,7 +10,7 @@ interface Props {
   onNewAppointment: () => void;
 }
 
-/** Guía de 3 pasos para el doctor nuevo. Se oculta sola al completarse o al cerrarla. */
+/** Guía progresiva para el doctor nuevo. Se oculta sola al completarse o al cerrarla. */
 const GettingStarted: React.FC<Props> = ({ hasPatient, hasAppointment, hasPayment, onNewAppointment }) => {
   const navigate = useNavigate();
   const { clinicId, user } = useAuth();
@@ -19,10 +19,19 @@ const GettingStarted: React.FC<Props> = ({ hasPatient, hasAppointment, hasPaymen
     try { return localStorage.getItem(key) === '1'; } catch { return false; }
   });
 
+  const hoursKey = `dientelink_hours_reviewed_${clinicId || user?.id || 'default'}`;
+  const [hoursReviewed] = useState(() => {
+    try { return localStorage.getItem(hoursKey) === '1'; } catch { return false; }
+  });
+  const reviewHours = () => {
+    navigate('/settings');
+  };
+
   const steps = [
-    { done: hasPatient, label: 'Registra tu primer paciente', hint: 'Ficha, alergias y odontograma', action: () => navigate('/patients') },
+    { done: hoursReviewed, label: 'Revisa tu horario de atención', hint: 'Define cuándo pueden agendar tus pacientes', action: reviewHours },
+    { done: hasPatient, label: 'Registra tu primer paciente', hint: 'Historia clínica, alergias y odontograma', action: () => navigate('/patients') },
     { done: hasAppointment, label: 'Agenda una cita', hint: 'Desde aquí o con tu enlace de reservas', action: onNewAppointment },
-    { done: hasPayment, label: 'Registra un cobro', hint: 'Ficha del paciente → Finanzas → genera el recibo', action: () => navigate('/patients') },
+    { done: hasPayment, label: 'Registra un cobro', hint: 'Historia clínica → Pagos y presupuestos → genera el recibo', action: () => navigate('/patients') },
   ];
   const doneCount = steps.filter(s => s.done).length;
 
@@ -34,10 +43,10 @@ const GettingStarted: React.FC<Props> = ({ hasPatient, hasAppointment, hasPaymen
   };
 
   return (
-    <section className="card-premium p-4 sm:p-5">
+    <section className="bg-blue-50/60 border border-blue-100 rounded-xl p-4 sm:p-5">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h2 className="text-[15px] font-bold text-slate-900">Empieza en 3 pasos</h2>
+          <h2 className="text-[15px] font-bold text-slate-900">Empieza en {steps.length} pasos</h2>
           <p className="text-xs text-slate-500 mt-0.5">{doneCount} de {steps.length} completados</p>
         </div>
         <button onClick={dismiss} className="text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="Cerrar guía">
@@ -50,7 +59,7 @@ const GettingStarted: React.FC<Props> = ({ hasPatient, hasAppointment, hasPaymen
             <button
               onClick={s.action}
               disabled={s.done}
-              className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-slate-50 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-default"
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-white/70 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-default"
             >
               <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
                 {s.done ? <Check size={13} /> : i + 1}

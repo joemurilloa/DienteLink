@@ -24,22 +24,60 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const { unreadCount } = useNotifications();
 
-  // Close menu when clicking outside
+  // Make the menu behave as an accessible modal: Escape closes it, focus stays
+  // inside while open, and returns to the element that opened it afterwards.
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    if (!isMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+
+    const getFocusableElements = () => Array.from<HTMLElement>(
+      menuRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ) ?? []
+    ).filter((element) => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true');
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
         setIsMenuOpen(false);
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        menuRef.current?.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     };
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-    }
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      if (menuTriggerRef.current?.isConnected) menuTriggerRef.current.focus();
     };
   }, [isMenuOpen]);
 
@@ -66,7 +104,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 rounded-t-2xl safe-bottom z-50 shadow-[0_-2px_20px_rgba(0,0,0,0.06)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 safe-bottom z-50">
         <div className="flex items-center justify-around px-2" style={{ height: '64px' }}>
           {coreItems.slice(0, 2).map((item) => {
             const isActive = activePath === item.id;
@@ -77,11 +115,11 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                 aria-label={item.label}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all",
-                  isActive ? "text-blue-600" : "text-slate-500"
+                  isActive ? "text-blue-600" : "text-slate-600"
                 )}
               >
                 <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "scale-110" : ""} />
-                <span className={cn("text-[10px] font-semibold tracking-tight", isActive ? "opacity-100" : "opacity-60")}>
+                <span className="text-[11px] font-semibold tracking-tight">
                   {item.label}
                 </span>
               </button>
@@ -94,7 +132,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
             {pendingRequestsCount > 0 && (
               <button
                 onClick={() => navigate('/booking/manage')}
-                className="absolute -top-2 right-1 bg-amber-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow-sm border-2 border-white"
+                className="absolute -top-2 right-1 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow-sm border-2 border-white"
                 aria-label={`${pendingRequestsCount} solicitudes`}
               >
                 {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
@@ -103,11 +141,11 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
             <button
               onClick={() => setIsNewAptOpen(true)}
               aria-label="Nueva Cita"
-              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 active:scale-95 transition-all"
+              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-[var(--shadow-md)] active:scale-95 transition-all"
             >
               <Plus size={26} strokeWidth={2.5} />
             </button>
-            <span className="text-[10px] font-semibold text-slate-500 mt-0.5">Nueva</span>
+            <span className="text-[11px] font-semibold text-slate-600 mt-0.5">Cita</span>
           </div>
 
           {coreItems.slice(2).map((item) => {
@@ -115,11 +153,14 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
             return (
               <button
                 key={item.id}
+                ref={item.id === 'menu' ? menuTriggerRef : undefined}
                 onClick={() => item.action ? item.action() : navigate(item.path!)}
                 aria-label={item.label}
+                aria-expanded={item.id === 'menu' ? isMenuOpen : undefined}
+                aria-controls={item.id === 'menu' ? 'mobile-menu-dialog' : undefined}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all",
-                  isActive ? "text-blue-600" : "text-slate-500"
+                  isActive ? "text-blue-600" : "text-slate-600"
                 )}
               >
                 <div className="relative">
@@ -128,7 +169,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                     <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
                   )}
                 </div>
-                <span className={cn("text-[10px] font-semibold tracking-tight", isActive ? "opacity-100" : "opacity-60")}>
+                <span className="text-[11px] font-semibold tracking-tight">
                   {item.label}
                 </span>
               </button>
@@ -145,33 +186,45 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
           <>
             <div 
               onClick={() => setIsMenuOpen(false)}
+              aria-hidden="true"
               className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[50] md:hidden animate-in fade-in duration-200"
             />
             <div
+              id="mobile-menu-dialog"
               ref={menuRef}
-              className="md:hidden fixed bottom-[72px] left-2 right-2 bg-white rounded-3xl p-2 z-[60] shadow-[0_10px_40px_rgba(0,0,0,0.2)] animate-in slide-in-from-bottom-12 duration-300"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-menu-title"
+              tabIndex={-1}
+              className="md:hidden fixed left-2 right-2 bg-white rounded-[var(--radius-xl)] z-[60] shadow-[var(--shadow-lg)] animate-in slide-in-from-bottom-12 duration-300 flex flex-col overflow-hidden"
+              style={{
+                bottom: 'calc(64px + env(safe-area-inset-bottom) + 8px)',
+                maxHeight: 'calc(100dvh - 64px - env(safe-area-inset-bottom) - 16px)',
+              }}
             >
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-900 text-lg ml-2">Menú</h3>
+              <div className="flex flex-none items-center justify-between bg-white px-5 py-3 border-b border-slate-100 z-10">
+                  <h3 id="mobile-menu-title" className="font-bold text-slate-900 text-lg">Menú</h3>
                   <button 
+                    ref={closeButtonRef}
                     onClick={() => setIsMenuOpen(false)}
-                    className="w-11 h-11 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    className="w-11 h-11 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    aria-label="Cerrar menú"
                   >
                     <X size={18} />
                   </button>
-                </div>
-                
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-3">
                 <div className="space-y-1">
                   {/* Solicitudes shortcut — always accessible from menu */}
                   <button
                     onClick={() => { setIsMenuOpen(false); navigate('/booking/manage'); }}
-                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-amber-50 active:bg-amber-100 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] hover:bg-amber-50 active:bg-amber-100 transition-colors text-left"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 relative">
+                    <div className="w-11 h-11 rounded-[var(--radius-md)] bg-amber-50 flex items-center justify-center text-amber-600 relative">
                       <Inbox size={20} />
                       {pendingRequestsCount > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                           {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
                         </span>
                       )}
@@ -188,12 +241,12 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                   <div className="relative">
                     <button
                       onClick={() => setIsNotifOpen((o) => !o)}
-                      className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-blue-50 active:bg-blue-100 transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] hover:bg-blue-50 active:bg-blue-100 transition-colors text-left"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 relative">
+                      <div className="w-11 h-11 rounded-[var(--radius-md)] bg-blue-50 flex items-center justify-center text-blue-600 relative">
                         <Bell size={20} />
                         {unreadCount > 0 && (
-                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                             {unreadCount > 9 ? '9+' : unreadCount}
                           </span>
                         )}
@@ -215,9 +268,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
 
                   <button
                     onClick={() => { setIsMenuOpen(false); navigate('/settings'); }}
-                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                    <div className="w-11 h-11 rounded-[var(--radius-md)] bg-slate-100 flex items-center justify-center text-slate-600">
                       <Settings size={20} />
                     </div>
                     <span className="font-bold text-slate-700 text-[15px]">Ajustes</span>
@@ -226,9 +279,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                   {isAdmin && (
                     <button
                       onClick={() => { setIsMenuOpen(false); navigate('/subscription'); }}
-                      className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                      <div className="w-11 h-11 rounded-[var(--radius-md)] bg-blue-50 flex items-center justify-center text-blue-600">
                         <CreditCard size={20} />
                       </div>
                       <span className="font-bold text-slate-700 text-[15px]">Plan y Facturación</span>
@@ -237,9 +290,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
 
                   <button
                     onClick={() => { setIsMenuOpen(false); openProblemReport({ doctorName: profile?.full_name, clinicName: profile?.clinic_name }); }}
-                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <div className="w-11 h-11 rounded-[var(--radius-md)] bg-emerald-50 flex items-center justify-center text-emerald-600">
                       <LifeBuoy size={20} />
                     </div>
                     <span className="font-bold text-slate-700 text-[15px]">Reportar problema</span>
@@ -249,9 +302,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
 
                   <button
                     onClick={handleSignOut}
-                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl hover:bg-red-50 active:bg-red-100 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] hover:bg-red-50 active:bg-red-100 transition-colors text-left"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
+                    <div className="w-11 h-11 rounded-[var(--radius-md)] bg-red-50 flex items-center justify-center text-red-600">
                       <LogOut size={20} />
                     </div>
                     <span className="font-bold text-red-600 text-[15px]">Cerrar sesión</span>

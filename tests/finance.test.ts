@@ -23,29 +23,13 @@ describe('computeFinance', () => {
     expect(r.collectedMonth).toBe(300);
   });
 
-  it('calcula saldos y ordena de mayor a menor', () => {
-    const r = computeFinance([
-      patient({ id: 'a', budget: [item(500)], payments: [pay(100, '2026-10-02')] }),
-      patient({ id: 'b', budget: [item(1000, 2)], payments: [] }),
-      patient({ id: 'c', budget: [item(300)], payments: [pay(300, '2026-10-02')] }),
-    ], '2026-10-05');
-    expect(r.debtors.map(d => d.patient.id)).toEqual(['b', 'a']);
-    expect(r.totalOwed).toBe(2400);
-  });
-
-  it('no marca como deudor a quien pagó de más', () => {
-    const r = computeFinance([patient({ budget: [item(100)], payments: [pay(150, '2026-10-02')] })], '2026-10-05');
-    expect(r.debtors).toHaveLength(0);
-    expect(r.totalOwed).toBe(0);
-  });
-
-  it('registra un pago total sobre el saldo', () => {
+  it('registra un pago del total del presupuesto', () => {
     const before = patient({ id: 'a', budget: [item(600)], payments: [] });
     const after = applyPayment(before, 600, 'cash');
     expect(after.payments).toHaveLength(1);
     expect(after.payments?.[0].amount).toBe(600);
     expect(after.payments?.[0].method).toBe('cash');
     const r = computeFinance([after], '2026-10-05');
-    expect(r.debtors).toHaveLength(0);
+    expect(r.collectedMonth).toBe(600);
   });
 });

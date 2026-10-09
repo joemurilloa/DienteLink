@@ -52,7 +52,7 @@ export function useDashboardTip() {
   useContextualTip(
     'tip_dashboard',
     'Panel del día',
-    'Revisa tus citas, solicitudes web y saldos pendientes desde el inicio.'
+    'Revisa tus citas y solicitudes web desde el inicio.'
   );
 }
 

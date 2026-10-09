@@ -66,9 +66,12 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
   return (
     <>
-      <div
+      <article className="card-premium p-3.5 flex items-center gap-3.5 group hover:border-blue-300">
+      <button
+        type="button"
         onClick={() => setShowDetail(true)}
-        className="card-premium p-3.5 flex items-center gap-3.5 group cursor-pointer hover:border-blue-300"
+        aria-label={`Ver cita de ${appointment.patientName}`}
+        className="flex-1 min-w-0 flex items-center gap-3.5 text-left cursor-pointer"
       >
         <div className="relative flex-shrink-0">
           <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
@@ -100,6 +103,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
             </span>
           </div>
         </div>
+      </button>
 
         {canStart ? (
           <button
@@ -125,7 +129,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
             onSent={() => onReminderSent?.(appointment.id, 'sent')}
           />
         ) : null}
-      </div>
+      </article>
 
       {/* Appointment Detail Modal */}
       {showDetail && createPortal(
@@ -143,7 +147,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                 <div className="w-1 h-1" />
                 <div className="w-10 h-1 bg-slate-200 rounded-full sm:hidden" />
                 <button
+                  type="button"
                   onClick={() => setShowDetail(false)}
+                  aria-label="Cerrar detalle de la cita"
                   className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-600 transition-colors"
                 >
                   <X size={16} />
@@ -156,21 +162,22 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <h3 
-                    onClick={() => {
-                      if (onNavigateToPatient && appointment.patientId) {
+                  {onNavigateToPatient && appointment.patientId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
                         setShowDetail(false);
                         onNavigateToPatient(appointment);
-                      }
-                    }}
-                    className={cn(
-                      "text-base font-bold text-slate-900 leading-tight truncate",
-                      onNavigateToPatient && appointment.patientId && "cursor-pointer hover:text-blue-600 transition-colors"
-                    )}
-                    title={onNavigateToPatient && appointment.patientId ? "Ver expediente" : undefined}
-                  >
-                    {appointment.patientName}
-                  </h3>
+                      }}
+                      className="text-base font-bold text-slate-900 leading-tight truncate text-left hover:text-blue-600 transition-colors"
+                    >
+                      {appointment.patientName}
+                    </button>
+                  ) : (
+                    <h3 className="text-base font-bold text-slate-900 leading-tight truncate">
+                      {appointment.patientName}
+                    </h3>
+                  )}
                   <span className={cn("inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-md", statusInfo.color)}>
                     {statusInfo.label}
                   </span>
@@ -279,7 +286,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                     onClick={() => { setShowDetail(false); onNavigateToPatient(appointment); }}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-md"
                   >
-                    <User size={16} /> Ver Expediente
+                    <User size={16} /> Historia clínica
                   </button>
                 )}
               </div>

@@ -115,7 +115,7 @@ function downloadCSV(filename: string, csvContent: string) {
 }
 
 export function exportPatientsCSV(patients: PatientRecord[]) {
-  const headers = ['Nombre', 'Teléfono', 'Email', 'Género', 'Fecha Nacimiento', 'Dirección', 'Ocupación', 'Alergias', 'Motivo Consulta', 'Notas Evolución', 'Procedimientos', 'Total Presupuesto', 'Total Pagado', 'Saldo'];
+  const headers = ['Nombre', 'Teléfono', 'Email', 'Género', 'Fecha Nacimiento', 'Dirección', 'Ocupación', 'Alergias', 'Motivo Consulta', 'Notas Evolución', 'Procedimientos', 'Total Presupuesto', 'Total Pagado'];
   const rows = patients.map(p => {
     const budgetTotal = p.budget.reduce((s, b) => s + b.unitCost * b.quantity, 0);
     const paidTotal = (p.payments || []).reduce((s, pay) => s + pay.amount, 0);
@@ -133,7 +133,6 @@ export function exportPatientsCSV(patients: PatientRecord[]) {
       String(p.history.length),
       String(budgetTotal),
       String(paidTotal),
-      String(Math.max(0, budgetTotal - paidTotal)),
     ].map(escapeCSV);
   });
   const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
