@@ -43,6 +43,7 @@ export type ClinicalCondition =
   | 'protesis_implante'
   // Estado especial
   | 'ausente'
+  | 'extraido'
   | 'implante_presente'
   | 'corona_presente'
   | 'en_observacion';

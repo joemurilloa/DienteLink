@@ -78,7 +78,8 @@ const CONDITION_METAS: Record<ClinicalCondition, ConditionMeta> = {
   tratamiento_conducto: { label: 'Endodoncia',       color: '#EC4899', bg: 'bg-pink-50',    border: 'border-pink-300',  icon: Zap },
   corona_indicada:      { label: 'Corona Indicada',  color: '#F59E0B', bg: 'bg-amber-50',   border: 'border-amber-300', icon: Hexagon },
   protesis_implante:    { label: 'Prótesis/Impl.',   color: '#2563EB', bg: 'bg-blue-50',    border: 'border-blue-300',  icon: Diamond },
-  ausente:              { label: 'Ausente/Extraído', color: '#64748B', bg: 'bg-slate-100',  border: 'border-slate-300', icon: X },
+  ausente:              { label: 'Ausente',          color: '#94A3B8', bg: 'bg-slate-100',  border: 'border-slate-300', icon: X },
+  extraido:              { label: 'Extraído',         color: '#64748B', bg: 'bg-slate-100',  border: 'border-slate-300', icon: X },
   implante_presente:    { label: 'Implante Colocado',color: '#2563EB', bg: 'bg-blue-50',    border: 'border-blue-300',  icon: Target },
   corona_presente:      { label: 'Corona Presente',  color: '#F59E0B', bg: 'bg-amber-50',   border: 'border-amber-300', icon: Star },
   en_observacion:       { label: 'En Observación',   color: '#6366F1', bg: 'bg-indigo-50',  border: 'border-indigo-300',icon: Eye },
@@ -89,7 +90,7 @@ interface ToothDetailModalProps {
   onClose: () => void;
   toothId: number | null;
   teeth: ToothData[];
-  selectedCondition: ClinicalCondition;
+  selectedCondition: ClinicalCondition | null;
   onSelectCondition: (cond: ClinicalCondition) => void;
   onSurfaceClick: (toothId: number, surface: ToothSurface) => void;
   onClearSurface: (toothId: number, surface: ToothSurface) => void;
@@ -153,7 +154,7 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
   const surfaces: ToothSurface[] = [centerSurfaceName, 'vestibular', 'lingual', 'mesial', 'distal'];
 
   // Detect special whole-tooth condition (ausente, implante, corona, etc.)
-  const specials: ClinicalCondition[] = ['ausente', 'implante_presente', 'corona_presente', 'en_observacion'];
+  const specials: ClinicalCondition[] = ['ausente', 'extraido', 'implante_presente', 'corona_presente', 'en_observacion'];
   const wholeToothCond = tooth.surfaces.find(s => specials.includes(s.condition))?.condition || null;
 
   const getSurfaceCond = (surface: ToothSurface): ClinicalCondition | null => {
@@ -161,7 +162,8 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
     return s ? s.condition : null;
   };
 
-  const activeTool = CONDITION_METAS[selectedCondition] || CONDITION_METAS.healthy;
+  const activeTool = selectedCondition ? CONDITION_METAS[selectedCondition] : null;
+  const selectedIsWholeTooth = selectedCondition ? specials.includes(selectedCondition) || selectedCondition === 'healthy' : false;
 
   return createPortal(
     <div className="fixed inset-0 z-[12000] flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
@@ -227,26 +229,94 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
         {/* Content Area */}
         <div className="p-5 overflow-y-auto flex-1 space-y-6">
           
-          {/* Active condition tool indicator banner */}
+          {/* Step 1: choose a condition */}
           {!readOnly && (
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Herramienta Activa:</span>
-                <span
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-white shadow-sm"
-                  style={{ backgroundColor: activeTool.color }}
-                >
-                  <activeTool.icon size={13} />
-                  {activeTool.label}
-                </span>
+            <section className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[2px] text-blue-600">Paso 1</p>
+                  <h4 className="text-sm font-black text-slate-900">¿Qué deseas registrar?</h4>
+                </div>
+                {activeTool && (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+                    style={{ backgroundColor: activeTool.color }}
+                  >
+                    <activeTool.icon size={13} />
+                    {activeTool.label}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-500 font-medium">
-                Toca una cara para aplicar o remover la condición activa
-              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {(Object.entries(CONDITION_METAS) as [ClinicalCondition, ConditionMeta][]).map(([key, meta]) => {
+                  const isSelected = selectedCondition === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => onSelectCondition(key)}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-left",
+                        isSelected
+                          ? "bg-slate-900 text-white border-slate-900 ring-2 ring-blue-200"
+                          : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+                      )}
+                    >
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: meta.color }} />
+                      <span className="truncate">{meta.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {!readOnly && !selectedCondition && (
+            <div className="p-5 bg-blue-50 border border-blue-200 rounded-2xl text-center">
+              <HelpCircle size={22} className="mx-auto text-blue-500 mb-2" />
+              <p className="font-black text-sm text-blue-900">Selecciona una condición para continuar</p>
+              <p className="text-xs text-blue-700 mt-1">Después te mostraremos únicamente las opciones necesarias.</p>
             </div>
           )}
 
-          {/* Interactive Core: Large Surface Diagram + Surface Status Cards */}
+          {/* Whole-tooth conditions never ask for a surface */}
+          {!readOnly && selectedCondition && selectedIsWholeTooth && (
+            <section className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[2px] text-blue-600 mb-1">Paso 2 · Pieza completa</p>
+              <h4 className="font-black text-slate-900">
+                {selectedCondition === 'healthy'
+                  ? `Marcar FDI ${info.fdi} como sana`
+                  : `Marcar FDI ${info.fdi} como ${CONDITION_METAS[selectedCondition].label.toLowerCase()}`}
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 mb-4">
+                {selectedCondition === 'extraido'
+                  ? '“Extraído” registra que la pieza fue removida. No requiere seleccionar una cara.'
+                  : selectedCondition === 'ausente'
+                    ? '“Ausente” describe que la pieza no está presente sin afirmar que fue extraída.'
+                    : 'Esta condición afecta la pieza completa; no es necesario indicar una superficie.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => selectedCondition === 'healthy'
+                  ? onClearWholeTooth(toothId)
+                  : onSetWholeToothCondition(toothId, selectedCondition)}
+                className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black transition-all active:scale-[0.98]"
+              >
+                Confirmar en pieza completa
+              </button>
+            </section>
+          )}
+
+          {/* Step 2: surface, shown only when clinically required or read-only */}
+          {(readOnly || (selectedCondition && !selectedIsWholeTooth)) && (
+          <section className="space-y-3">
+            {!readOnly && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[2px] text-blue-600">Paso 2 · Superficie</p>
+                <h4 className="text-sm font-black text-slate-900">¿En qué cara se encuentra?</h4>
+              </div>
+            )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             
             {/* Visual Large Touch Diagram */}
@@ -267,8 +337,8 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
                           fill={isHovered ? (cond ? fillColor : '#BFDBFE') : fillColor}
                           stroke={cond ? fillColor : (isHovered ? '#3B82F6' : '#94A3B8')}
                           strokeWidth={isHovered ? '0.9' : '0.6'}
-                          className="cursor-pointer transition-all duration-150 active:opacity-75"
-                          onClick={() => !readOnly && onSurfaceClick(toothId, surface)}
+                          className={cn("transition-all duration-150", !readOnly && selectedCondition ? "cursor-pointer active:opacity-75" : "cursor-default")}
+                          onClick={() => !readOnly && selectedCondition && onSurfaceClick(toothId, surface)}
                           onMouseEnter={() => setHoveredSurface(surface)}
                           onMouseLeave={() => setHoveredSurface(null)}
                         />
@@ -393,13 +463,14 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
                           <span className="text-xs font-semibold text-slate-400">Sana</span>
                         )}
 
-                        {!readOnly && (
+                        {!readOnly && selectedCondition && (
                           <button
                             type="button"
                             onClick={() => onSurfaceClick(toothId, surface)}
-                            className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all active:scale-95"
+                            aria-label={`${cond === selectedCondition ? 'Quitar' : 'Aplicar'} ${activeTool?.label || 'condición'} en superficie ${surfaceName}`}
+                            className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all active:scale-95 whitespace-nowrap"
                           >
-                            Aplicar
+                            {cond === selectedCondition ? 'Quitar' : 'Aplicar'}
                           </button>
                         )}
                       </div>
@@ -409,86 +480,7 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Quick Whole-Tooth Actions */}
-          {!readOnly && (
-            <div className="space-y-3 pt-2 border-t border-slate-200">
-              <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">
-                Acciones para Pieza Completa
-              </h4>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onClearWholeTooth(toothId)}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all active:scale-95"
-                >
-                  <Shield size={14} className="text-emerald-500" />
-                  Marcar Sana
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onSetWholeToothCondition(toothId, 'ausente')}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all active:scale-95"
-                >
-                  <X size={14} className="text-slate-500" />
-                  Ausente
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onSetWholeToothCondition(toothId, 'corona_presente')}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all active:scale-95"
-                >
-                  <Star size={14} className="text-amber-500" />
-                  Corona
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onSetWholeToothCondition(toothId, 'implante_presente')}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all active:scale-95"
-                >
-                  <Target size={14} className="text-blue-500" />
-                  Implante
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Condition Palette Picker (Switch Active Tool inside Modal) */}
-          {!readOnly && (
-            <div className="space-y-3 pt-2 border-t border-slate-200">
-              <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">
-                Cambiar Condición Activa
-              </h4>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {(Object.entries(CONDITION_METAS) as [ClinicalCondition, ConditionMeta][]).map(([key, meta]) => {
-                  const isSelected = selectedCondition === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => onSelectCondition(key)}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all text-left",
-                        isSelected
-                          ? "bg-slate-900 text-white border-slate-900 shadow-md scale-[1.02]"
-                          : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
-                      )}
-                    >
-                      <div
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: meta.color }}
-                      />
-                      <span className="truncate">{meta.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          </section>
           )}
         </div>
 

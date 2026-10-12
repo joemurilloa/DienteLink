@@ -35,7 +35,7 @@ import BudgetTab from './patient-record/BudgetTab';
 
 interface Props {
     patient: PatientRecordType;
-    onUpdate: (updatedPatient: PatientRecordType) => void;
+    onUpdate: (updatedPatient: PatientRecordType) => void | Promise<void>;
 }
 
 type TabId = 'id' | 'odontogram' | 'periodontogram' | 'history' | 'documents' | 'citas' | 'budget' | 'lab';
@@ -225,6 +225,7 @@ const ENABLE_PERIODONTOGRAM = false;
                     onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })}
                     snapshots={patient.odontogramHistory || []}
                     onAddToBudget={canViewFinancial ? handleAddToBudget : undefined}
+                    readOnly={!canEditClinical}
                 />
             );
             case 'periodontogram': return (
@@ -263,7 +264,7 @@ const ENABLE_PERIODONTOGRAM = false;
             case 'odontogram':
                 return (
                     <div className="space-y-0 animate-in-up duration-500 min-h-[600px] h-full flex flex-col">
-                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} onAddToBudget={canViewFinancial ? handleAddToBudget : undefined} />
+                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} onAddToBudget={canViewFinancial ? handleAddToBudget : undefined} readOnly={!canEditClinical} />
                     </div>
                 );
             case 'periodontogram':

@@ -7,8 +7,8 @@ import 'sileo/styles.css';
 import {
   Clock, ChevronDown, ChevronUp,
   AlertTriangle, Zap, Shield, Eye, Crosshair,
-  Square, Hexagon, Diamond, Star, Target,
-  X as XIcon, Check, Copy, ArrowLeftRight, Info
+  Square, Hexagon, Diamond, Star, Target, MousePointer2, Paintbrush,
+  X as XIcon, Check, Copy, ArrowLeftRight, Info, Loader2, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import ToothDetailModal from './ToothDetailModal';
 import { usePriceCatalog, suggestBudgetItem } from '../lib/priceCatalog';
@@ -92,6 +92,7 @@ const conditionThemes: Record<ClinicalCondition, ConditionTheme> = {
   corona_indicada:       { label: 'Corona Ind.',      abbr: 'CI',  color: '#F59E0B', bg: 'bg-amber-50',    border: 'border-amber-200',   group: 'tratamiento', icon: Hexagon },
   protesis_implante:     { label: 'Prótesis/Impl.',   abbr: 'PI',  color: '#3b82f6', bg: 'bg-blue-50',  border: 'border-blue-200', group: 'tratamiento', icon: Diamond },
   ausente:               { label: 'Ausente',          abbr: 'AU',  color: '#94A3B8', bg: 'bg-slate-100',   border: 'border-slate-300',   group: 'especial',    icon: XIcon,   wholeToothOnly: true, overlay: 'x' },
+  extraido:               { label: 'Extraído',         abbr: 'EX',  color: '#64748B', bg: 'bg-slate-100',   border: 'border-slate-300',   group: 'especial',    icon: XIcon,   wholeToothOnly: true, overlay: 'x' },
   implante_presente:     { label: 'Implante',         abbr: 'IP',  color: '#3b82f6', bg: 'bg-blue-50',  border: 'border-blue-200', group: 'especial',    icon: Target,  wholeToothOnly: true, overlay: 'circle' },
   corona_presente:       { label: 'Corona Presente',  abbr: 'CP',  color: '#F59E0B', bg: 'bg-amber-50',    border: 'border-amber-200',   group: 'especial',    icon: Star,    wholeToothOnly: true, overlay: 'crown' },
   en_observacion:        { label: 'En Observación',   abbr: 'OBS', color: '#6366F1', bg: 'bg-indigo-50',   border: 'border-indigo-200',  group: 'especial',    icon: Eye,     wholeToothOnly: true, overlay: 'question' },
@@ -100,7 +101,7 @@ const conditionThemes: Record<ClinicalCondition, ConditionTheme> = {
 const CONDITION_GROUPS: { key: string; label: string; conditions: ClinicalCondition[] }[] = [
   { key: 'estado', label: 'Estado', conditions: ['healthy', 'caries', 'obturado', 'fractura'] },
   { key: 'tratamiento', label: 'Tratamiento Indicado', conditions: ['extraccion_indicada', 'tratamiento_conducto', 'corona_indicada', 'protesis_implante'] },
-  { key: 'especial', label: 'Estado Especial', conditions: ['ausente', 'implante_presente', 'corona_presente', 'en_observacion'] },
+  { key: 'especial', label: 'Pieza Completa', conditions: ['ausente', 'extraido', 'implante_presente', 'corona_presente', 'en_observacion'] },
 ];
 
 /* ================================================================
@@ -168,8 +169,9 @@ const MINI_SURFACE_LABEL_POS: Record<string, [number, number]> = {
 interface OdontogramProps {
   patientId: string;
   teeth: ToothData[];
-  onUpdate: (teeth: ToothData[]) => void;
+  onUpdate: (teeth: ToothData[]) => void | Promise<void>;
   snapshots?: OdontogramSnapshot[];
+  readOnly?: boolean;
   /** Si se pasa, el modal de pieza muestra "Agregar al presupuesto". */
   onAddToBudget?: (toothId: number, suggestion: { treatment: string; cost: string }) => void;
 }
@@ -179,7 +181,7 @@ interface OdontogramProps {
    ================================================================ */
 interface ToothDiagramProps {
   tooth: ToothData;
-  selectedCondition: ClinicalCondition;
+  selectedCondition: ClinicalCondition | null;
   onSurfaceClick: (toothId: number, surface: ToothSurface) => void;
   onClearSurface: (toothId: number, surface: ToothSurface) => void;
   onToothClick?: (toothId: number) => void;
@@ -230,7 +232,7 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
   const longPressRef = useRef<{ timer: number | null; triggered: boolean }>({ timer: null, triggered: false });
 
   const wholeCond = getWholeToothCondition(tooth.surfaces);
-  const isAbsent = wholeCond === 'ausente';
+  const isAbsent = wholeCond === 'ausente' || wholeCond === 'extraido';
   const hasSpecial = wholeCond !== null;
   const info = TOOTH_INFO[tooth.id];
   const surfaces = getSurfacesForTooth(tooth.id);
@@ -287,6 +289,15 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
       <div
         className="flex flex-col items-center gap-0.5 relative group cursor-pointer"
         onClick={() => onToothClick?.(tooth.id)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onToothClick?.(tooth.id);
+          }
+        }}
+        role="button"
+        tabIndex={readOnly ? -1 : 0}
+        aria-label={`Abrir detalle de ${info?.name}, FDI ${info?.fdi}, ${conditionThemes[wholeCond!]?.label || 'pieza no presente'}`}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         title="Toca para ver o restaurar pieza"
@@ -305,7 +316,9 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
             <div className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs whitespace-nowrap shadow-2xl min-w-[140px]">
               <p className="font-black text-sm mb-0.5">{info?.name}</p>
               <p className="text-slate-500 text-[9px] mb-1">Universal: {tooth.id} | FDI: {info?.fdi}</p>
-              <p className="text-slate-500 italic border-t border-slate-700 pt-1">Ausente / Extraído (Toca para editar)</p>
+              <p className="text-slate-500 italic border-t border-slate-700 pt-1">
+                {wholeCond ? conditionThemes[wholeCond].label : 'Pieza no presente'} (Toca para editar)
+              </p>
             </div>
           </div>
         )}
@@ -340,6 +353,15 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
         style={{ width: toothW, height: toothH }}
         className="relative cursor-pointer hover:scale-105 active:scale-95 transition-all"
         onClick={() => onToothClick?.(tooth.id)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onToothClick?.(tooth.id);
+          }
+        }}
+        role="button"
+        tabIndex={readOnly ? -1 : 0}
+        aria-label={`Abrir detalle de ${info?.name}, FDI ${info?.fdi}`}
         title="Toca para abrir Lupa Clínica de la Pieza"
       >
         <svg viewBox="0 0 100 140" width={toothW} height={toothH} className="drop-shadow-sm">
@@ -502,45 +524,72 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
    CONDITION PANEL — Sidebar (desktop) / Bottom Sheet (mobile)
    ================================================================ */
 interface ConditionPanelProps {
-  selected: ClinicalCondition;
+  selected: ClinicalCondition | null;
   onSelect: (c: ClinicalCondition) => void;
+  mode: 'guided' | 'rapid';
+  onModeChange: (mode: 'guided' | 'rapid') => void;
 }
 
-const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, onSelect }) => {
+const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, onSelect, mode, onModeChange }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const panelContent = (
     <div className="space-y-5">
-      {/* Instructions */}
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+      {/* Interaction mode */}
+      <div className="p-1 bg-slate-100 border border-slate-200 rounded-xl grid grid-cols-2 gap-1">
+        <button
+          type="button"
+          onClick={() => onModeChange('guided')}
+          className={cn(
+            "flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[10px] font-black transition-all",
+            mode === 'guided' ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          <MousePointer2 size={12} /> Enfocado
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange('rapid')}
+          className={cn(
+            "flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[10px] font-black transition-all",
+            mode === 'rapid' ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          <Paintbrush size={12} /> Registro rápido
+        </button>
+      </div>
+
+      {/* Instructions / active tool */}
+      <div className={cn(
+        "p-3 rounded-xl border",
+        mode === 'guided' ? "bg-blue-50 border-blue-200" : "bg-amber-50 border-amber-200"
+      )}>
         <div className="flex items-start gap-2">
-          <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
-          <div className="text-xs text-blue-700 font-bold leading-relaxed">
-            <p>1. Selecciona una condición</p>
-            <p>2. Click en la superficie del diente</p>
-            <p className="text-blue-400 mt-1">Click derecho o mantener presionado → limpiar superficie</p>
+          <Info size={14} className={cn("mt-0.5 flex-shrink-0", mode === 'guided' ? "text-blue-500" : "text-amber-600")} />
+          <div className={cn("text-xs font-bold leading-relaxed", mode === 'guided' ? "text-blue-700" : "text-amber-800")}>
+            {mode === 'guided' ? (
+              <>
+                <p>1. Selecciona una pieza</p>
+                <p>2. Elige la condición en la lupa</p>
+                <p>3. Marca una cara solo si corresponde</p>
+              </>
+            ) : selected ? (
+              <>
+                <p className="text-[10px] uppercase tracking-wider opacity-70">Herramienta activa</p>
+                <p className="text-sm text-slate-900">{conditionThemes[selected].label}</p>
+                <p className="mt-1 opacity-75">
+                  {conditionThemes[selected].wholeToothOnly ? 'Toca cualquier cara para aplicar a la pieza completa' : 'Toca las caras que deseas registrar'}
+                </p>
+              </>
+            ) : (
+              <p>Selecciona una condición para comenzar el registro rápido.</p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Active tool summary */}
-      <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-blue-200 bg-blue-50/50">
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
-          style={{ backgroundColor: conditionThemes[selected].color }}
-        >
-          {React.createElement(conditionThemes[selected].icon, { size: 16, className: 'text-white' })}
-        </div>
-        <div>
-          <p className="text-sm font-black text-slate-900">{conditionThemes[selected].label}</p>
-          <p className="text-[9px] text-slate-500 font-bold">
-            {conditionThemes[selected].wholeToothOnly ? 'Diente completo' : 'Por superficie'}
-          </p>
-        </div>
-      </div>
-
       {/* Condition groups */}
-      {CONDITION_GROUPS.map(group => (
+      {mode === 'rapid' && CONDITION_GROUPS.map(group => (
         <div key={group.key}>
           <p className="text-[9px] font-black uppercase tracking-[2px] text-slate-400 mb-2">{group.label}</p>
           <div className="space-y-1">
@@ -594,12 +643,14 @@ const ConditionPanel: React.FC<ConditionPanelProps> = React.memo(({ selected, on
           <div className="flex items-center gap-2">
             <div
               className="w-6 h-6 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: conditionThemes[selected].color }}
+              style={{ backgroundColor: selected ? conditionThemes[selected].color : '#94A3B8' }}
             >
-              {React.createElement(conditionThemes[selected].icon, { size: 12, className: 'text-white' })}
+              {selected ? React.createElement(conditionThemes[selected].icon, { size: 12, className: 'text-white' }) : <MousePointer2 size={12} className="text-white" />}
             </div>
-            <span className="text-sm font-black text-slate-700">{conditionThemes[selected].label}</span>
-            <span className="text-[9px] text-slate-500 font-bold">— toca para cambiar</span>
+            <span className="text-sm font-black text-slate-700">
+              {mode === 'guided' ? 'Modo enfocado' : selected ? conditionThemes[selected].label : 'Elige una condición'}
+            </span>
+            <span className="text-[9px] text-slate-500 font-bold">— toca para opciones</span>
           </div>
           <ChevronUp size={16} className={cn("text-slate-500 transition-transform", mobileOpen && "rotate-180")} />
         </button>
@@ -1033,21 +1084,58 @@ const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
 /* ================================================================
    MAIN ODONTOGRAM COMPONENT
    ================================================================ */
-const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, snapshots = [], onAddToBudget }) => {
+const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, snapshots = [], onAddToBudget, readOnly = false }) => {
   const { catalog } = usePriceCatalog();
-  const [selectedCondition, setSelectedCondition] = useState<ClinicalCondition>('caries');
+  const [selectedCondition, setSelectedCondition] = useState<ClinicalCondition | null>(null);
+  const [interactionMode, setInteractionMode] = useState<'guided' | 'rapid'>('guided');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveSequence = useRef(0);
   const [viewingSnapshotId, setViewingSnapshotId] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareA, setCompareA] = useState<string>('current');
   const [compareB, setCompareB] = useState<string>(snapshots[0]?.id || '');
   const [selectedToothForDetail, setSelectedToothForDetail] = useState<number | null>(null);
 
+  const commitTeeth = useCallback((updated: ToothData[], previous: ToothData[], message: string) => {
+    const sequence = ++saveSequence.current;
+    setSaveStatus('saving');
+
+    void (async () => {
+      try {
+        await onUpdate(updated);
+        if (sequence === saveSequence.current) setSaveStatus('saved');
+        sileo.success({
+          title: message,
+          description: 'Cambio guardado en el expediente',
+          button: {
+            title: 'Deshacer',
+            onClick: () => {
+              const undoSequence = ++saveSequence.current;
+              setSaveStatus('saving');
+              void Promise.resolve(onUpdate(previous))
+                .then(() => {
+                  if (undoSequence === saveSequence.current) setSaveStatus('saved');
+                  sileo.info({ title: 'Cambio deshecho', description: 'Se restauró el estado anterior de la pieza' });
+                })
+                .catch(() => {
+                  if (undoSequence === saveSequence.current) setSaveStatus('error');
+                  sileo.error({ title: 'No se pudo deshacer', description: 'Inténtalo nuevamente.' });
+                });
+            },
+          },
+        });
+      } catch {
+        if (sequence === saveSequence.current) setSaveStatus('error');
+        sileo.error({ title: 'No se pudo guardar el odontograma', description: 'El cambio permanece sin confirmar. Inténtalo nuevamente.' });
+      }
+    })();
+  }, [onUpdate]);
+
   const handleClearWholeTooth = useCallback((toothId: number) => {
     const toothInfo = TOOTH_INFO[toothId];
     const updated = teeth.map(t => t.id === toothId ? { ...t, surfaces: [] } : t);
-    onUpdate(updated);
-    sileo.success({ title: `${toothInfo?.name || 'Pieza'} marcada como sana`, description: 'Superficies restauradas sin hallazgos' });
-  }, [teeth, onUpdate]);
+    commitTeeth(updated, teeth, `${toothInfo?.name || 'Pieza'} marcada como sana`);
+  }, [teeth, commitTeeth]);
 
   const handleSetWholeToothCondition = useCallback((toothId: number, condition: ClinicalCondition) => {
     const toothInfo = TOOTH_INFO[toothId];
@@ -1055,9 +1143,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
       if (t.id !== toothId) return t;
       return { ...t, surfaces: [{ surface: 'oclusal' as ToothSurface, condition }] };
     });
-    onUpdate(updated);
-    sileo.info({ title: `Condición aplicada a ${toothInfo?.name || 'Pieza'}`, description: conditionThemes[condition]?.label || condition });
-  }, [teeth, onUpdate]);
+    commitTeeth(updated, teeth, `${conditionThemes[condition]?.label || condition} · FDI ${toothInfo?.fdi || toothId}`);
+  }, [teeth, commitTeeth]);
 
   // Teeth to display (current or from snapshot)
   const displayTeeth = useMemo(() => {
@@ -1066,7 +1153,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
     return snap?.teeth || teeth;
   }, [viewingSnapshotId, teeth, snapshots]);
 
-  const isReadOnly = viewingSnapshotId !== null;
+  const isReadOnly = readOnly || viewingSnapshotId !== null;
 
   // Changed teeth for compare highlighting
   const changedTeeth = useMemo(() => {
@@ -1093,22 +1180,24 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
 
   /* --- Surface click handler --- */
   const handleSurfaceClick = useCallback((toothId: number, surface: ToothSurface) => {
+    if (!selectedCondition || isReadOnly) return;
     const theme = conditionThemes[selectedCondition];
     const toothInfo = TOOTH_INFO[toothId];
 
     const updatedTeeth = teeth.map(t => {
       if (t.id !== toothId) return t;
-      const newSurfaces = [...t.surfaces];
+      const existingWholeCondition = getWholeToothCondition(t.surfaces);
+      const newSurfaces = existingWholeCondition && !theme.wholeToothOnly && selectedCondition !== 'healthy'
+        ? []
+        : [...t.surfaces];
 
       // Whole-tooth conditions
       if (theme.wholeToothOnly || selectedCondition === 'healthy') {
         if (selectedCondition === 'healthy') {
-          sileo.success({ title: `${toothInfo.name} marcado como sano ✅`, description: 'Superficie restaurada y sin hallazgos' });
           return { ...t, surfaces: [] };
         }
         const existing = newSurfaces.find(s => s.condition === selectedCondition);
         if (existing) return { ...t, surfaces: [] };
-        sileo.warning({ title: `Condición aplicada al ${toothInfo.name}`, description: `${selectedCondition.replace(/([A-Z])/g, ' $1').toLowerCase()}` });
         return { ...t, surfaces: [{ surface: 'oclusal' as ToothSurface, condition: selectedCondition }] };
       }
 
@@ -1117,20 +1206,20 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
       if (existingIdx !== -1) {
         if (newSurfaces[existingIdx].condition === selectedCondition) {
           newSurfaces.splice(existingIdx, 1);
-          sileo.info({ title: `Condición removida de superficie ${surface}`, description: `${toothInfo.name} - Superficie limpia` });
         } else {
           newSurfaces[existingIdx] = { surface, condition: selectedCondition };
-          sileo.success({ title: `Superficie ${surface} actualizada`, description: `${toothInfo.name} - ${selectedCondition}` });
         }
       } else {
         newSurfaces.push({ surface, condition: selectedCondition });
-        sileo.success({ title: `Hallazgo registrado en superficie ${surface}`, description: `${toothInfo.name} - ${selectedCondition}` });
       }
       return { ...t, surfaces: newSurfaces };
     });
 
-    onUpdate(updatedTeeth);
-  }, [teeth, selectedCondition, onUpdate, patientId]);
+    const scope = theme.wholeToothOnly
+      ? 'pieza completa'
+      : getSurfaceDisplayName(surface, toothId);
+    commitTeeth(updatedTeeth, teeth, `${theme.label} · FDI ${toothInfo.fdi} · ${scope}`);
+  }, [teeth, selectedCondition, isReadOnly, commitTeeth]);
 
   /* --- Clear surface (right-click / long-press) --- */
   const handleClearSurface = useCallback((toothId: number, surface: ToothSurface) => {
@@ -1145,8 +1234,8 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
       return { ...t, surfaces: t.surfaces.filter(s => s.surface !== surface) };
     });
 
-    onUpdate(updatedTeeth);
-  }, [teeth, onUpdate, patientId]);
+    commitTeeth(updatedTeeth, teeth, `Superficie limpiada · FDI ${TOOTH_INFO[toothId]?.fdi || toothId}`);
+  }, [teeth, commitTeeth]);
 
   const handleToggleCompare = useCallback(() => {
     setCompareMode(prev => {
@@ -1157,6 +1246,11 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
       return !prev;
     });
   }, [snapshots]);
+
+  const handleOpenToothDetail = useCallback((toothId: number) => {
+    if (interactionMode === 'guided') setSelectedCondition(null);
+    setSelectedToothForDetail(toothId);
+  }, [interactionMode]);
 
   /* --- Loading --- */
   if (!teeth || teeth.length === 0) {
@@ -1180,8 +1274,25 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
             Odontograma
           </h3>
           <p className="text-slate-500 text-sm max-w-md leading-relaxed">
-            Registra hallazgos por superficie. Los cambios se guardan automáticamente.
+            Selecciona una pieza para registrar hallazgos. Solo se pedirá una superficie cuando sea necesaria.
           </p>
+        </div>
+        <div
+          className={cn(
+            "mr-14 lg:mr-16 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border",
+            isReadOnly
+              ? "bg-slate-50 border-slate-200 text-slate-600"
+              : saveStatus === 'error'
+              ? "bg-red-50 border-red-200 text-red-700"
+              : saveStatus === 'saving'
+                ? "bg-blue-50 border-blue-200 text-blue-700"
+                : "bg-emerald-50 border-emerald-200 text-emerald-700"
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          {isReadOnly ? <Eye size={12} /> : saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'error' ? <AlertCircle size={12} /> : <CheckCircle2 size={12} />}
+          {isReadOnly ? 'Solo lectura' : saveStatus === 'saving' ? 'Guardando…' : saveStatus === 'error' ? 'Error al guardar' : saveStatus === 'saved' ? 'Guardado' : 'Autoguardado activo'}
         </div>
       </div>
 
@@ -1190,7 +1301,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
         <div className="flex items-center gap-2">
           <Info size={16} className="text-blue-500 flex-shrink-0" />
           <p className="text-xs font-medium text-blue-800 leading-snug">
-            💡 Toca cualquier pieza para abrir la <span className="font-bold">Lupa de Pieza</span> y marcar caras con facilidad táctil.
+            Toca una pieza para abrir su detalle. Primero eliges la condición y después la cara, si corresponde.
           </p>
         </div>
       </div>
@@ -1216,7 +1327,15 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
       {/* Main layout: sidebar + content */}
       <div className="flex gap-6">
         {!isReadOnly && (
-          <ConditionPanel selected={selectedCondition} onSelect={setSelectedCondition} />
+          <ConditionPanel
+            selected={selectedCondition}
+            onSelect={setSelectedCondition}
+            mode={interactionMode}
+            onModeChange={(mode) => {
+              setInteractionMode(mode);
+              if (mode === 'guided') setSelectedCondition(null);
+            }}
+          />
         )}
 
         <div className={cn("flex-1 space-y-2 relative pb-20 xl:pb-0")}>
@@ -1249,9 +1368,9 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
                   key={tooth.id}
                   tooth={tooth}
                   selectedCondition={selectedCondition}
-                  onSurfaceClick={handleSurfaceClick}
+                  onSurfaceClick={interactionMode === 'guided' ? handleOpenToothDetail : handleSurfaceClick}
                   onClearSurface={handleClearSurface}
-                  onToothClick={(id) => setSelectedToothForDetail(id)}
+                  onToothClick={handleOpenToothDetail}
                   highlight={compareMode && changedTeeth.has(tooth.id)}
                   readOnly={isReadOnly}
                 />
@@ -1277,9 +1396,9 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
                     key={tooth.id}
                     tooth={tooth}
                     selectedCondition={selectedCondition}
-                    onSurfaceClick={handleSurfaceClick}
+                    onSurfaceClick={interactionMode === 'guided' ? handleOpenToothDetail : handleSurfaceClick}
                     onClearSurface={handleClearSurface}
-                    onToothClick={(tId) => setSelectedToothForDetail(tId)}
+                    onToothClick={handleOpenToothDetail}
                     highlight={compareMode && changedTeeth.has(tooth.id)}
                     readOnly={isReadOnly}
                   />
@@ -1298,9 +1417,9 @@ const Odontogram: React.FC<OdontogramProps> = ({ patientId, teeth, onUpdate, sna
                     key={tooth.id}
                     tooth={tooth}
                     selectedCondition={selectedCondition}
-                    onSurfaceClick={handleSurfaceClick}
+                    onSurfaceClick={interactionMode === 'guided' ? handleOpenToothDetail : handleSurfaceClick}
                     onClearSurface={handleClearSurface}
-                    onToothClick={(tId) => setSelectedToothForDetail(tId)}
+                    onToothClick={handleOpenToothDetail}
                     highlight={compareMode && changedTeeth.has(tooth.id)}
                     readOnly={isReadOnly}
                   />

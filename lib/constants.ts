@@ -82,6 +82,7 @@ export const CLINICAL_CONDITIONS = {
   PROTESIS_IMPLANTES: 'protesis_implante',
   // Estado especial
   AUSENTE: 'ausente',
+  EXTRAIDO: 'extraido',
   IMPLANTES_PRESENTE: 'implante_presente',
   CORONA_PRESENTE: 'corona_presente',
   EN_OBSERVACION: 'en_observacion'

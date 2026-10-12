@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePatient, usePatientMutations } from '../../hooks/usePatients';
 import { PatientRecord as PatientRecordType } from '../../types';
@@ -11,6 +11,11 @@ const PatientDetailView: React.FC = () => {
   const navigate = useNavigate();
   const { patient, isLoading } = usePatient(id);
   const { savePatient } = usePatientMutations();
+  const [displayPatient, setDisplayPatient] = useState<PatientRecordType | undefined>(patient);
+
+  useEffect(() => {
+    if (patient) setDisplayPatient(patient);
+  }, [patient]);
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-screen">
@@ -33,8 +38,11 @@ const PatientDetailView: React.FC = () => {
   );
 
   const handleUpdate = async (updated: PatientRecordType) => {
+    setDisplayPatient(updated);
     await savePatient.mutateAsync(updated);
   };
+
+  const currentPatient = displayPatient || patient;
 
   return (
     <div className="flex-1 h-full overflow-y-auto flex flex-col p-4 md:p-5 lg:p-8 pb-24 md:pb-12 page-transition main-scroll">
@@ -53,13 +61,13 @@ const PatientDetailView: React.FC = () => {
               <ArrowLeft size={18} />
             </button>
             <div className="min-w-0">
-              <h2 className="text-lg md:text-2xl font-bold text-slate-900 tracking-tight truncate">{patient.identification.fullName}</h2>
-              <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">{patient.identification.phone || 'Expediente clínico'}</p>
+              <h2 className="text-lg md:text-2xl font-bold text-slate-900 tracking-tight truncate">{currentPatient.identification.fullName}</h2>
+              <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">{currentPatient.identification.phone || 'Expediente clínico'}</p>
             </div>
           </div>
         </header>
         <div className="flex-1 md:min-h-[680px]">
-          <PatientRecord patient={patient} onUpdate={handleUpdate} />
+          <PatientRecord patient={currentPatient} onUpdate={handleUpdate} />
         </div>
       </React.Suspense>
     </div>

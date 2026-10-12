@@ -84,6 +84,11 @@ const PatientConsultationView: React.FC = () => {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const handlePatientUpdate = async (updatedPatient: PatientRecord) => {
+    setPatient(updatedPatient);
+    await savePatient.mutateAsync(updatedPatient);
+  };
+
   const addMedication = () => {
     setMedications(prev => [...prev, { id: crypto.randomUUID(), name: '', dosage: '', frequency: '', duration: '', instructions: '' }]);
   };
@@ -245,7 +250,7 @@ const PatientConsultationView: React.FC = () => {
           </div>
           <div className="flex-1 overflow-auto relative">
             <div className="absolute inset-0 p-4 sm:p-6 lg:p-8">
-              <PatientRecordComponent patient={patient} onUpdate={(p) => setPatient(p)} />
+              <PatientRecordComponent patient={patient} onUpdate={handlePatientUpdate} />
             </div>
           </div>
         </div>

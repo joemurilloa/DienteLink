@@ -329,24 +329,32 @@ export function usePatientMutations() {
         // Optimistic Updates!!! This completely replaces the local 800ms debounce cache with instant UI reactions.
         onMutate: async (newPatient) => {
             await queryClient.cancelQueries({ queryKey: ['patients', clinicId] });
+            await queryClient.cancelQueries({ queryKey: ['patient', newPatient.id, clinicId] });
             const previous = queryClient.getQueryData<PatientRecord[]>(['patients', clinicId]);
+            const previousPatient = queryClient.getQueryData<PatientRecord>(['patient', newPatient.id, clinicId]);
+            const optimisticPatient = { ...newPatient, updatedAt: new Date().toISOString() };
             
             if (previous) {
                 const idx = previous.findIndex(p => p.id === newPatient.id);
                 const next = [...previous];
                 if (idx !== -1) {
-                    next[idx] = { ...newPatient, updatedAt: new Date().toISOString() };
+                    next[idx] = optimisticPatient;
                 } else {
                     next.unshift({ ...newPatient, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
                 }
                 queryClient.setQueryData(['patients', clinicId], next);
             }
+
+            queryClient.setQueryData(['patient', newPatient.id, clinicId], optimisticPatient);
             
-            return { previous };
+            return { previous, previousPatient };
         },
         onError: (err, newPatient, context) => {
             if (context?.previous) {
                 queryClient.setQueryData(['patients', clinicId], context.previous);
+            }
+            if (context?.previousPatient) {
+                queryClient.setQueryData(['patient', newPatient.id, clinicId], context.previousPatient);
             }
             sileo.error({ title: 'Error al sincronizar datos', description: 'Los cambios fueron revertidos. Verifica tu conexión.' });
         },
