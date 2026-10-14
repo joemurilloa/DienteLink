@@ -151,40 +151,4 @@ export function useTeam() {
     };
 }
 
-/**
- * Redeems a pending team invitation for the currently authenticated user.
- * Call this once after sign-in if the user has a pending invite matching their email.
- * Only called for newly registered accounts (< 10 min old).
- */
-export async function redeemPendingInvitation(userId: string, userEmail: string): Promise<boolean> {
-  try {
-    // maybeSingle() returns null (not an error) when no rows match
-    const { data: invite, error: fetchError } = await supabase
-      .from('team_invitations')
-      .select('*')
-      .eq('email', userEmail.toLowerCase())
-      .eq('status', 'pending')
-      .maybeSingle();
-
-    if (fetchError || !invite) return false;
-
-    // Link the user's profile to the clinic
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ clinic_id: invite.clinic_id, role: invite.role })
-      .eq('id', userId);
-
-    if (updateError) return false;
-
-    // Mark invitation as accepted
-    await supabase
-      .from('team_invitations')
-      .update({ status: 'accepted' })
-      .eq('id', invite.id);
-
-    return true;
-  } catch {
-    // Silently ignore errors (e.g. table doesn't exist yet, RLS issue)
-    return false;
-  }
-}
+export { redeemPendingInvitation } from '../services/redeemInvitation';

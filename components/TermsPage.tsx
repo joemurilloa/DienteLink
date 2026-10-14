@@ -36,8 +36,8 @@ const TermsPage: React.FC = () => {
 
         <Section title="2. Tu cuenta">
           <p>
-            Eres responsable de mantener tu contraseña en secreto y de la actividad hecha desde tu cuenta. Debes
-            ser un profesional habilitado para ejercer en tu país.
+            Entras con tu cuenta de Google. Eres responsable de esa cuenta y de la actividad hecha desde DienteLink.
+            Debes ser un profesional habilitado para ejercer en tu país.
           </p>
         </Section>
 

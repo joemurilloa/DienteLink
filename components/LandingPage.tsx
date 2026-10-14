@@ -1,15 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authService';
-import { Check, ArrowRight, CalendarDays, Cloud, Download, LockKeyhole, ShieldCheck, Users } from 'lucide-react';
+import { Check, ArrowRight, CalendarDays, Users } from 'lucide-react';
 import DentalLogo from './DentalLogo';
 import { BILLING } from '../lib/billing';
 import { SUPPORT_WHATSAPP } from '../lib/support';
 
 const INCLUDED = [
   'Agenda del día',
+  'Expediente clínico',
   'Odontograma',
-  'Cobro en la visita',
+  'Presupuestos del tratamiento',
   'Reservas en línea',
   `${BILLING.trialDays} días sin tarjeta`,
 ];
@@ -50,12 +51,12 @@ const Block: React.FC<{ n: string; title: string; text: string; children: React.
 );
 
 const ChartTooth: React.FC<{ id: number; caries?: boolean }> = ({ id, caries }) => (
-  <div className="flex flex-col items-center w-[22px] sm:w-7">
-    <svg viewBox="0 0 100 140" className="w-[18px] h-7 sm:w-6 sm:h-9" aria-hidden>
+  <div className="flex w-full max-w-10 flex-col items-center sm:w-7 sm:max-w-none">
+    <svg viewBox="0 0 100 140" className="h-11 w-auto sm:h-9" aria-hidden>
       <path d={TOOTH_SHAPE[toothKind(id)]} fill="#FFFDF8" stroke="#93C5FD" strokeWidth="3" />
     </svg>
-    <span className="text-[8px] sm:text-[9px] font-bold tabular-nums text-slate-400 leading-none mt-0.5">{id}</span>
-    <svg viewBox="0 0 24 24" className="w-3 h-3 sm:w-3.5 sm:h-3.5 mt-0.5" aria-hidden>
+    <span className="mt-0.5 text-[11px] font-semibold tabular-nums leading-none text-slate-500 sm:text-[9px]">{id}</span>
+    <svg viewBox="0 0 24 24" className="mt-1 h-6 w-6 sm:mt-0.5 sm:h-3.5 sm:w-3.5" aria-hidden>
       {(Object.keys(SURFACE) as (keyof typeof SURFACE)[]).map(key => (
         <path
           key={key}
@@ -104,14 +105,14 @@ const ProductPreview: React.FC = () => (
             <span className="rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-bold text-white">Iniciar</span>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
           <div className="rounded-lg border border-slate-100 bg-white p-3">
             <p className="text-[9px] font-semibold uppercase text-slate-400">Citas de hoy</p>
             <p className="mt-1 text-xl font-semibold text-slate-900">6</p>
           </div>
           <div className="rounded-lg border border-slate-100 bg-white p-3">
-            <p className="text-[9px] font-semibold uppercase text-slate-400">Por cobrar</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">L 800</p>
+            <p className="text-[9px] font-semibold uppercase text-slate-400">Reservas en línea</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">2</p>
           </div>
         </div>
       </div>
@@ -134,7 +135,7 @@ const LandingPage: React.FC = () => {
     if (user) {
       navigate('/', { replace: true });
     } else {
-      navigate('/login?intent=signup');
+      navigate('/login?elegir=1');
     }
   };
 
@@ -192,12 +193,12 @@ const LandingPage: React.FC = () => {
         <header id="inicio" className="relative grid items-center gap-10 py-14 md:py-24 lg:grid-cols-[1.05fr_.95fr]">
           <div aria-hidden className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full bg-blue-400/25 blur-3xl" />
           <div className="relative">
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Gestión dental simple</p>
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Programa para consultorios dentales</p>
             <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl sm:leading-[1.05]">
-              La agenda y el odontograma de tu consultorio.
+              Agenda, expediente y odontograma en un solo lugar.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
-              Ves quién sigue, marcas la pieza y cobras en la visita. Tus pacientes también pueden pedir cita por un enlace.
+              DienteLink organiza las citas del día, la historia clínica de cada paciente y el estado de cada pieza. También puedes preparar el presupuesto de un tratamiento y compartir un enlace para que reserven hora.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
               <button
@@ -222,7 +223,7 @@ const LandingPage: React.FC = () => {
           <Block
             n="01"
             title="Agenda"
-            text="Ves quién viene hoy. No se cruzan dos citas a la misma hora, y puedes avisarle por WhatsApp."
+            text="Las citas del día aparecen con su hora, el nombre del paciente y el motivo. Si un horario ya está ocupado, no admite otra cita. Desde ahí puedes enviar un aviso por WhatsApp."
           >
           <div className="mb-4 grid grid-cols-7 gap-1.5">
             {[
@@ -266,10 +267,41 @@ const LandingPage: React.FC = () => {
           <Block
             n="02"
             title="Odontograma"
-            text="El mismo del expediente: la pieza y su superficie. La caries queda en rojo."
+            text="Cada pieza queda en el expediente, con sus caras. Al anotar una caries, la superficie correspondiente se marca en rojo."
           >
-          <div className="overflow-x-auto">
-            <div className="min-w-[520px]">
+          <div>
+            <div className="sm:hidden">
+              <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-500">Arcada superior</p>
+              {([
+                { label: 'Derecho', ids: [1, 2, 3, 4, 5, 6, 7, 8] },
+                { label: 'Izquierdo', ids: [9, 10, 11, 12, 13, 14, 15, 16] },
+              ] as const).map(row => (
+                <div key={row.label} className="mb-3">
+                  <p className="mb-1 text-center text-[10px] font-medium text-slate-400">{row.label}</p>
+                  <div className="grid grid-cols-8 justify-items-center gap-x-1">
+                    {row.ids.map(id => (
+                      <ChartTooth key={id} id={id} caries={id === 14} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="my-2 h-px bg-blue-100" />
+              <p className="mb-3 mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-500">Arcada inferior</p>
+              {([
+                { label: 'Derecho', ids: [32, 31, 30, 29, 28, 27, 26, 25] },
+                { label: 'Izquierdo', ids: [24, 23, 22, 21, 20, 19, 18, 17] },
+              ] as const).map(row => (
+                <div key={`lower-${row.label}`} className="mb-3">
+                  <p className="mb-1 text-center text-[10px] font-medium text-slate-400">{row.label}</p>
+                  <div className="grid grid-cols-8 justify-items-center gap-x-1">
+                    {row.ids.map(id => (
+                      <ChartTooth key={id} id={id} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block">
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-500">Arcada superior</p>
               <div className="flex justify-center gap-1">
                 {Array.from({ length: 16 }, (_, i) => i + 1).map(id => (
@@ -285,21 +317,34 @@ const LandingPage: React.FC = () => {
               <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-500">Arcada inferior</p>
             </div>
           </div>
-          <p className="mt-4 text-sm text-slate-700">
-            Pieza 14 · <span className="font-semibold text-red-500">caries en oclusal</span>
-          </p>
+          <div className="mt-4 flex items-center gap-4 rounded-xl border border-red-100 bg-red-50/70 px-4 py-3">
+            <svg viewBox="0 0 24 24" className="h-14 w-14 shrink-0" aria-hidden>
+              {(Object.keys(SURFACE) as (keyof typeof SURFACE)[]).map(key => (
+                <path
+                  key={key}
+                  d={SURFACE[key]}
+                  fill={key === 'center' ? '#EF4444' : '#FFFFFF'}
+                  stroke={key === 'center' ? '#EF4444' : '#CBD5E1'}
+                  strokeWidth="0.6"
+                />
+              ))}
+            </svg>
+            <p className="text-sm leading-snug text-slate-700">
+              Pieza 14 · <span className="font-semibold text-red-600">caries en la cara oclusal</span>
+            </p>
+          </div>
           </Block>
 
           <Block
             n="03"
-            title="Cobro y reservas"
-            text="Al terminar, un toque registra el pago. Si quieres, el paciente pide cita por tu enlace, en los horarios que elegiste."
+            title="Presupuesto y reservas"
+            text="En la ficha preparas el presupuesto del tratamiento y anotas los pagos que el paciente ya realizó. Quien lo desee puede pedir cita en los horarios que definiste para tu enlace."
           >
           <div className="grid gap-px overflow-hidden rounded-xl border border-blue-100 bg-blue-100 sm:grid-cols-2">
             <div className="bg-white px-5 py-4">
-              <p className="text-xs font-medium text-blue-600">Esta visita</p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">L 800</p>
-              <p className="mt-1 text-sm font-medium text-amber-600">Pendiente</p>
+              <p className="text-xs font-medium text-blue-600">Presupuesto del tratamiento</p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">L 2,400</p>
+              <p className="mt-1 text-sm text-slate-500">Resina · pieza 14</p>
             </div>
             <div className="bg-white px-5 py-4">
               <p className="text-xs font-medium text-blue-600">Horarios del enlace</p>
@@ -313,31 +358,35 @@ const LandingPage: React.FC = () => {
           </Block>
         </div>
 
-        <section id="seguridad" className="border-t border-blue-100 py-16">
-          <div className="max-w-2xl">
-            <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-blue-600">TUS DATOS SON TUYOS</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Tu información clínica, protegida y bajo tu control.</h2>
-            <p className="mt-4 leading-relaxed text-slate-600">
-              DienteLink almacena la información para prestarte el servicio. No vendemos los datos de tu clínica ni los de tus pacientes.
-            </p>
-          </div>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { icon: LockKeyhole, title: 'Acceso privado', text: 'Tu cuenta se protege con autenticación segura.' },
-              { icon: Cloud, title: 'En la nube', text: 'Consulta tu información desde tus dispositivos.' },
-              { icon: Download, title: 'Respaldo descargable', text: 'Puedes exportar una copia de tus datos.' },
-              { icon: ShieldCheck, title: 'Sin venta de datos', text: 'Tu información no se usa para publicidad.' },
-            ].map(({ icon: Icon, title, text }) => (
-              <div key={title} className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm shadow-blue-900/5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <Icon size={19} />
-                </span>
-                <h3 className="mt-4 text-sm font-semibold text-slate-900">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
+        <div id="seguridad">
+          <Block
+            n="04"
+            title="Respaldo"
+            text="Cuando quieras, descargas una copia de la clínica: expedientes, citas, odontogramas y presupuestos. Esa información es tuya. DienteLink no la vende ni la usa para publicidad."
+          >
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Copia de tu consultorio</p>
+            <div className="divide-y divide-blue-100 overflow-hidden rounded-xl border border-blue-100 bg-white">
+              {[
+                { name: 'Expedientes', note: '48 pacientes' },
+                { name: 'Citas', note: 'Agenda completa' },
+                { name: 'Odontogramas', note: 'En cada ficha' },
+                { name: 'Presupuestos', note: 'Tratamientos y pagos' },
+              ].map(row => (
+                <div key={row.name} className="flex items-center gap-4 px-4 py-3">
+                  <span className="flex-1 text-sm font-medium text-slate-900">{row.name}</span>
+                  <span className="text-xs text-slate-400">{row.note}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-900">consultorio-octubre.zip</p>
+                <p className="text-xs text-slate-500">Listo para guardar en tu equipo</p>
               </div>
-            ))}
-          </div>
-        </section>
+              <span className="shrink-0 rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-bold text-white">Descargar</span>
+            </div>
+          </Block>
+        </div>
 
         <section id="precio" className="grid items-center gap-10 border-t border-blue-100 py-16 md:grid-cols-12">
           <div className="md:col-span-5">
@@ -373,7 +422,7 @@ const LandingPage: React.FC = () => {
               DienteLink
             </a>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-500">
-              Agenda, expediente y cobros para consultorios dentales.
+              Agenda, expediente y odontograma para consultorios dentales.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">

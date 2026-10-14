@@ -6,6 +6,12 @@ import { sileo } from 'sileo';
 
 import { DEMO_APPOINTMENTS } from '../lib/demoData';
 
+function notifyPatient(body: Record<string, string>) {
+  supabase.functions
+    .invoke('notify-patient-booking', { body })
+    .catch((e) => console.warn('[notify-patient-booking]', e));
+}
+
 
 // Map DB row to UI model
 function dbToAppointment(a: any): Appointment {
@@ -46,7 +52,7 @@ export function useAppointments() {
       }
       return (data || []).map(dbToAppointment);
     },
-    enabled: !!clinicId,
+    enabled: !!clinicId && (isGuest || !!user),
   });
 }
 
@@ -99,6 +105,10 @@ export function useAppointmentMutations() {
       if (error) {
         console.error('[Supabase Error - CREATE]:', error);
         throw error;
+      }
+
+      if (data?.status === 'Programada') {
+        notifyPatient({ kind: 'confirmed', appointmentId: data.id });
       }
 
 
@@ -166,6 +176,13 @@ export function useAppointmentMutations() {
       }
       return { previous };
     },
+    onSuccess: (appointmentId, _vars, context) => {
+      if (isGuest) return;
+      const before = context?.previous?.find(a => a.id === appointmentId);
+      if (before && before.status !== 'Eliminada') {
+        notifyPatient({ kind: 'cancelled', appointmentId });
+      }
+    },
     onError: (err, __, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['appointments', clinicId], context.previous);
@@ -227,6 +244,24 @@ export function useAppointmentMutations() {
         queryClient.setQueryData(['appointments', clinicId], previous.map(a => a.id === newAppt.id ? newAppt : a));
       }
       return { previous };
+    },
+    onSuccess: (_saved, appointment, context) => {
+      if (isGuest) return;
+      const before = context?.previous?.find(a => a.id === appointment.id);
+      if (!before) return;
+      const cancelled = appointment.status === 'Eliminada' && before.status !== 'Eliminada';
+      const moved = before.date !== appointment.date || before.time !== appointment.time;
+      const live = appointment.status === 'Programada' || appointment.status === 'Retrasada';
+      if (cancelled) {
+        notifyPatient({ kind: 'cancelled', appointmentId: appointment.id });
+      } else if (moved && live) {
+        notifyPatient({
+          kind: 'rescheduled',
+          appointmentId: appointment.id,
+          previousDate: before.date,
+          previousTime: before.time,
+        });
+      }
     },
     onError: (err, _, context) => {
       if (context?.previous) queryClient.setQueryData(['appointments', clinicId], context.previous);

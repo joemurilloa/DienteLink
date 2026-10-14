@@ -144,7 +144,7 @@ export function usePatients() {
                 )
             );
         },
-        enabled: !!clinicId,
+        enabled: !!clinicId && (isGuest || !!user),
     });
 }
 

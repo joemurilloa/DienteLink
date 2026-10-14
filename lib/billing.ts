@@ -10,7 +10,7 @@ export const BILLING = {
     account: '747076151',
     holder: 'Joe Antonio Murillo Argueta',
   },
-  adminEmail: 'joemurillo95@gmail.com',
+  adminEmail: 'joemurilloa@gmail.com',
 } as const;
 
 /** Paquetes que el admin interno puede sumar a una clínica. */

@@ -28,8 +28,8 @@ const ReceiptRow: React.FC<{ receipt: AdminReceipt }> = ({ receipt }) => {
           <img src={receipt.image_url!} alt="Comprobante" className="w-16 h-16 object-cover rounded-lg border border-slate-200" />
         </a>
       ) : (
-        <div className="w-16 h-16 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400">
-          PDF
+        <div className="w-16 h-16 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-center text-[10px] font-bold leading-tight text-slate-400">
+          {receipt.image_url ? 'PDF' : 'Por correo'}
         </div>
       )}
       <div className="min-w-0 flex-1">
@@ -131,7 +131,13 @@ const AdminBillingView: React.FC = () => {
         ) : (
           filtered.map((clinic) => {
             const liveDays = daysRemaining(clinic.period_end ? new Date(clinic.period_end) : null, new Date(now));
-            const expired = liveDays <= 0;
+            const courtesyUntil = clinic.receipts
+              .filter((receipt) => receipt.status === 'pending' && receipt.provisional_access_until)
+              .map((receipt) => new Date(receipt.provisional_access_until!))
+              .filter((date) => !Number.isNaN(date.getTime()) && date.getTime() > now)
+              .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+            const courtesyDays = daysRemaining(courtesyUntil, new Date(now));
+            const expired = liveDays <= 0 && courtesyDays <= 0;
             const pendingPay = clinic.pending_receipts > 0;
             const isMine = clinic.clinic_id === user?.id;
             const receiptsOpen = !!openReceipts[clinic.clinic_id];
@@ -145,12 +151,16 @@ const AdminBillingView: React.FC = () => {
                     </p>
                     <p className="text-sm text-slate-500">{clinic.clinic_name || 'Sin clínica'} · {clinic.email || 'Sin email'}</p>
                     <p className="text-sm font-semibold text-slate-800 mt-1">
-                      {expired
+                      {courtesyDays > 0
+                        ? `${courtesyDays} día${courtesyDays === 1 ? '' : 's'} de cortesía · el pago aún no suma`
+                        : expired
                         ? '0 días · sin acceso'
                         : `Quedan ${liveDays} día${liveDays === 1 ? '' : 's'}`}
-                      {clinic.period_end && !expired && (
+                      {courtesyUntil ? (
+                        <span className="text-slate-400 font-medium"> · cortesía hasta {formatWhen(courtesyUntil.toISOString())}</span>
+                      ) : clinic.period_end && liveDays > 0 ? (
                         <span className="text-slate-400 font-medium"> · vence {formatWhen(clinic.period_end)}</span>
-                      )}
+                      ) : null}
                     </p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${

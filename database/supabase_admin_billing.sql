@@ -5,7 +5,7 @@
 --
 -- SEGURIDAD:
 --   Activar días SOLO es posible si la sesión autenticada
---   pertenece a joemurillo95@gmail.com (email confirmado en
+--   pertenece a joemurilloa@gmail.com (email confirmado en
 --   auth.users + mismo email en el JWT firmado por Supabase).
 --   Cualquier otro usuario recibe "No autorizado".
 --
@@ -25,8 +25,8 @@ AS $$
     SELECT 1
     FROM auth.users u
     WHERE u.id = auth.uid()
-      AND lower(u.email) = 'joemurillo95@gmail.com'
-      AND lower(coalesce(auth.jwt() ->> 'email', '')) = 'joemurillo95@gmail.com'
+      AND lower(u.email) = 'joemurilloa@gmail.com'
+      AND lower(coalesce(auth.jwt() ->> 'email', '')) = 'joemurilloa@gmail.com'
       AND u.email_confirmed_at IS NOT NULL
   );
 $$;
@@ -34,6 +34,8 @@ $$;
 REVOKE ALL ON FUNCTION public.is_platform_admin() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.is_platform_admin() FROM anon;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+
+DROP FUNCTION IF EXISTS public.admin_list_clinics();
 
 CREATE OR REPLACE FUNCTION public.admin_list_clinics()
 RETURNS TABLE (
@@ -88,7 +90,8 @@ BEGIN
       'status', r.status,
       'amount_paid', r.amount_paid,
       'email_referencia', r.email_referencia,
-      'reviewed_note', r.reviewed_note
+      'reviewed_note', r.reviewed_note,
+      'provisional_access_until', r.provisional_access_until
     ) ORDER BY r.created_at DESC), '[]'::jsonb) AS receipts
     FROM public.payment_receipts r
     WHERE r.clinic_id = p.id

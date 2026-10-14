@@ -11,6 +11,7 @@ export interface AdminReceipt {
   amount_paid: number | null;
   email_referencia: string | null;
   reviewed_note: string | null;
+  provisional_access_until: string | null;
 }
 
 export interface AdminClinic {
@@ -84,8 +85,14 @@ export function useAdminBilling(enabled: boolean) {
         p_days: days,
       });
       if (rpcError) throw rpcError;
+      const result = data as { days_left: number; period_end: string; days_added: number };
+      supabase.functions
+        .invoke('notify-doctor-plan', {
+          body: { clinicId, daysAdded: result.days_added, periodEnd: result.period_end },
+        })
+        .catch((e) => console.warn('[notify-doctor-plan]', e));
       await refresh();
-      return data as { days_left: number; period_end: string; days_added: number };
+      return result;
     } finally {
       setExtendingId(null);
     }

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../hooks/useSubscription';
 
 import { BILLING } from '../../lib/billing';
+import { prepareReceiptFile } from '../../lib/receiptFile';
 import BackupSettings from './Settings/BackupSettings';
 
 const BANK_INFO = {
@@ -30,6 +31,7 @@ const SubscriptionPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
+  const [provisionalGranted, setProvisionalGranted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const copy = (text: string, key: string) => {
@@ -59,29 +61,26 @@ const SubscriptionPage: React.FC = () => {
     setUploading(true);
     setErrorMsg('');
     try {
-      const ext = file.name.split('.').pop();
-      const storagePath = `${clinicId}/${Date.now()}.${ext}`;
-      const { error: storeErr } = await supabase.storage
-        .from('payment-receipts')
-        .upload(storagePath, file, { cacheControl: '3600', upsert: false });
-      if (storeErr) throw new Error(storeErr.message);
-
-      const { data: urlData } = supabase.storage.from('payment-receipts').getPublicUrl(storagePath);
-      const imageUrl = urlData?.publicUrl ?? null;
-
-      const { error: dbErr } = await supabase.from('payment_receipts').insert({
-        clinic_id: clinicId,
-        email_referencia: userEmail,
-        image_url: imageUrl,
-        storage_path: storagePath,
-        notes: notes.trim() || null,
-        status: 'pending',
+      // El comprobante se comprime y viaja por correo al administrador; no se guarda en la app.
+      const { mimeType, contentBase64 } = await prepareReceiptFile(file);
+      const { data, error } = await supabase.functions.invoke('submit-receipt', {
+        body: { mimeType, contentBase64, notes: notes.trim() },
       });
-      if (dbErr) throw new Error(dbErr.message);
+      if (error) {
+        let message = 'No se pudo enviar el comprobante. Intenta de nuevo.';
+        try {
+          const body = await (error as { context?: Response }).context?.json();
+          if (body?.error) message = body.error;
+        } catch { /* se queda el mensaje genérico */ }
+        throw new Error(message);
+      }
 
-      // Notify admin
-      await supabase.functions.invoke('notify-admin-receipt').catch(() => {}); // non-fatal
-
+      const provisionalUntil = data?.provisional_access_until;
+      if (provisionalUntil) {
+        setProvisionalGranted(true);
+        window.dispatchEvent(new Event('dientelink:subscription-changed'));
+        await subscription.refresh();
+      }
       setStep('done');
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Error inesperado. Intenta de nuevo.');
@@ -89,13 +88,17 @@ const SubscriptionPage: React.FC = () => {
   };
 
   // ─── STATUS BADGE ───────────────────────────────────────────
-  const statusLabel = subscription.isTrial
+  const statusLabel = subscription.isProvisional
+    ? `⏳ En revisión — acceso hasta ${subscription.provisionalUntil?.toLocaleDateString('es-HN')}`
+    : subscription.isTrial
     ? `🎁 Trial — ${subscription.daysLeft} días restantes`
     : subscription.isActive
     ? `✅ Activa — vence ${subscription.expiresAt?.toLocaleDateString('es-HN')}`
     : '⛔ Expirada';
 
-  const statusColor = subscription.isActive
+  const statusColor = subscription.isProvisional
+    ? 'sub-badge--trial'
+    : subscription.isActive
     ? subscription.isTrial ? 'sub-badge--trial' : 'sub-badge--active'
     : 'sub-badge--expired';
 
@@ -108,11 +111,19 @@ const SubscriptionPage: React.FC = () => {
             <div className="sub-success-icon">🎉</div>
             <h2 className="sub-success-title">¡Comprobante recibido!</h2>
             <p className="sub-success-text">
-              Hemos recibido tu comprobante de pago. Lo revisaremos y
-              <strong> activaremos tu cuenta en menos de 24 horas.</strong>
+              {provisionalGranted ? (
+                <>
+                  Mientras lo revisamos, <strong>tienes acceso provisional durante 3 días.</strong> El mes se sumará
+                  a tu suscripción cuando confirmemos el pago.
+                </>
+              ) : (
+                <>
+                  Hemos recibido tu comprobante y <strong>lo revisaremos en menos de 24 horas.</strong>
+                </>
+              )}
             </p>
             <div className="sub-success-email">
-              📧 Notificación enviada a: <strong>{userEmail}</strong>
+              📧 Cuenta asociada al comprobante: <strong>{userEmail}</strong>
             </div>
             <div className="sub-success-data-note">
               🔒 Todos tus registros y datos de pacientes están completamente seguros e intactos.
@@ -209,7 +220,7 @@ const SubscriptionPage: React.FC = () => {
             {/* Step 2 */}
             <div className="sub-action-card">
               <h2 className="sub-action-title">2. Sube tu comprobante</h2>
-              <p className="sub-action-desc">Adjunta la foto o captura de tu pago para activarte.</p>
+              <p className="sub-action-desc">Adjunta la foto o captura de tu pago. Se envía a revisión y no se guarda en la aplicación.</p>
               
               <div
                 className={`sub-upload-modern ${file ? 'has-file' : ''}`}

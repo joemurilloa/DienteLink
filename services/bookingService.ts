@@ -9,6 +9,12 @@ import * as persistence from './bookingPersistence';
 import { createAppointmentRequestsChannel } from './bookingRealtime';
 import { publicBookingUrl } from '../lib/legacyHash';
 
+function notifyRejectedRequest(requestId: string) {
+  supabase.functions
+    .invoke('notify-patient-booking', { body: { kind: 'rejected', requestId } })
+    .catch((e) => console.warn('[notify-patient-booking]', e));
+}
+
 // ==========================================================
 // BookingService — In-Memory Cache + Supabase
 //
@@ -265,6 +271,7 @@ export class BookingService {
     try {
       await persistence.updateAppointmentRequestStatus(requestId, 'rejected', request.respondedAt);
       window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      notifyRejectedRequest(requestId);
     } catch (err) {
       console.error('[BookingService] rejectRequest error:', err);
     }
@@ -277,12 +284,14 @@ export class BookingService {
     const request = this.requests.find(r => r.id === requestId);
     if (!request) return null;
 
+    const previousStatus = request.status;
     request.status = newStatus;
     request.respondedAt = newStatus === 'pending' ? undefined : new Date().toISOString();
 
     try {
       await persistence.updateAppointmentRequestStatus(requestId, newStatus, request.respondedAt || null);
       window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      if (newStatus === 'rejected' && previousStatus === 'pending') notifyRejectedRequest(requestId);
     } catch (err) {
       console.error('[BookingService] updateRequestStatus error:', err);
       sileo.error({ title: 'Error al actualizar solicitud', description: 'No se pudo cambiar el estado de la solicitud.' });

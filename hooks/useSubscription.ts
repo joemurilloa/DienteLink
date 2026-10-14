@@ -11,9 +11,11 @@ export interface SubscriptionState {
   expiresSoon: boolean;   // vence en 4 días o menos
   expiresAt: Date | null;
   trialStartedAt: Date | null;
+  isProvisional: boolean;
+  provisionalUntil: Date | null;
   loading: boolean;
   error: string | null;
-  refresh: () => void;
+  refresh: () => Promise<void>;
 }
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // refresca cada 5 min en background
@@ -37,6 +39,24 @@ async function fetchSubscriptionRow(clinicId: string) {
   return data;
 }
 
+async function fetchProvisionalAccess(clinicId: string): Promise<Date | null> {
+  const { data, error } = await supabase
+    .from('payment_receipts')
+    .select('provisional_access_until')
+    .eq('clinic_id', clinicId)
+    .eq('status', 'pending')
+    .not('provisional_access_until', 'is', null)
+    .order('provisional_access_until', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[useSubscription] Error fetching provisional access:', error);
+    return null;
+  }
+  return parseDate(data?.provisional_access_until);
+}
+
 export function useSubscription(clinicId: string | null, accountCreatedAt?: string | null): SubscriptionState {
   const [state, setState] = useState<Omit<SubscriptionState, 'refresh'>>({
     status: null,
@@ -47,6 +67,8 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
     expiresSoon: false,
     expiresAt: null,
     trialStartedAt: null,
+    isProvisional: false,
+    provisionalUntil: null,
     loading: true,
     error: null,
   });
@@ -68,6 +90,8 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
         expiresSoon: false,
         expiresAt: null,
         trialStartedAt: null,
+        isProvisional: false,
+        provisionalUntil: null,
         loading: false,
         error: null,
       });
@@ -85,23 +109,33 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
       }
 
       const row = (!error && data) ? data : await fetchSubscriptionRow(clinicId);
+      // Consulta independiente como respaldo: evita depender de que la caché
+      // de esquema de PostgREST ya exponga las columnas nuevas de la vista.
+      const receiptProvisionalUntil = await fetchProvisionalAccess(clinicId);
       const accountStart = accountCreatedAt ? new Date(accountCreatedAt) : null;
 
       if (!row) {
         // Sin fila: la prueba corre desde que se creó la cuenta, no un 14 eterno.
-        const daysLeft = computeTrialDaysLeft({
+        const trialDaysLeft = computeTrialDaysLeft({
           isTrial: true,
           accountCreatedAt: accountStart,
         });
+        const isProvisional = !!receiptProvisionalUntil && receiptProvisionalUntil.getTime() > Date.now();
+        const provisionalDaysLeft = isProvisional
+          ? Math.ceil((receiptProvisionalUntil.getTime() - Date.now()) / 86_400_000)
+          : 0;
+        const daysLeft = Math.max(trialDaysLeft, provisionalDaysLeft);
         setState({
           status: 'trial',
           isActive: daysLeft > 0,
-          isTrial: true,
+          isTrial: trialDaysLeft > 0,
           isExpired: daysLeft <= 0,
           daysLeft,
           expiresSoon: daysLeft > 0 && daysLeft <= 4,
-          expiresAt: accountStart ? trialEndFromStart(accountStart) : null,
+          expiresAt: isProvisional ? receiptProvisionalUntil : (accountStart ? trialEndFromStart(accountStart) : null),
           trialStartedAt: accountStart,
+          isProvisional,
+          provisionalUntil: receiptProvisionalUntil,
           loading: false,
           error: null,
         });
@@ -111,7 +145,13 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
       const trialStartedAt = parseDate(row.trial_started_at);
       const periodStart = parseDate(row.current_period_start);
       const expiresAt = parseDate(row.current_period_end);
+      const provisionalUntil = receiptProvisionalUntil ?? parseDate(row.provisional_access_until);
       const isTrial = row.is_trial ?? row.status === 'trial';
+      const isProvisional = (
+        !!provisionalUntil
+        && provisionalUntil.getTime() > Date.now()
+        && (!expiresAt || provisionalUntil.getTime() > expiresAt.getTime())
+      );
       const daysLeft = computeTrialDaysLeft({
         isTrial,
         expiresAt,
@@ -119,18 +159,23 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
         periodStart,
         accountCreatedAt: accountStart,
       });
-      const isExpired = row.is_expired ?? daysLeft <= 0;
-      const isActive = row.is_active ?? ((row.status === 'active' || row.status === 'trial') && daysLeft > 0);
+      const isExpired = isProvisional ? false : (row.is_expired ?? daysLeft <= 0);
+      const isActive = isProvisional || (row.is_active ?? ((row.status === 'active' || row.status === 'trial') && daysLeft > 0));
+      const effectiveDaysLeft = isProvisional && provisionalUntil
+        ? Math.max(daysLeft, Math.ceil((provisionalUntil.getTime() - Date.now()) / 86_400_000))
+        : daysLeft;
 
       setState({
         status: row.status as SubscriptionState['status'],
         isActive,
         isTrial,
         isExpired,
-        daysLeft,
-        expiresSoon: daysLeft > 0 && daysLeft <= 4,
+        daysLeft: effectiveDaysLeft,
+        expiresSoon: effectiveDaysLeft > 0 && effectiveDaysLeft <= 4,
         expiresAt,
         trialStartedAt,
+        isProvisional,
+        provisionalUntil,
         loading: false,
         error: null,
       });
@@ -154,10 +199,15 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
     const onVisible = () => {
       if (document.visibilityState === 'visible') fetchSubscription();
     };
+    const onSubscriptionChanged = () => {
+      fetchSubscription();
+    };
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('dientelink:subscription-changed', onSubscriptionChanged);
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('dientelink:subscription-changed', onSubscriptionChanged);
     };
   }, [fetchSubscription]);
 

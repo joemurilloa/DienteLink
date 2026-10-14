@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { isAuthCallbackUrl, supabase } from '../lib/supabase';
 import { setCurrencyConfig } from '../lib/utils';
 import { queryClient } from '../lib/queryClient';
 import { bookingService } from './bookingService';
-import { redeemPendingInvitation } from '../hooks/useTeam';
+import { redeemPendingInvitation } from './redeemInvitation';
 import type { User, Session } from '@supabase/supabase-js';
 import { DEMO_PROFILE } from '../lib/demoData';
 
@@ -16,12 +17,9 @@ interface AuthContextType {
   isGuest: boolean;
   enterGuestMode: () => void;
   exitGuestMode: () => void;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<DoctorProfile>) => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (options?: { chooseAccount?: boolean }) => Promise<void>;
 }
 
 export interface DoctorProfile {
@@ -38,6 +36,30 @@ export interface DoctorProfile {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Una sola escucha de la sesión. Si se abre dos veces al cargar la página,
+// Supabase invalida el acceso guardado y el doctor tiene que entrar de nuevo
+// al reabrir el navegador.
+type AuthHandler = (event: string, nextSession: Session | null) => void;
+const authHandlers = new Set<AuthHandler>();
+let authBridgeStarted = false;
+let lastAuthEvent: { event: string; session: Session | null } | null = null;
+
+function subscribeAuth(handler: AuthHandler) {
+  authHandlers.add(handler);
+  if (!authBridgeStarted) {
+    authBridgeStarted = true;
+    supabase.auth.onAuthStateChange((event, nextSession) => {
+      lastAuthEvent = { event, session: nextSession };
+      authHandlers.forEach((listener) => listener(event, nextSession));
+    });
+  } else if (lastAuthEvent) {
+    handler(lastAuthEvent.event, lastAuthEvent.session);
+  }
+  return () => {
+    authHandlers.delete(handler);
+  };
+}
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
@@ -159,10 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let cancelled = false;
     const waitingForOAuth = isAuthCallbackUrl();
 
-    // Only subscribe to onAuthStateChange. Calling getSession() in parallel can
-    // refresh the same token twice; with reuse detection Supabase then signs
-    // the user out — which looks like "I have to log in every time I open the browser".
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    const unsubscribe = subscribeAuth((event, nextSession) => {
       if (cancelled) return;
 
       setSession(nextSession);
@@ -200,38 +219,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       cancelled = true;
       window.clearTimeout(safetyTimer);
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName }
-      }
-    });
-
-    if (error) return { error: error.message };
-    return { error: null };
-  };
-
-  const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    return { error: null };
-  };
-
   const signOut = async () => {
+    flushSync(() => {
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+    });
+    await queryClient.cancelQueries();
     queryClient.clear();
     bookingService.reset();
     try {
-      // Datos locales que pertenecen a la sesión que se cierra
       ['dientelink_notifications_v2', 'dientelink_last_backup', 'dientelink_shown_tips'].forEach(k => localStorage.removeItem(k));
     } catch { /* ignore */ }
     await supabase.auth.signOut();
-    setProfile(null);
   };
 
   const updateProfile = async (updates: Partial<DoctorProfile>) => {
@@ -254,28 +258,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const resetPassword = async (email: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    });
-    if (error) return { error: error.message };
-    return { error: null };
-  };
-
-  const signInWithGoogle = async () => {
-    // Determine redirect URL. On Vercel, window.location.origin should be used.
-    // Ensure this match EXACTLY with the "Redirect URLs" in Supabase Dashboard.
+  const signInWithGoogle = async (options?: { chooseAccount?: boolean }) => {
     const redirectTo = window.location.origin;
-    
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
-        queryParams: {
-          access_type: 'offline',
-        },
+        ...(options?.chooseAccount ? { queryParams: { prompt: 'select_account' } } : {}),
       }
     });
+    if (error) throw error;
   };
 
   // Single-user clinic namespace. If user is invited, use their clinic_id.
@@ -283,7 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clinicId = isGuest ? 'demo' : (profile?.clinic_id || profile?.id || null);
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, clinicId, loading, isGuest, enterGuestMode, exitGuestMode, signUp, signIn, signOut, updateProfile, resetPassword, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, session, profile, clinicId, loading, isGuest, enterGuestMode, exitGuestMode, signOut, updateProfile, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

@@ -17,7 +17,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
-        enabled: true, // Allow testing PWA in localhost
+        enabled: false,
       },
       workbox: {
         navigateFallback: 'index.html',
