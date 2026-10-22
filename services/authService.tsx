@@ -181,6 +181,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let cancelled = false;
     const waitingForOAuth = isAuthCallbackUrl();
 
+    // Limpia refresh tokens viejos (p. ej. tras cerrar sesión o revocar en otro dispositivo).
+    // Evita el ruido AuthApiError: Invalid Refresh Token en /welcome.
+    void supabase.auth.getSession().then(async ({ error }) => {
+      if (cancelled || !error) return;
+      if (/refresh token/i.test(error.message || '')) {
+        try {
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch { /* ignore */ }
+      }
+    });
+
     const unsubscribe = subscribeAuth((event, nextSession) => {
       if (cancelled) return;
 
@@ -235,7 +246,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       ['dientelink_notifications_v2', 'dientelink_last_backup', 'dientelink_shown_tips'].forEach(k => localStorage.removeItem(k));
     } catch { /* ignore */ }
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    if (error) {
+      await supabase.auth.signOut({ scope: 'local' });
+    }
   };
 
   const updateProfile = async (updates: Partial<DoctorProfile>) => {
