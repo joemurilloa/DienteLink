@@ -50,3 +50,7 @@ supabase/.branches/
 *.pem
 *.key
 *.p12
+.vercel
+.env
+.env.local
+.env.*.local
