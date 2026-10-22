@@ -58,7 +58,8 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
     setIsDropdownOpen(false);
     try {
       await signOut();
-      navigate('/login');
+      // Recarga completa: evita crash de chunks viejos tras un deploy (lazy LandingPage/Login).
+      window.location.assign('/login');
     } catch (err) {
       console.error('Error signing out:', err);
       sileo.error({ title: 'Error', description: 'No se pudo cerrar sesión. Intenta de nuevo.' });

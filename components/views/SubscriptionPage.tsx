@@ -227,7 +227,10 @@ const SubscriptionPage: React.FC = () => {
             {/* Step 2 */}
             <div className="sub-action-card">
               <h2 className="sub-action-title">2. Sube tu comprobante</h2>
-              <p className="sub-action-desc">Adjunta la foto o captura de tu pago. Se envía a revisión y no se guarda en la aplicación.</p>
+              <p className="sub-action-desc">
+                Adjunta la foto o captura de tu pago. Se envía a revisión por correo y no se guarda en Storage.
+                Si ya enviaste uno y quieres corregirlo, sube otro: reemplaza el pendiente.
+              </p>
               
               <div
                 className={`sub-upload-modern ${file ? 'has-file' : ''}`}

@@ -27,11 +27,21 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Error no controlado capturado por ErrorBoundary:', error, errorInfo);
+    const msg = `${error?.message || ''} ${error?.name || ''}`;
+    const isChunkMiss =
+      /Failed to fetch dynamically imported module|Loading chunk|Importing a module script failed|MIME type/i.test(msg);
+    if (isChunkMiss && typeof window !== 'undefined') {
+      const key = 'dientelink_chunk_reload';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+    }
   }
 
   private handleReset = () => {
-    // Attempt to recover by just reloading the page for a clean state
-    window.location.reload();
+    try { sessionStorage.removeItem('dientelink_chunk_reload'); } catch { /* ignore */ }
+    window.location.assign('/welcome');
   };
 
   public render() {

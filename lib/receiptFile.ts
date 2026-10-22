@@ -1,7 +1,8 @@
 /** Peso máximo del archivo que se envía por correo (debe coincidir con la función). */
 export const MAX_RECEIPT_BYTES = 3 * 1024 * 1024;
-const MAX_SIDE_PX = 1600;
-const JPEG_QUALITY = 0.8;
+/** Más chico = más fiable como adjunto en Resend sandbox. */
+const MAX_SIDE_PX = 1280;
+const JPEG_QUALITY = 0.72;
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
