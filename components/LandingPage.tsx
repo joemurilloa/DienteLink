@@ -31,7 +31,7 @@ const INCLUDED = [
   'Odontograma',
   'Presupuestos y pagos',
   'Reservas por enlace',
-  'Aviso de citas por WhatsApp',
+  'Aviso de citas por WhatsApp (tú envías)',
   'Copia de respaldo',
 ];
 
@@ -420,7 +420,7 @@ const LandingPage: React.FC = () => {
             id="datos"
             n="05"
             title="Tus datos"
-            text="Expedientes, citas, odontogramas y presupuestos son del consultorio. Los ves tú y las personas a las que das acceso. Cuando quieras, bajas una copia a tu equipo."
+            text="Expedientes, citas, odontogramas y presupuestos son del consultorio. Los ves tú en tu cuenta. Cuando quieras, bajas una copia de respaldo a tu computadora."
           >
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Copia de tu consultorio</p>
             <div className="divide-y divide-blue-100 overflow-hidden rounded-xl border border-blue-100 bg-white">
@@ -438,7 +438,7 @@ const LandingPage: React.FC = () => {
             </div>
             <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
               <p className="truncate text-sm font-medium text-slate-900">consultorio-{MONTH_LABEL}.zip</p>
-              <p className="text-sm text-slate-600">Listo para guardar en tu equipo</p>
+              <p className="text-sm text-slate-600">Listo para guardar en tu computadora</p>
             </div>
           </Block>
         </div>

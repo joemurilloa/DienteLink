@@ -6,12 +6,16 @@
 
 Sistema completo de gestión para clínicas dentales con odontograma clínico, registro de pacientes y agenda de citas.
 
-## Funcionalidades
+## Funcionalidades (MVP)
 
-- **Odontograma Clínico**: Sistema de 5 superficies con 12 condiciones clínicas
-- **Gestión de Pacientes**: Expedientes completos con historial clínico
-- **Agenda de Citas**: Programación y seguimiento de citas
-- **Periodontograma**: Registro de profundidades de sondaje
+- **Odontograma clínico**: 5 superficies con condiciones clínicas
+- **Gestión de pacientes**: Expedientes con historial y anamnesis
+- **Agenda de citas**: Programación, seguimiento y reservas públicas
+- **Presupuestos y pagos**: Registro en ficha + PDF
+- **Aviso por WhatsApp**: Abre WhatsApp con mensaje listo (envío manual)
+- **Backup**: Descarga ZIP del consultorio
+
+> Periodontograma y multi-usuario existen en código pero están desactivados/ocultos en el MVP.
 
 ## Ejecutar Localmente
 

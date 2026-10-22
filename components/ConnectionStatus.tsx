@@ -48,7 +48,7 @@ const ConnectionStatus: React.FC = () => {
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <WifiOff size={14} className="text-red-400 flex-shrink-0" />
               <span className="text-slate-200">Sin conexión</span>
-              <span className="text-slate-500 hidden sm:inline">— Los cambios se guardarán cuando vuelvas en línea</span>
+              <span className="text-slate-500 hidden sm:inline">— No se pueden sincronizar cambios hasta recuperar internet</span>
             </div>
             <span className="flex h-2 w-2 relative flex-shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
