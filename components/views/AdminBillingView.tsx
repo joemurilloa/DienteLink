@@ -28,8 +28,8 @@ const ReceiptRow: React.FC<{ receipt: AdminReceipt }> = ({ receipt }) => {
           <img src={receipt.image_url!} alt="Comprobante" className="w-16 h-16 object-cover rounded-lg border border-slate-200" />
         </a>
       ) : (
-        <div className="w-16 h-16 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-center text-[10px] font-bold leading-tight text-slate-400">
-          {receipt.image_url ? 'PDF' : 'Por correo'}
+        <div className="w-16 h-16 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-center text-[10px] font-bold leading-tight text-slate-400 px-1">
+          {receipt.image_url ? 'PDF' : '📧 Gmail'}
         </div>
       )}
       <div className="min-w-0 flex-1">
@@ -44,10 +44,17 @@ const ReceiptRow: React.FC<{ receipt: AdminReceipt }> = ({ receipt }) => {
           <span className="text-xs text-slate-500">{formatWhen(receipt.created_at)}</span>
         </div>
         {receipt.notes && <p className="text-xs text-slate-600 mt-1 truncate">{receipt.notes}</p>}
-        {receipt.image_url && (
+        {receipt.email_referencia && (
+          <p className="text-xs text-slate-500 mt-0.5 truncate">Ref: {receipt.email_referencia}</p>
+        )}
+        {receipt.image_url ? (
           <a href={receipt.image_url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-600 hover:underline">
             Abrir comprobante
           </a>
+        ) : (
+          <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+            La captura está en el correo a {BILLING.adminEmail} (asunto “Por revisar…”). Aquí no se guarda la imagen para no usar Storage.
+          </p>
         )}
       </div>
     </div>
@@ -58,10 +65,11 @@ const AdminBillingView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const allowed = isPlatformAdmin(user?.email);
-  const { clinics, loading, error, refresh, extend, extendingId, now } = useAdminBilling(allowed);
+  const { clinics, loading, error, refresh, extend, rejectPending, extendingId, now } = useAdminBilling(allowed);
   const [query, setQuery] = useState('');
   const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({});
   const [pending, setPending] = useState<{ clinic: AdminClinic; days: PlanDays } | null>(null);
+  const [rejectClinic, setRejectClinic] = useState<AdminClinic | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -90,6 +98,24 @@ const AdminBillingView: React.FC = () => {
     }
   };
 
+  const confirmReject = async () => {
+    if (!rejectClinic || !isPlatformAdmin(user?.email)) return;
+    try {
+      const result = await rejectPending(rejectClinic.clinic_id);
+      sileo.success({
+        title: 'Comprobante rechazado',
+        description: result.rejected_count
+          ? `${rejectClinic.full_name}: pendiente liberado. Puede enviar otro.`
+          : 'No había pendientes.',
+      });
+    } catch (err) {
+      sileo.error({
+        title: 'No se pudo rechazar',
+        description: err instanceof Error ? err.message : 'Intenta de nuevo',
+      });
+    }
+  };
+
   return (
     <div className="flex-1 h-full overflow-y-auto p-5 lg:p-8 pb-32 page-transition main-scroll">
       <header className="mb-6">
@@ -98,7 +124,10 @@ const AdminBillingView: React.FC = () => {
         </button>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Panel interno de cobros</h2>
         <p className="text-xs font-semibold text-emerald-700 mt-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100">
-          Solo visible y usable por {BILLING.adminEmail}. Cualquier otra cuenta recibe “No autorizado” en el servidor.
+          Solo usable por {BILLING.adminEmail}. Flujo: 1) revisa el comprobante en Gmail → 2) verifica cuenta BAC {BILLING.bank.account} → 3) activa días aquí.
+        </p>
+        <p className="text-xs text-slate-500 mt-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
+          La imagen no se guarda en Supabase (ahorra Storage). Si el correo no llegó, pide al doctor que reenvíe desde Suscripción.
         </p>
       </header>
 
@@ -206,6 +235,16 @@ const AdminBillingView: React.FC = () => {
                       {planDaysLabel(days)}
                     </button>
                   ))}
+                  {pendingPay && (
+                    <button
+                      type="button"
+                      disabled={extendingId === clinic.clinic_id}
+                      onClick={() => setRejectClinic(clinic)}
+                      className="px-3 py-2 rounded-xl bg-white text-red-700 border border-red-200 text-xs font-bold hover:bg-red-50 disabled:opacity-50"
+                    >
+                      Rechazar pendiente
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -221,10 +260,24 @@ const AdminBillingView: React.FC = () => {
         title={`Activar ${pending ? planDaysLabel(pending.days) : ''}`}
         description={
           pending
-            ? `Se suman ${pending.days === 365 ? '365 días (1 año)' : `${pending.days} días`} a ${pending.clinic.full_name}. Si ya tenía tiempo, se acumula.`
+            ? `¿Ya revisaste el comprobante en Gmail (${BILLING.adminEmail}) y que la transferencia sea a ${BILLING.bank.holder} · ${BILLING.bank.account}? Se suman ${pending.days === 365 ? '365 días (1 año)' : `${pending.days} días`} a ${pending.clinic.full_name}.`
             : ''
         }
-        confirmLabel="Activar acceso"
+        confirmLabel="Sí, activar acceso"
+      />
+
+      <ConfirmModal
+        isOpen={!!rejectClinic}
+        onClose={() => setRejectClinic(null)}
+        onConfirm={confirmReject}
+        variant="danger"
+        title="Rechazar comprobante pendiente"
+        description={
+          rejectClinic
+            ? `Se marca como rechazado para ${rejectClinic.full_name}. No se suman días. El doctor podrá enviar otro comprobante.`
+            : ''
+        }
+        confirmLabel="Rechazar"
       />
     </div>
   );

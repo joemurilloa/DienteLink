@@ -98,5 +98,26 @@ export function useAdminBilling(enabled: boolean) {
     }
   }, [enabled, refresh]);
 
-  return { clinics, loading, error, refresh, extend, extendingId, allowedDays: PLAN_DAYS, now };
+  const rejectPending = useCallback(async (clinicId: string, note?: string) => {
+    if (!enabled) throw new Error('No autorizado');
+    setExtendingId(clinicId);
+    try {
+      const { data, error: rpcError } = await supabase.rpc('admin_reject_pending_receipts', {
+        p_clinic_id: clinicId,
+        p_note: note ?? null,
+      });
+      if (rpcError) {
+        const missing = rpcError.message?.includes('Could not find') || rpcError.code === 'PGRST202';
+        throw new Error(missing
+          ? 'Falta ejecutar database/admin_reject_pending_receipt.sql en Supabase.'
+          : rpcError.message);
+      }
+      await refresh();
+      return data as { rejected_count: number };
+    } finally {
+      setExtendingId(null);
+    }
+  }, [enabled, refresh]);
+
+  return { clinics, loading, error, refresh, extend, rejectPending, extendingId, allowedDays: PLAN_DAYS, now };
 }
