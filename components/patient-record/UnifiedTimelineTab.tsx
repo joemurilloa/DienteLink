@@ -355,7 +355,7 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
       {/* ── Top Header & Actions ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Resumen</h3>
+          <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Historial</h3>
           <p className="text-slate-500 text-sm mt-0.5">
             Cronología de citas, tratamientos y notas de evolución de {patient.identification.fullName}
           </p>

@@ -155,13 +155,13 @@ const Dashboard: React.FC = () => {
     return { groupedAppointments: groups };
   }, [allAppointments, today]);
 
-  // Próximo paciente: primera cita de hoy sin completar a partir de ahora (o la primera pendiente del día)
+  // Próximo paciente: solo citas de hoy cuya hora aún no pasó
   const nextAppointment = useMemo(() => {
     const open = allAppointments
       .filter(a => a.date === today && a.status !== 'Eliminada' && a.status !== 'Completada')
       .sort((a, b) => a.time.localeCompare(b.time));
     const nowHM = new Date().toTimeString().slice(0, 5);
-    return open.find(a => a.time >= nowHM) || open[0] || null;
+    return open.find(a => a.time >= nowHM) || null;
   }, [allAppointments, today]);
 
   const loadPendingRequests = useCallback(async () => {
@@ -245,7 +245,7 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* ── Próximo paciente ────────────────────────────────────────────── */}
-        {nextAppointment && (
+        {nextAppointment ? (
           <section className="card-premium flex flex-row items-center justify-between gap-3 p-3.5 sm:p-6 border-l-4 border-l-blue-600">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 mb-1">Próximo paciente</p>
@@ -265,6 +265,14 @@ const Dashboard: React.FC = () => {
             >
               Iniciar<span className="hidden sm:inline"> consulta</span>
             </button>
+          </section>
+        ) : (
+          <section className="card-premium flex flex-row items-center gap-3 p-3.5 sm:p-6 border-l-4 border-l-slate-300">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Próximo paciente</p>
+              <p className="text-base sm:text-lg font-semibold text-slate-800">No quedan citas por atender hoy</p>
+              <p className="text-[13px] text-slate-500 mt-0.5">Las horas que ya pasaron no aparecen aquí.</p>
+            </div>
           </section>
         )}
 

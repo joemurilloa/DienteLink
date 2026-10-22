@@ -91,8 +91,8 @@ const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => v
                     <DollarSign size={16} className="text-blue-100" />
                 </div>
                 <div>
-                    <p className="font-bold text-xs sm:text-sm">Pagos y presupuestos</p>
-                    <p className="text-[11px] text-blue-200 line-clamp-1">Plan de tratamiento y costos</p>
+                    <p className="font-bold text-xs sm:text-sm">Pagos</p>
+                    <p className="text-[11px] text-blue-200 line-clamp-1">Presupuestos y cobros</p>
                 </div>
             </button>
             )}
@@ -158,13 +158,13 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
 const ENABLE_PERIODONTOGRAM = false;
 
     const tabs = [
-        { id: 'history',        label: 'Resumen',                 icon: Activity,    allowed: canViewClinical },
+        { id: 'history',        label: 'Historial',               icon: Activity,    allowed: canViewClinical },
         { id: 'id',             label: 'Historia clínica',        icon: User,        allowed: true },
         { id: 'odontogram',     label: 'Odontograma',             icon: LayoutGrid,  allowed: canViewClinical },
         ...(ENABLE_PERIODONTOGRAM ? [
             { id: 'periodontogram', label: 'Periodontograma',     icon: BarChart3,   allowed: canViewClinical },
         ] : []),
-        { id: 'budget',         label: 'Pagos y presupuestos',    icon: DollarSign,  allowed: canViewFinancial },
+        { id: 'budget',         label: 'Pagos',                   icon: DollarSign,  allowed: canViewFinancial },
     ].filter(t => t.allowed);
 
     const tabScrollerRef = useRef<HTMLElement>(null);

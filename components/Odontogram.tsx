@@ -309,7 +309,7 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
             <line x1="75" y1="20" x2="25" y2="120" stroke="#64748B" strokeWidth="3" />
           </svg>
         </div>
-        <span className="text-xs font-black text-slate-400 tabular-nums">{tooth.id}</span>
+        <span className="text-sm font-bold text-slate-500 tabular-nums">{info?.fdi ?? tooth.id}</span>
 
         {showTooltip && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-50 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -418,16 +418,16 @@ const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
         </svg>
       </div>
 
-      {/* Tooth number */}
+      {/* Numeración FDI (visible bajo cada pieza) */}
       <span
         onClick={() => onToothClick?.(tooth.id)}
         className={cn(
-          "text-xs font-black tabular-nums transition-colors leading-tight cursor-pointer hover:underline",
-          readOnly ? "text-slate-400" : "text-slate-500 group-hover:text-blue-600"
+          "text-sm font-bold tabular-nums transition-colors leading-tight cursor-pointer hover:underline",
+          readOnly ? "text-slate-500" : "text-slate-700 group-hover:text-blue-600"
         )}
-        title="Toca para abrir detalle de pieza"
+        title={`FDI ${info?.fdi ?? tooth.id} — tocar para abrir detalle`}
       >
-        {tooth.id}
+        {info?.fdi ?? tooth.id}
       </span>
 
       {/* Mini 5-surface cross diagram below the tooth */}

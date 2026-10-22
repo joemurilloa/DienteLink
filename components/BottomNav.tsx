@@ -133,7 +133,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
               <button
                 onClick={() => navigate('/booking/manage')}
                 className="absolute -top-2 right-1 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow-sm border-2 border-white"
-                aria-label={`${pendingRequestsCount} solicitudes`}
+                aria-label={`${pendingRequestsCount} reservas`}
               >
                 {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
               </button>
@@ -229,7 +229,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
                         </span>
                       )}
                     </div>
-                    <span className="font-bold text-slate-700 text-[15px] flex-1">Solicitudes de Cita</span>
+                    <span className="font-bold text-slate-700 text-[15px] flex-1">Reservas</span>
                     {pendingRequestsCount > 0 && (
                       <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
                         {pendingRequestsCount} pendiente{pendingRequestsCount !== 1 ? 's' : ''}

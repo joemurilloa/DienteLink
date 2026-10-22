@@ -144,7 +144,7 @@ export const DEMO_PATIENTS: PatientRecord[] = [
       medications: 'Ninguno actualmente',
       previousDiseases: 'Hipertensión leve (controlada)',
       familyHistory: 'Padre con diabetes tipo 2',
-      motiveOfConsult: 'Limpieza semestral y revisión general',
+      motiveOfConsult: 'Caries en pieza 26, cara oclusal',
     },
     evolutionNotes: [
       {
@@ -156,30 +156,33 @@ export const DEMO_PATIENTS: PatientRecord[] = [
       {
         id: 'note-1-2',
         date: addDays(-5),
-        content: 'Segunda visita: mejora notable en higiene oral. Sigue protocolo de cepillado indicado.',
-        procedure: 'Revisión y control',
+        content: 'Se detecta caries en cara oclusal de la pieza 26 (FDI). Se indica resina.',
+        procedure: 'Diagnóstico caries 26',
       },
     ],
     history: [
       { id: 'ev-1-1', date: addDays(-30), type: 'treatment', description: 'Profilaxis completa', toothId: undefined },
-      { id: 'ev-1-2', date: addDays(-5), type: 'diagnose', description: 'Control post-profilaxis', toothId: undefined },
+      { id: 'ev-1-2', date: addDays(-5), type: 'diagnose', description: 'Caries oclusal pieza 26', toothId: 14 },
     ],
     consentSigned: true,
-    odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
+    // Universal id 14 = FDI 26 (primer molar superior izquierdo)
+    odontogram: Array.from({ length: 32 }, (_, i) => ({
+      id: i + 1,
+      surfaces: i + 1 === 14 ? [{ surface: 'oclusal' as const, condition: 'caries' as const }] : [],
+    })),
     odontogramHistory: [],
     periodontogram: null as any,
     xrays: [],
     budget: [
       { id: 'bud-1-1', treatment: 'Limpieza dental profesional', toothId: undefined, unitCost: 800, quantity: 1, status: 'completed', createdAt: addDays(-30) },
       { id: 'bud-1-2', treatment: 'Fluorización', toothId: undefined, unitCost: 200, quantity: 1, status: 'completed', createdAt: addDays(-30) },
-      { id: 'bud-1-3', treatment: 'Blanqueamiento dental', toothId: undefined, unitCost: 2500, quantity: 1, status: 'pending', createdAt: addDays(-5) },
+      { id: 'bud-1-3', treatment: 'Resina oclusal', toothId: 14, unitCost: 1500, quantity: 1, status: 'pending', createdAt: addDays(-5) },
     ],
     payments: [
       { id: 'pay-1-1', amount: 1000, method: 'transfer', note: 'Pago limpieza + fluorización', date: addDays(-30) },
-      { id: 'pay-1-2', amount: 2500, method: 'card', note: 'Pago blanqueamiento dental', date: addDays(-5) },
     ],
     labWorks: [],
-    balance: 0,
+    balance: 1500,
     consents: [],
     prescriptions: [],
     createdAt: addDays(-60),

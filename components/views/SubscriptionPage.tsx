@@ -161,7 +161,7 @@ const SubscriptionPage: React.FC = () => {
           <div className="sub-col-left">
             <div className="sub-plan-card">
               <div className="sub-plan-header">
-                <span className="sub-plan-name">Plan Mensual Pro</span>
+                <span className="sub-plan-name">{BILLING.planName}</span>
                 <span className="sub-plan-price">{BANK_INFO.amount}</span>
                 <span className="sub-plan-currency">{BANK_INFO.currency} / mes</span>
               </div>

@@ -353,7 +353,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Solicitudes</h1>
+              <h1 className="text-3xl lg:text-4xl font-semibold text-slate-900 tracking-tight">Reservas</h1>
               {pendingCount > 0 && (
                 <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-sm font-bold">
                   {pendingCount} por aprobar
@@ -452,18 +452,34 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
             {loadingReqs ? (
               <div className="text-center py-20"><div className="w-11 h-11 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" /></div>
             ) : filteredRequests.length === 0 ? (
-              <div className="text-center py-24">
+              <div className="text-center py-16 px-4 max-w-lg mx-auto">
                 <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-400">
                   <Bell size={24} />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mb-2">
                   {filter === 'pending' ? 'Nada por aprobar' : 'Nada en esta lista'}
                 </h3>
-                <p className="text-[15px] font-medium text-slate-500">
+                <p className="text-[15px] font-medium text-slate-500 mb-8">
                   {filter === 'pending'
-                    ? 'Cuando alguien reserve por tu enlace, la cita aparece aquí.'
-                    : 'No hay solicitudes con este estado.'}
+                    ? 'Comparte tu enlace para que los pacientes reserven. Las citas nuevas aparecen aquí.'
+                    : 'No hay reservas con este estado.'}
                 </p>
+                {publicUrl && (
+                  <div className="text-left bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tu enlace de reservas</p>
+                    <div className="flex items-start gap-2">
+                      <code className="flex-1 text-sm font-semibold text-slate-700 break-all text-left">{publicUrl}</code>
+                      <button
+                        type="button"
+                        onClick={copyUrl}
+                        className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                      >
+                        <Copy size={15} />
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

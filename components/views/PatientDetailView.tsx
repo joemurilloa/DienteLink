@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePatient, usePatientMutations } from '../../hooks/usePatients';
 import { PatientRecord as PatientRecordType } from '../../types';
 import { ArrowLeft } from 'lucide-react';
+import { formatCurrency } from '../../lib/utils';
 
 const PatientRecord = React.lazy(() => import('../PatientRecord'));
+
+/** Universal 1–32 → FDI (mismo orden que el odontograma). */
+const FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28, 38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
+const fdiOf = (id: number) => FDI[id - 1] ?? id;
 
 const PatientDetailView: React.FC = () => {
   const { id } = useParams();
@@ -16,6 +21,25 @@ const PatientDetailView: React.FC = () => {
   useEffect(() => {
     if (patient) setDisplayPatient(patient);
   }, [patient]);
+
+  const currentPatient = displayPatient || patient;
+
+  const snapshot = useMemo(() => {
+    if (!currentPatient) return null;
+    const motive = currentPatient.clinicalHistory?.motiveOfConsult?.trim() || 'Sin motivo registrado';
+    const affected = (currentPatient.odontogram || [])
+      .filter(t => t.surfaces && t.surfaces.length > 0)
+      .map(t => fdiOf(t.id));
+    const pieceLabel = affected.length
+      ? affected.length === 1
+        ? `Pieza ${affected[0]}`
+        : `Piezas ${affected.join(', ')}`
+      : 'Sin piezas marcadas';
+    const totalBudget = (currentPatient.budget || []).reduce((sum, b) => sum + b.unitCost * b.quantity, 0);
+    const totalPaid = (currentPatient.payments || []).reduce((sum, p) => sum + p.amount, 0);
+    const amountDue = Math.max(0, totalBudget - totalPaid);
+    return { motive, pieceLabel, amountDue };
+  }, [currentPatient]);
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-screen">
@@ -42,8 +66,6 @@ const PatientDetailView: React.FC = () => {
     await savePatient.mutateAsync(updated);
   };
 
-  const currentPatient = displayPatient || patient;
-
   return (
     <div className="flex-1 h-full overflow-y-auto flex flex-col p-4 md:p-5 lg:p-8 pb-24 md:pb-12 page-transition main-scroll">
       <React.Suspense fallback={
@@ -51,7 +73,7 @@ const PatientDetailView: React.FC = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       }>
-        <header className="flex items-center justify-between gap-3 mb-4 md:mb-6">
+        <header className="mb-4 md:mb-6 space-y-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/patients'))}
@@ -61,13 +83,31 @@ const PatientDetailView: React.FC = () => {
               <ArrowLeft size={18} />
             </button>
             <div className="min-w-0">
-              <h2 className="text-lg md:text-2xl font-bold text-slate-900 tracking-tight truncate">{currentPatient.identification.fullName}</h2>
-              <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">{currentPatient.identification.phone || 'Expediente clínico'}</p>
+              <h2 className="text-lg md:text-2xl font-bold text-slate-900 tracking-tight truncate">{currentPatient!.identification.fullName}</h2>
+              <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">{currentPatient!.identification.phone || 'Expediente clínico'}</p>
             </div>
           </div>
+          {snapshot && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+              <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Motivo de consulta</p>
+                <p className="text-sm font-semibold text-slate-900 mt-0.5 truncate" title={snapshot.motive}>{snapshot.motive}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pieza</p>
+                <p className="text-sm font-semibold text-slate-900 mt-0.5 truncate">{snapshot.pieceLabel}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Cobro pendiente</p>
+                <p className={`text-sm font-semibold mt-0.5 ${snapshot.amountDue > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
+                  {snapshot.amountDue > 0 ? formatCurrency(snapshot.amountDue) : 'Sin saldo'}
+                </p>
+              </div>
+            </div>
+          )}
         </header>
         <div className="flex-1 md:min-h-[680px]">
-          <PatientRecord patient={currentPatient} onUpdate={handleUpdate} />
+          <PatientRecord patient={currentPatient!} onUpdate={handleUpdate} />
         </div>
       </React.Suspense>
     </div>
