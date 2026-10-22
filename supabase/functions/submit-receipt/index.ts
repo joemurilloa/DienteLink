@@ -136,25 +136,53 @@ Deno.serve(async (req) => {
       </div>
     `;
 
-    // El correo es opcional: sin dominio verificado en Resend el envío suele fallar.
-    // El comprobante ya quedó registrado; el admin lo ve en /admin aunque no llegue el mail.
+    // Sandbox de Resend (onboarding@resend.dev) sí puede enviar a ADMIN_EMAIL
+    // si esa es la cuenta de Resend. Si el adjunto falla, reintentamos sin archivo.
+    const from = Deno.env.get('RESEND_FROM_EMAIL') ?? 'DienteLink Cobros <onboarding@resend.dev>';
+    const subject = `Por revisar: ${profile?.full_name || user.email}`;
     let emailSent = false;
+    let emailHadAttachment = false;
+
+    const decodeB64 = (b64: string): Uint8Array => {
+      const bin = atob(b64);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    };
+
     try {
       const resend = new Resend(resendApiKey);
-      const { error: sendError } = await resend.emails.send({
-        from: Deno.env.get('RESEND_FROM_EMAIL') ?? 'DienteLink Cobros <onboarding@resend.dev>',
+      const filename = `comprobante-${Date.now()}.${extension}`;
+      const withFile = await resend.emails.send({
+        from,
         to: ADMIN_EMAIL,
-        subject: `Por revisar: ${profile?.full_name || user.email}`,
+        subject,
         html,
-        attachments: [{ filename: `comprobante-${Date.now()}.${extension}`, content: contentBase64 }],
+        attachments: [{ filename, content: decodeB64(contentBase64) }],
       });
-      if (sendError) {
-        console.error("[submit-receipt] Resend rechazó el correo (el registro se mantiene):", JSON.stringify(sendError));
-      } else {
+      if (!withFile.error) {
         emailSent = true;
+        emailHadAttachment = true;
+      } else {
+        console.error("[submit-receipt] Resend con adjunto falló:", JSON.stringify(withFile.error));
+        const htmlNoFile = html.replace(
+          'La captura va adjunta a este correo.',
+          'No se pudo adjuntar la captura. Ábrela en el panel de cobros de DienteLink.',
+        );
+        const withoutFile = await resend.emails.send({
+          from,
+          to: ADMIN_EMAIL,
+          subject,
+          html: htmlNoFile,
+        });
+        if (!withoutFile.error) {
+          emailSent = true;
+        } else {
+          console.error("[submit-receipt] Resend sin adjunto también falló:", JSON.stringify(withoutFile.error));
+        }
       }
     } catch (mailErr) {
-      console.error("[submit-receipt] Error enviando correo (el registro se mantiene):", mailErr?.message ?? mailErr);
+      console.error("[submit-receipt] Error enviando correo:", mailErr?.message ?? mailErr);
     }
 
     return new Response(
@@ -162,6 +190,7 @@ Deno.serve(async (req) => {
         success: true,
         provisional_access_until: provisionalUntil,
         email_sent: emailSent,
+        email_had_attachment: emailHadAttachment,
       }),
       { status: 200, headers },
     );

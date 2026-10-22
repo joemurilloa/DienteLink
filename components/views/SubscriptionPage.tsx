@@ -32,6 +32,7 @@ const SubscriptionPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
   const [provisionalGranted, setProvisionalGranted] = useState(false);
+  const [emailSent, setEmailSent] = useState<boolean | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const copy = (text: string, key: string) => {
@@ -76,6 +77,7 @@ const SubscriptionPage: React.FC = () => {
       }
 
       const provisionalUntil = data?.provisional_access_until;
+      setEmailSent(data?.email_sent !== false);
       if (provisionalUntil) {
         setProvisionalGranted(true);
         window.dispatchEvent(new Event('dientelink:subscription-changed'));
@@ -125,6 +127,11 @@ const SubscriptionPage: React.FC = () => {
             <div className="sub-success-email">
               📧 Cuenta asociada al comprobante: <strong>{userEmail}</strong>
             </div>
+            {emailSent === false && (
+              <div className="sub-success-data-note" style={{ marginTop: 12 }}>
+                El aviso por correo no se pudo enviar ahora. El comprobante sí quedó registrado: revísalo en el panel de cobros (/admin).
+              </div>
+            )}
             <div className="sub-success-data-note">
               🔒 Todos tus registros y datos de pacientes están completamente seguros e intactos.
             </div>
