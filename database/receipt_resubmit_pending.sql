@@ -7,6 +7,9 @@
 -- No guarda imágenes: cero uso de Storage.
 -- ============================================================
 
+-- Obligatorio: el return type cambió (ahora incluye `replaced`).
+DROP FUNCTION IF EXISTS public.submit_payment_receipt(text, text);
+
 CREATE OR REPLACE FUNCTION public.submit_payment_receipt(
   p_email_referencia text,
   p_notes text DEFAULT NULL
