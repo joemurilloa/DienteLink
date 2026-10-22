@@ -136,23 +136,33 @@ Deno.serve(async (req) => {
       </div>
     `;
 
-    const resend = new Resend(resendApiKey);
-    const { error: sendError } = await resend.emails.send({
-      from: Deno.env.get('RESEND_FROM_EMAIL') ?? 'DienteLink Cobros <onboarding@resend.dev>',
-      to: ADMIN_EMAIL,
-      subject: `Por revisar: ${profile?.full_name || user.email}`,
-      html,
-      attachments: [{ filename: `comprobante-${Date.now()}.${extension}`, content: contentBase64 }],
-    });
-
-    if (sendError) {
-      console.error("[submit-receipt] Resend rechazó el correo:", JSON.stringify(sendError));
-      if (receiptId) await admin.from('payment_receipts').delete().eq('id', receiptId);
-      return fail(502, 'No se pudo enviar el comprobante. Intenta de nuevo en unos minutos.');
+    // El correo es opcional: sin dominio verificado en Resend el envío suele fallar.
+    // El comprobante ya quedó registrado; el admin lo ve en /admin aunque no llegue el mail.
+    let emailSent = false;
+    try {
+      const resend = new Resend(resendApiKey);
+      const { error: sendError } = await resend.emails.send({
+        from: Deno.env.get('RESEND_FROM_EMAIL') ?? 'DienteLink Cobros <onboarding@resend.dev>',
+        to: ADMIN_EMAIL,
+        subject: `Por revisar: ${profile?.full_name || user.email}`,
+        html,
+        attachments: [{ filename: `comprobante-${Date.now()}.${extension}`, content: contentBase64 }],
+      });
+      if (sendError) {
+        console.error("[submit-receipt] Resend rechazó el correo (el registro se mantiene):", JSON.stringify(sendError));
+      } else {
+        emailSent = true;
+      }
+    } catch (mailErr) {
+      console.error("[submit-receipt] Error enviando correo (el registro se mantiene):", mailErr?.message ?? mailErr);
     }
 
     return new Response(
-      JSON.stringify({ success: true, provisional_access_until: provisionalUntil }),
+      JSON.stringify({
+        success: true,
+        provisional_access_until: provisionalUntil,
+        email_sent: emailSent,
+      }),
       { status: 200, headers },
     );
   } catch (err) {

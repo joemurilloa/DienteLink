@@ -263,8 +263,6 @@ const SubscriptionPage: React.FC = () => {
                 maxLength={200}
               />
 
-              {errorMsg && <div className="sub-error-modern">⚠️ {errorMsg}</div>}
-
               <button
                 className="sub-btn-submit"
                 disabled={!file || uploading}
@@ -274,6 +272,8 @@ const SubscriptionPage: React.FC = () => {
                   <span className="sub-loading"><span className="sub-spinner" /> Procesando...</span>
                 ) : 'Enviar comprobante'}
               </button>
+
+              {errorMsg && <div className="sub-error-modern" style={{ marginTop: 16, marginBottom: 0 }}>⚠️ {errorMsg}</div>}
             </div>
           </div>
         </div>

@@ -2031,9 +2031,8 @@ body {
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s;
   box-shadow: 0 4px 12px rgba(15,23,42,0.15);
-  position: sticky;
-  bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
-  z-index: 20;
+  /* En el flujo normal del formulario (no sticky): evita que tape la imagen al hacer scroll. */
+  position: static;
 }
 .sub-btn-submit:hover:not(:disabled) { background: #1e293b; box-shadow: 0 6px 16px rgba(15,23,42,0.25); }
 .sub-btn-submit:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; color: white; opacity: 1; }
