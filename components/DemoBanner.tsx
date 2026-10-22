@@ -11,7 +11,8 @@ export const DemoBanner: React.FC = () => {
 
   const leaveDemo = () => {
     exitGuestMode();
-    navigate(user ? '/' : '/welcome', { replace: true });
+    if (user) navigate('/', { replace: true });
+    else window.location.assign('/welcome');
   };
 
   return (
