@@ -322,7 +322,9 @@ export class BookingService {
         console.error('[BookingService] getPublicBookingSettings RPC error:', error);
         throw error;
       }
-      if (!data || data.length === 0) return this.getDefaultBookingSettings();
+      if (!data || data.length === 0) {
+        return { ...this.getDefaultBookingSettings(), isActive: false };
+      }
       return dbToSettings(data[0]);
     } catch (err) {
       console.error('[BookingService] getPublicBookingSettings error:', err);

@@ -108,5 +108,5 @@ export const DEFAULT_VALUES = {
   SLOT_DURATION: 30, // minutes
   BUFFER_TIME: 15, // minutes
   ADVANCE_BOOKING_DAYS: 30,
-  ROLE_DOCTOR: 'doctor'
+  ROLE_OWNER: 'owner'
 } as const;

@@ -44,8 +44,8 @@ const TermsPage: React.FC = () => {
         <Section title="3. Prueba gratis y pago">
           <p>
             Ofrecemos un período de prueba gratuito. Después, el servicio se paga por mes mediante transferencia
-            bancaria y comprobante enviado desde la aplicación. Si no se renueva, tu cuenta queda en solo lectura
-            y puedes descargar tu respaldo.
+            bancaria y comprobante enviado desde la aplicación. Si no se renueva, el acceso a la aplicación se
+            corta. Tus datos no se borran: puedes descargar tu respaldo desde la pantalla de suscripción.
           </p>
         </Section>
 

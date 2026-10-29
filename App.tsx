@@ -34,7 +34,7 @@ const DemoRoute: React.FC = () => {
 // Auth guard — shows login when not authenticated
 const AuthGuard: React.FC = () => {
   const { user, loading, clinicId, isGuest } = useAuth();
-  const subscription = useSubscription(clinicId, user?.created_at);
+  const subscription = useSubscription(clinicId, user?.created_at, user?.id);
 
   if (loading) {
     return (

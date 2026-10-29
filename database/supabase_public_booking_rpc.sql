@@ -1,66 +1,70 @@
 -- =============================================================
 -- DienteLink: Public Booking RPC Functions
--- Run this in Supabase SQL Editor to enable secure public booking
+-- Estas funciones son la versión canónica.
+-- Llevan search_path y exigen plan vigente.
+-- Volver a ejecutar este archivo no quita ninguna de las dos.
 -- =============================================================
 
-DROP FUNCTION IF EXISTS get_public_doctor_availability(UUID);
-DROP FUNCTION IF EXISTS get_public_booking_settings(UUID);
-DROP FUNCTION IF EXISTS get_public_appointments(UUID);
-DROP FUNCTION IF EXISTS get_public_appointment_requests(UUID);
-
--- 1. Get Doctor Availability for Public Page
--- Returns the configuration but runs as SECURITY DEFINER so anonymous users
--- can execute it even if the table has RLS restricting SELECT.
-CREATE OR REPLACE FUNCTION get_public_doctor_availability(p_doctor_id UUID)
-RETURNS SETOF doctor_availability
+CREATE OR REPLACE FUNCTION public.get_public_doctor_availability(p_doctor_id uuid)
+RETURNS SETOF public.doctor_availability
 LANGUAGE sql
+STABLE
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT * FROM doctor_availability WHERE doctor_id = p_doctor_id;
+  SELECT d.*
+    FROM public.doctor_availability d
+   WHERE d.doctor_id = p_doctor_id
+     AND public.clinic_has_paid_access(p_doctor_id);
 $$;
 
--- 2. Get Booking Settings for Public Page
-CREATE OR REPLACE FUNCTION get_public_booking_settings(p_doctor_id UUID)
-RETURNS SETOF booking_settings
+CREATE OR REPLACE FUNCTION public.get_public_booking_settings(p_doctor_id uuid)
+RETURNS SETOF public.booking_settings
 LANGUAGE sql
+STABLE
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT * FROM booking_settings WHERE doctor_id = p_doctor_id AND is_active = true;
+  SELECT b.*
+    FROM public.booking_settings b
+   WHERE b.doctor_id = p_doctor_id
+     AND b.is_active = true
+     AND public.clinic_has_paid_access(p_doctor_id);
 $$;
 
--- 3. Get Confirmed Appointments for Public Page
--- ONLY returns date and time to prevent exposing patient names or data.
--- Used to calculate occupied time slots.
-CREATE OR REPLACE FUNCTION get_public_appointments(p_doctor_id UUID)
-RETURNS TABLE ("date" TEXT, "time" TEXT)
+CREATE OR REPLACE FUNCTION public.get_public_appointments(p_doctor_id uuid)
+RETURNS TABLE ("date" text, "time" text)
 LANGUAGE sql
+STABLE
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT a.date, a.time 
-  FROM appointments a
-  JOIN booking_settings b ON b.doctor_id = a.doctor_id
-  WHERE a.doctor_id = p_doctor_id 
-    AND a.status IN ('Programada', 'Completada')
-    AND b.is_active = true;
+  SELECT a.date, a.time
+    FROM public.appointments a
+    JOIN public.booking_settings b ON b.doctor_id = a.doctor_id
+   WHERE a.doctor_id = p_doctor_id
+     AND a.status IN ('Programada', 'Completada')
+     AND b.is_active = true
+     AND public.clinic_has_paid_access(p_doctor_id);
 $$;
 
--- 4. Get Pending Appointment Requests for Public Page
--- Returns limited information to prevent double-booking of pending slots.
-CREATE OR REPLACE FUNCTION get_public_appointment_requests(p_doctor_id UUID)
-RETURNS TABLE (id UUID, requested_date TEXT, requested_time TEXT, status TEXT, appointment_type TEXT)
+CREATE OR REPLACE FUNCTION public.get_public_appointment_requests(p_doctor_id uuid)
+RETURNS TABLE (id uuid, requested_date text, requested_time text, status text, appointment_type text)
 LANGUAGE sql
+STABLE
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT ar.id, ar.requested_date, ar.requested_time, ar.status, ar.appointment_type 
-  FROM appointment_requests ar
-  JOIN booking_settings b ON b.doctor_id = ar.doctor_id
-  WHERE ar.doctor_id = p_doctor_id 
-    AND ar.status IN ('pending', 'approved')
-    AND b.is_active = true;
+  SELECT ar.id, ar.requested_date, ar.requested_time, ar.status, ar.appointment_type
+    FROM public.appointment_requests ar
+    JOIN public.booking_settings b ON b.doctor_id = ar.doctor_id
+   WHERE ar.doctor_id = p_doctor_id
+     AND ar.status IN ('pending', 'approved')
+     AND b.is_active = true
+     AND public.clinic_has_paid_access(p_doctor_id);
 $$;
 
--- Set correct permissions so unauthenticated (anon) users can execute these functions
-GRANT EXECUTE ON FUNCTION get_public_doctor_availability(UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION get_public_booking_settings(UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION get_public_appointments(UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION get_public_appointment_requests(UUID) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_public_doctor_availability(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_public_booking_settings(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_public_appointments(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_public_appointment_requests(uuid) TO anon, authenticated;

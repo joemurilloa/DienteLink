@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../services/authService';
+import { canSeeClinicMoney, normalizeClinicRole, profileRole } from '../lib/roles';
 import { UserRole } from '../types';
 
 interface RoleGuardProps {
@@ -13,42 +14,33 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles, fa
 
   if (loading) return null;
 
-  // Por defecto, cualquier usuario registrado es propietario/doctor con acceso total
-  const userRole = (profile?.role as UserRole) || 'owner';
-  const isFullAccess = ['owner', 'admin', 'doctor', 'dr', 'odontologo', 'odontólogo'].includes(userRole.toLowerCase());
+  const normalized = normalizeClinicRole(profile?.role) ?? (profile?.role?.trim() ? null : 'owner');
+  const isFullAccess = normalized === 'owner' || normalized === 'admin';
 
-  if (isFullAccess || allowedRoles.includes(userRole)) {
+  if (isFullAccess || (normalized !== null && allowedRoles.includes(normalized))) {
     return <>{children}</>;
   }
 
   return <>{fallback}</>;
 };
 
-// Hooks for more granular logic
 export function useRoleAccess() {
   const { profile } = useAuth();
-  // Por defecto el usuario es propietario con acceso completo (Opción A)
-  const userRole = (profile?.role as UserRole) || 'owner';
+  const normalized = normalizeClinicRole(profile?.role) ?? (profile?.role?.trim() ? null : 'owner');
+  const userRole = (normalized ?? profileRole(profile?.role)) as UserRole;
 
-  const isAssistant    = userRole === 'assistant';
-  const isReceptionist = userRole === 'receptionist';
-
-  // Si no es explícitamente recepcionista o asistente invitado, tiene acceso total a clínica, finanzas y administración
-  const hasFullAccess  = !isAssistant && !isReceptionist;
+  const isAssistant = normalized === 'assistant';
+  const isReceptionist = normalized === 'receptionist';
+  const hasFullAccess = normalized === 'owner' || normalized === 'admin';
 
   return {
     role: userRole,
-    // Admin-level: puede gestionar equipo, facturación y ajustes
     isAdmin: hasFullAccess,
-    // Clinical access: odontograma, periodontograma, notas, recetas, etc.
-    canViewClinical : hasFullAccess || isAssistant,
-    canEditClinical : hasFullAccess || isAssistant,
-    // Financial access: presupuestos, pagos, métricas financieras
-    canViewFinancial: hasFullAccess,
-    canEditFinancial: hasFullAccess,
-    // Citas: todos pueden agendar y ver la agenda
+    canViewClinical: hasFullAccess || isAssistant,
+    canEditClinical: hasFullAccess || isAssistant,
+    canViewFinancial: canSeeClinicMoney(profile?.role),
+    canEditFinancial: canSeeClinicMoney(profile?.role),
     canManageAppointments: true,
-    // Indicadores específicos
     isReceptionist,
     isAssistant,
   };

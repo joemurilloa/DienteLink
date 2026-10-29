@@ -28,13 +28,11 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
   };
   const { profile, signOut } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
-  const doctorRole = profile?.role || 'owner';
   const doctorInitials = getInitials(doctorName, 'DR');
   const { canViewFinancial, isAdmin, role: activeRole } = useRoleAccess();
 
   const ROLE_DISPLAY: Record<string, { label: string; color: string }> = {
     owner:        { label: 'Propietario',       color: 'text-indigo-600' },
-    doctor:       { label: 'Doctor',            color: 'text-indigo-600' },
     admin:        { label: 'Administrador',     color: 'text-violet-600' },
     assistant:    { label: 'Asistente Clínico', color: 'text-emerald-600' },
     receptionist: { label: 'Recepcionista',     color: 'text-sky-600' },
@@ -178,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
               {isCollapsed && (
                 <div className="px-3 py-2 border-b border-slate-300/60 mb-1">
                   <p className="text-sm font-bold text-slate-800 truncate leading-none">{doctorName}</p>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1 leading-none">{doctorRole}</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1 leading-none">{roleDisplay.label}</p>
                 </div>
               )}
               

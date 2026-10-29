@@ -123,9 +123,9 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                         <>
                             <WhatsAppAction
                                 storageKey={`presupuesto_${patient.id}`}
-                                label="Compartir por WhatsApp"
-                                sentLabel="Presupuesto enviado"
-                                title="Abrir WhatsApp con el presupuesto listo"
+                                label="Abrir WhatsApp"
+                                sentLabel="Marcado"
+                                title="Abre WhatsApp con el presupuesto listo. Tú pulsas Enviar."
                                 send={() => {
                                     if (!patient.identification.phone) {
                                         return { success: false, error: 'El paciente no tiene teléfono en su ficha.' };

@@ -12,7 +12,7 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name     TEXT    NOT NULL,
-  role          TEXT    NOT NULL DEFAULT 'doctor',
+  role          TEXT    NOT NULL DEFAULT 'owner',
   clinic_name   TEXT    NOT NULL DEFAULT '',
   phone         TEXT,
   currency      TEXT    NOT NULL DEFAULT 'HNL',
@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS patients (
   previous_diseases   TEXT,
   family_history      TEXT,
   motive_of_consult   TEXT,
+  blood_type          TEXT,
+  smoker              BOOLEAN,
+  pregnant            BOOLEAN,
+  habits              TEXT,
+  observations        TEXT,
   consent_signed      BOOLEAN DEFAULT FALSE,
   -- Odontogram: array of 32 teeth, each with surface conditions
   -- Structure: [{ id: 1..32, surfaces: [{ surface, condition }] }]

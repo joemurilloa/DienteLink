@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth, DoctorProfile } from '../services/authService';
 import { TeamInvitation, UserRole } from '../types';
 import { sileo } from 'sileo';
+import { roleLabel } from '../lib/roles';
 
 export function useTeam() {
     const { clinicId, profile } = useAuth();
@@ -94,47 +95,35 @@ export function useTeam() {
     // 5. Remove Team Member Mutation (Unlink from clinic)
     const removeMemberMutation = useMutation({
         mutationFn: async (memberId: string) => {
-            // Unlinking a member sets their clinic_id to null and role back to owner
-            const { error } = await supabase
-                .from('profiles')
-                .update({ clinic_id: null, role: 'owner' })
-                .eq('id', memberId)
-                .eq('clinic_id', clinicId);
-
-            if (error) throw error;
+            const { error } = await supabase.rpc('remove_team_member', { p_member_id: memberId });
+            if (error) throw new Error(error.message);
             return memberId;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['teamMembers', clinicId] });
             sileo.success({ title: 'Miembro removido del equipo' });
         },
-        onError: () => {
-            sileo.error({ title: 'Error al remover' });
+        onError: (error: Error) => {
+            sileo.error({ title: 'Error al remover', description: error.message });
         }
     });
 
     // 6. Update Member Role Mutation
     const updateRoleMutation = useMutation({
         mutationFn: async ({ memberId, role }: { memberId: string; role: UserRole }) => {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ role })
-                .eq('id', memberId)
-                .eq('clinic_id', clinicId); // can only update members of your clinic
-
-            if (error) throw error;
+            const { error } = await supabase.rpc('set_team_member_role', {
+                p_member_id: memberId,
+                p_role: role,
+            });
+            if (error) throw new Error(error.message);
             return { memberId, role };
         },
         onSuccess: (_, { role }) => {
             queryClient.invalidateQueries({ queryKey: ['teamMembers', clinicId] });
-            const labels: Record<string, string> = {
-                owner: 'Propietario', admin: 'Administrador',
-                assistant: 'Asistente Clínico', receptionist: 'Recepcionista',
-            };
-            sileo.success({ title: 'Rol actualizado', description: `Rol cambiado a ${labels[role] || role}` });
+            sileo.success({ title: 'Rol actualizado', description: `Rol cambiado a ${roleLabel(role)}` });
         },
-        onError: () => {
-            sileo.error({ title: 'Error al cambiar rol' });
+        onError: (error: Error) => {
+            sileo.error({ title: 'Error al cambiar rol', description: error.message });
         }
     });
 

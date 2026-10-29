@@ -48,7 +48,10 @@ export function useWhatsAppSend(opts: {
       try { localStorage.setItem(storageKey, '1'); } catch { /* ignore */ }
     }
     onSentRef.current?.();
-    sileo.success({ title: 'Marcado como enviado' });
+    sileo.success({
+      title: 'Anotado',
+      description: 'El mensaje lo mandas tú en WhatsApp. La app no lo envía sola.',
+    });
   }, [opts.persistLocal, storageKey]);
 
   return { sent, pending, open, confirm };

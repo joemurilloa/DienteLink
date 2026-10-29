@@ -88,7 +88,7 @@ DROP POLICY IF EXISTS "Clinic staff can insert budget_items" ON public.budget_it
 DROP POLICY IF EXISTS "Clinic staff can update budget_items" ON public.budget_items;
 DROP POLICY IF EXISTS "Clinic staff can delete budget_items" ON public.budget_items;
 
-CREATE POLICY "Clinic staff can view budget_items"   ON public.budget_items FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "Clinic staff can view budget_items"   ON public.budget_items FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(public.get_my_role()) IN ('owner', 'admin'));
 CREATE POLICY "Clinic staff can insert budget_items" ON public.budget_items FOR INSERT WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can update budget_items" ON public.budget_items FOR UPDATE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can delete budget_items" ON public.budget_items FOR DELETE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
@@ -99,7 +99,7 @@ DROP POLICY IF EXISTS "Clinic staff can insert payments" ON public.payments;
 DROP POLICY IF EXISTS "Clinic staff can update payments" ON public.payments;
 DROP POLICY IF EXISTS "Clinic staff can delete payments" ON public.payments;
 
-CREATE POLICY "Clinic staff can view payments"   ON public.payments FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "Clinic staff can view payments"   ON public.payments FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(public.get_my_role()) IN ('owner', 'admin'));
 CREATE POLICY "Clinic staff can insert payments" ON public.payments FOR INSERT WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can update payments" ON public.payments FOR UPDATE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can delete payments" ON public.payments FOR DELETE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());

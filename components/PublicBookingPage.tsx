@@ -67,7 +67,7 @@ const PublicBookingPage: React.FC = () => {
         const doctorAvailability = await bookingService.getPublicDoctorAvailability(doctorId);
         
         if (!bookingSettings || !bookingSettings.isActive) {
-          setError('Este consultorio no recibe citas por este enlace.');
+          setError('Este consultorio no está recibiendo citas por este enlace ahora.');
           setLoading(false);
           return;
         }

@@ -10,23 +10,29 @@ interface Props {
 }
 
 /**
- * Regla de acceso (una sola):
- * - Cargando, error de consulta, demo o miembro de equipo → NUNCA se bloquea.
- * - Trial/activa → acceso normal.
- * - Vencida → solo se permite /subscription (pantalla única de pago).
+ * El expediente se abre solo con plan vigente.
+ * Un error de consulta cierra. El equipo usa el plan de su clínica.
+ * Demo y el admin de la plataforma siguen entrando.
  */
 export const SubscriptionGate: React.FC<Props> = ({ subscription, children }) => {
   const { profile, isGuest, user } = useAuth();
   const location = useLocation();
-  const isTeamMember = !!profile?.clinic_id && profile.clinic_id !== profile?.id;
 
   if (isPlatformAdmin(user?.email)) return <>{children}</>;
-  if (isGuest || isTeamMember || subscription.loading || subscription.error) return <>{children}</>;
+  if (isGuest) return <>{children}</>;
+
+  if (!profile || subscription.loading) {
+    return (
+      <div className="flex items-center justify-center w-full h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-slate-400 font-medium">Comprobando tu plan...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (subscription.isActive) return <>{children}</>;
-
-  const blocked = subscription.isExpired || subscription.status === 'inactive';
-  if (!blocked) return <>{children}</>;
-
   if (location.pathname === '/subscription') return <>{children}</>;
   return <Navigate to="/subscription" replace />;
 };

@@ -7,6 +7,7 @@ import { bookingService } from './bookingService';
 import { redeemPendingInvitation } from './redeemInvitation';
 import type { User, Session } from '@supabase/supabase-js';
 import { DEMO_PROFILE } from '../lib/demoData';
+import { profileRole } from '../lib/roles';
 
 interface AuthContextType {
   user: User | null;
@@ -117,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (updatedData) {
                 const prof: DoctorProfile = {
                   ...updatedData as DoctorProfile,
-                  role: updatedData.role || 'owner',
+                  role: profileRole(updatedData.role),
                   currency: updatedData.currency || 'HNL',
                   locale: updatedData.locale || 'es-HN',
                   theme_color: updatedData.theme_color || 'blue',
@@ -140,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const prof: DoctorProfile = {
           ...data as DoctorProfile,
-          role: data.role || 'owner',
+          role: profileRole(data.role),
           currency: data.currency || 'HNL',
           locale: data.locale || 'es-HN',
           theme_color: data.theme_color || 'blue',
@@ -254,9 +255,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (updates: Partial<DoctorProfile>) => {
     if (!user) return;
+    const safe = { ...updates };
+    delete safe.role;
+    delete safe.clinic_id;
+    delete safe.id;
     const { error } = await supabase
       .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...safe, updated_at: new Date().toISOString() })
       .eq('id', user.id);
     
     if (error) {

@@ -4,10 +4,11 @@
 -- los INSERTS en la tabla `appointment_requests`.
 -- =============================================================
 
-CREATE OR REPLACE FUNCTION check_appointment_request_spam()
+CREATE OR REPLACE FUNCTION public.check_appointment_request_spam()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   pending_count INT;
@@ -15,7 +16,7 @@ BEGIN
   -- Regla 1: Limitar a 3 solicitudes pendientes por correo electrónico para cada clínica
   -- Esto evita que un mismo usuario/bot envíe docenas de peticiones ignoradas.
   SELECT count(*) INTO pending_count
-  FROM appointment_requests
+  FROM public.appointment_requests
   WHERE doctor_id = NEW.doctor_id
     AND patient_email = NEW.patient_email
     AND status = 'pending';
@@ -27,7 +28,7 @@ BEGIN
   -- Regla 2: Protección global anti-DDoS por clínica
   -- Una clínica normal no debería tener más de 500 solicitudes pendientes activas al mismo tiempo.
   SELECT count(*) INTO pending_count
-  FROM appointment_requests
+  FROM public.appointment_requests
   WHERE doctor_id = NEW.doctor_id
     AND status = 'pending';
     

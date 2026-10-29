@@ -10,6 +10,7 @@ import BackupSettings from './Settings/BackupSettings';
 import ClinicHoursSettings from './Settings/ClinicHoursSettings';
 import { openProblemReport } from '../../lib/support';
 import { isPlatformAdmin } from '../../lib/billing';
+import { roleLabel } from '../../lib/roles';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -38,7 +39,7 @@ const SettingsView: React.FC = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const subscription = useSubscription(clinicId, user?.created_at);
+  const subscription = useSubscription(clinicId, user?.created_at, user?.id);
 
   // Contextual tip (show once)
   useSettingsTip();
@@ -137,7 +138,7 @@ const SettingsView: React.FC = () => {
               <SettingsInput label="Nombre completo" value={form.full_name} field="full_name" />
               <div>
                 <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Rol en el sistema</label>
-                <p className="text-sm font-bold text-slate-900 py-2.5 ">{({ owner: 'Propietario', doctor: 'Doctor', admin: 'Administrador', assistant: 'Asistente clínico', receptionist: 'Recepcionista' } as Record<string, string>)[profile?.role || 'owner'] || 'Propietario'}</p>
+                <p className="text-sm font-bold text-slate-900 py-2.5 ">{roleLabel(profile?.role)}</p>
               </div>
               <SettingsInput label="Nombre de la clínica" value={form.clinic_name} field="clinic_name" />
               <SettingsInput label="Teléfono" value={form.phone} field="phone" />

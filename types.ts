@@ -1,19 +1,34 @@
 
 import React from 'react';
-import { 
-  ReminderStatus as ReminderStatusType,
-  AppointmentType as AppointmentTypeType,
-  AppointmentStatus as AppointmentStatusType,
-  PaymentMethod as PaymentMethodType,
-  BudgetItemStatus as BudgetItemStatusType,
-  RequestStatus as RequestStatusType,
-  ToothSurface as ToothSurfaceType,
-  ClinicalCondition as ClinicalConditionType,
-  EventType as EventTypeType
+
+// Import from lib/constants so the names are available within this file
+// for use in interface definitions (SurfaceData, Appointment, etc.)
+import {
+  ReminderStatus,
+  AppointmentType,
+  AppointmentStatus,
+  PaymentMethod,
+  BudgetItemStatus,
+  RequestStatus,
+  ToothSurface,
+  ClinicalCondition,
+  EventType,
 } from './lib/constants';
 
-export type ReminderStatus = ReminderStatusType;
-export type UserRole = 'admin' | 'assistant' | 'receptionist' | 'owner' | 'doctor' | 'dr' | 'odontologo' | 'odontólogo';
+// Re-export as the public API — single source of truth (no duplicate definitions)
+export type {
+  ReminderStatus,
+  AppointmentType,
+  AppointmentStatus,
+  PaymentMethod,
+  BudgetItemStatus,
+  RequestStatus,
+  ToothSurface,
+  ClinicalCondition,
+  EventType,
+};
+
+export type UserRole = 'owner' | 'admin' | 'assistant' | 'receptionist';
 
 export interface TeamInvitation {
   id: string;
@@ -28,25 +43,8 @@ export interface TeamInvitation {
 export type ToothStatus = 'healthy' | 'caries' | 'missing' | 'treated';
 
 // --- Odontograma Clínico Completo ---
-export type ToothSurface = 'oclusal' | 'incisal' | 'vestibular' | 'lingual' | 'mesial' | 'distal';
-
-export type ClinicalCondition =
-  // Estado
-  | 'healthy'
-  | 'caries'
-  | 'obturado'
-  | 'fractura'
-  // Tratamiento indicado
-  | 'extraccion_indicada'
-  | 'tratamiento_conducto'
-  | 'corona_indicada'
-  | 'protesis_implante'
-  // Estado especial
-  | 'ausente'
-  | 'extraido'
-  | 'implante_presente'
-  | 'corona_presente'
-  | 'en_observacion';
+// ToothSurface and ClinicalCondition are re-exported from lib/constants above.
+// The interface and struct types below build on top of those.
 
 export interface SurfaceData {
   surface: ToothSurface;
@@ -65,9 +63,6 @@ export interface OdontogramSnapshot {
   date: string;
   teeth: ToothData[];
 }
-
-export type AppointmentType = 'Consulta' | 'Seguimiento' | 'Cirugía' | 'Revisión';
-export type AppointmentStatus = 'Programada' | 'Completada' | 'Retrasada' | 'Eliminada';
 
 export interface Appointment {
   id: string;
@@ -230,6 +225,16 @@ export interface PeriodontogramData {
   teeth: PerioToothData[];
 }
 
+/** Colecciones del expediente que vinieron de Postgres en esta lectura. */
+export type PatientCollection =
+  | 'evolutionNotes'
+  | 'history'
+  | 'budget'
+  | 'payments'
+  | 'consents'
+  | 'prescriptions'
+  | 'labWorks';
+
 export interface PatientRecord {
   id: string;
   identification: PatientIdentification;
@@ -247,6 +252,12 @@ export interface PatientRecord {
   balance: number;
   consents: ConsentForm[];
   prescriptions: Prescription[];
+  /**
+   * Solo las tablas que esta lectura trajo de verdad.
+   * Un array vacío ahí significa "el usuario las dejó vacías".
+   * Si la clave no está, guardar no borra esa tabla.
+   */
+  loadedCollections?: PatientCollection[];
   createdAt?: string;
   updatedAt?: string;
 }

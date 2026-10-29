@@ -63,7 +63,7 @@ const AuthPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={handleGoogle}
+            onClick={() => handleGoogle()}
             disabled={loading}
             className="mt-6 w-full flex items-center justify-center gap-3 py-3.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { computeTrialDaysLeft, trialEndFromStart } from '../lib/billing';
+import { computeTrialDaysLeft, daysRemaining, trialEndFromStart } from '../lib/billing';
 
 export interface SubscriptionState {
   status: 'trial' | 'active' | 'expired' | 'inactive' | 'pending' | null;
@@ -13,6 +13,8 @@ export interface SubscriptionState {
   trialStartedAt: Date | null;
   isProvisional: boolean;
   provisionalUntil: Date | null;
+  lastReceiptStatus: 'pending' | 'approved' | 'rejected' | null;
+  lastReceiptNote: string | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -26,38 +28,38 @@ function parseDate(value: string | Date | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-async function fetchSubscriptionRow(clinicId: string) {
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('clinic_id', clinicId)
-    .maybeSingle();
-  if (error) {
-    console.error('[useSubscription] Error fetching subscriptions row:', error);
-    return null;
-  }
-  return data;
-}
-
-async function fetchProvisionalAccess(clinicId: string): Promise<Date | null> {
+async function fetchLatestReceipt(clinicId: string) {
   const { data, error } = await supabase
     .from('payment_receipts')
-    .select('provisional_access_until')
+    .select('status, reviewed_note, provisional_access_until')
     .eq('clinic_id', clinicId)
-    .eq('status', 'pending')
-    .not('provisional_access_until', 'is', null)
-    .order('provisional_access_until', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) {
-    console.error('[useSubscription] Error fetching provisional access:', error);
+    console.error('[useSubscription] Error fetching latest receipt:', error);
     return null;
   }
-  return parseDate(data?.provisional_access_until);
+  return data as {
+    status: 'pending' | 'approved' | 'rejected';
+    reviewed_note: string | null;
+    provisional_access_until: string | null;
+  } | null;
 }
 
-export function useSubscription(clinicId: string | null, accountCreatedAt?: string | null): SubscriptionState {
+function isMissingRpc(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST202' || /could not find the function|schema cache/i.test(error.message || '');
+}
+
+export function useSubscription(clinicId: string | null, accountCreatedAt?: string | null, accountUserId?: string | null): SubscriptionState {
+  const confirmed = useRef(false);
+  const seenClinic = useRef<string | null>(null);
+  if (seenClinic.current !== clinicId) {
+    seenClinic.current = clinicId;
+    confirmed.current = false;
+  }
   const [state, setState] = useState<Omit<SubscriptionState, 'refresh'>>({
     status: null,
     isActive: false,
@@ -69,6 +71,8 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
     trialStartedAt: null,
     isProvisional: false,
     provisionalUntil: null,
+    lastReceiptStatus: null,
+    lastReceiptNote: null,
     loading: true,
     error: null,
   });
@@ -92,30 +96,109 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
         trialStartedAt: null,
         isProvisional: false,
         provisionalUntil: null,
+        lastReceiptStatus: null,
+        lastReceiptNote: null,
         loading: false,
         error: null,
       });
       return;
     }
 
+    const deny = (message: string) => {
+      setState(prev => {
+        if (confirmed.current) return { ...prev, loading: false };
+        return {
+          ...prev,
+          status: 'inactive',
+          isActive: false,
+          isTrial: false,
+          isExpired: true,
+          daysLeft: 0,
+          expiresSoon: false,
+          loading: false,
+          error: message,
+        };
+      });
+    };
+
     try {
-      const { data, error } = await supabase
+      const view = await supabase
         .from('subscription_status')
         .select('*')
         .maybeSingle();
 
-      if (error) {
-        console.error('[useSubscription] Error fetching subscription:', error);
+      if (view.error) {
+        console.error('[useSubscription] Error fetching subscription:', view.error);
       }
 
-      const row = (!error && data) ? data : await fetchSubscriptionRow(clinicId);
+      let row = !view.error && view.data ? view.data : null;
+      let tableError = false;
+      if (!row) {
+        const table = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('clinic_id', clinicId)
+          .maybeSingle();
+        if (table.error) {
+          tableError = true;
+          console.error('[useSubscription] Error fetching subscriptions row:', table.error);
+        } else {
+          row = table.data;
+        }
+      }
+
+      if (!row && view.error && tableError) {
+        deny('No se pudo verificar la suscripción. Reintenta en un momento.');
+        return;
+      }
+
+      if (!row) {
+        const access = await supabase.rpc('clinic_access_until', { p_clinic_id: clinicId });
+        const isOwner = !!accountUserId && clinicId === accountUserId;
+        if (access.error && !(isMissingRpc(access.error) && isOwner)) {
+          deny('No se pudo verificar la suscripción de este consultorio.');
+          return;
+        }
+        if (!access.error) {
+          const until = parseDate(access.data as string | null);
+          const daysLeft = daysRemaining(until);
+          confirmed.current = true;
+          setState({
+            status: daysLeft > 0 ? 'trial' : 'inactive',
+            isActive: daysLeft > 0,
+            isTrial: daysLeft > 0,
+            isExpired: daysLeft <= 0,
+            daysLeft,
+            expiresSoon: daysLeft > 0 && daysLeft <= 4,
+            expiresAt: until,
+            trialStartedAt: null,
+            isProvisional: false,
+            provisionalUntil: null,
+            lastReceiptStatus: null,
+            lastReceiptNote: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+      }
       // Consulta independiente como respaldo: evita depender de que la caché
       // de esquema de PostgREST ya exponga las columnas nuevas de la vista.
-      const receiptProvisionalUntil = await fetchProvisionalAccess(clinicId);
+      const latestReceipt = await fetchLatestReceipt(clinicId);
+      const receiptProvisionalUntil = latestReceipt?.status === 'pending'
+        ? parseDate(latestReceipt.provisional_access_until)
+        : null;
+      const lastReceiptStatus = latestReceipt?.status ?? null;
+      const lastReceiptNote = latestReceipt?.reviewed_note ?? null;
       const accountStart = accountCreatedAt ? new Date(accountCreatedAt) : null;
 
       if (!row) {
-        // Sin fila: la prueba corre desde que se creó la cuenta, no un 14 eterno.
+        // Solo el dueño, y solo si todavía no está la función en Supabase.
+        // Cuenta los 14 días desde la creación de SU cuenta.
+        if (!accountUserId || clinicId !== accountUserId) {
+          deny('No se pudo verificar la suscripción de este consultorio.');
+          return;
+        }
         const trialDaysLeft = computeTrialDaysLeft({
           isTrial: true,
           accountCreatedAt: accountStart,
@@ -125,6 +208,7 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
           ? Math.ceil((receiptProvisionalUntil.getTime() - Date.now()) / 86_400_000)
           : 0;
         const daysLeft = Math.max(trialDaysLeft, provisionalDaysLeft);
+        confirmed.current = true;
         setState({
           status: 'trial',
           isActive: daysLeft > 0,
@@ -136,6 +220,8 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
           trialStartedAt: accountStart,
           isProvisional,
           provisionalUntil: receiptProvisionalUntil,
+          lastReceiptStatus,
+          lastReceiptNote,
           loading: false,
           error: null,
         });
@@ -165,6 +251,7 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
         ? Math.max(daysLeft, Math.ceil((provisionalUntil.getTime() - Date.now()) / 86_400_000))
         : daysLeft;
 
+      confirmed.current = true;
       setState({
         status: row.status as SubscriptionState['status'],
         isActive,
@@ -176,21 +263,16 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
         trialStartedAt,
         isProvisional,
         provisionalUntil,
+        lastReceiptStatus,
+        lastReceiptNote,
         loading: false,
         error: null,
       });
     } catch (err) {
       console.error('[useSubscription] Unexpected error:', err);
-      // En caso de error inesperado, no bloquear al usuario
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: 'Error al verificar suscripción',
-        isActive: true,
-        isExpired: false,
-      }));
+      deny('No se pudo verificar la suscripción. Reintenta en un momento.');
     }
-  }, [clinicId, accountCreatedAt]);
+  }, [clinicId, accountCreatedAt, accountUserId]);
 
   useEffect(() => {
     fetchSubscription();

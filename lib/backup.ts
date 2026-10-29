@@ -96,11 +96,13 @@ export async function createFullBackup(opts: BackupOptions): Promise<{ patients:
 
   // 2) Tablas para Excel
   zip.file('pacientes.csv', toCSV(
-    ['Nombre', 'Teléfono', 'Email', 'Género', 'Fecha nacimiento', 'Dirección', 'Ocupación', 'Alergias', 'Medicamentos', 'Enfermedades previas', 'Motivo de consulta', 'Registrado'],
+    ['Nombre', 'Teléfono', 'Email', 'Género', 'Fecha nacimiento', 'Dirección', 'Ocupación', 'Alergias', 'Medicamentos', 'Enfermedades previas', 'Tipo de sangre', 'Fumador', 'Embarazo', 'Hábitos', 'Observaciones', 'Motivo de consulta', 'Registrado'],
     patients.map(p => [
       p.identification.fullName, p.identification.phone, p.identification.email, p.identification.gender,
       p.identification.birthDate, p.identification.address, p.identification.occupation,
       p.clinicalHistory.allergies.join('; '), p.clinicalHistory.medications, p.clinicalHistory.previousDiseases,
+      p.clinicalHistory.bloodType || '', p.clinicalHistory.smoker ? 'Sí' : 'No', p.clinicalHistory.pregnant ? 'Sí' : 'No',
+      p.clinicalHistory.habits || '', p.clinicalHistory.observations || '',
       p.clinicalHistory.motiveOfConsult, p.createdAt,
     ]),
   ));

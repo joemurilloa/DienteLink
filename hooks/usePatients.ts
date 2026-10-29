@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { PatientRecord, ToothData, SurfaceData, OdontogramSnapshot, Payment } from '../types';
+import { PatientRecord, OdontogramSnapshot, PatientCollection, Payment } from '../types';
+import { shouldSyncPatientCollection } from '../lib/patientSync';
+import { canSeeClinicMoney } from '../lib/roles';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
-import { ensurePeriodontogramData } from '../lib/utils';
+import { ensurePeriodontogramData, ensureOdontogram } from '../lib/utils';
 import { DEMO_PATIENTS } from '../lib/demoData';
+import { PatientIdentificationSchema } from '../lib/schemas';
 
 // ===================== Helpers =====================
 function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
@@ -16,7 +19,28 @@ function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
     }, {} as Record<string, T[]>);
 }
 
-export function dbToPatient(p: any, notes: any[], events: any[], budgetItems: any[] = [], payments: any[] = [], consents: any[] = [], prescriptions: any[] = [], labWorks: any[] = []): PatientRecord {
+import {
+    DbPatientRow,
+    DbEvolutionNoteRow,
+    DbClinicalEventRow,
+    DbBudgetItemRow,
+    DbPaymentRow,
+    DbConsentFormRow,
+    DbPrescriptionRow,
+    DbLabWorkRow,
+} from '../lib/dbTypes';
+
+export function dbToPatient(
+    p: DbPatientRow,
+    notes?: DbEvolutionNoteRow[] | null,
+    events?: DbClinicalEventRow[] | null,
+    budgetItems?: Partial<DbBudgetItemRow>[] | null,
+    payments?: Partial<DbPaymentRow>[] | null,
+    consents?: DbConsentFormRow[] | null,
+    prescriptions?: DbPrescriptionRow[] | null,
+    labWorks?: DbLabWorkRow[] | null,
+    loadedCollections?: PatientCollection[],
+): PatientRecord {
     return {
         id: p.id,
         identification: {
@@ -34,53 +58,58 @@ export function dbToPatient(p: any, notes: any[], events: any[], budgetItems: an
             previousDiseases: p.previous_diseases || '',
             familyHistory: p.family_history || '',
             motiveOfConsult: p.motive_of_consult || '',
+            bloodType: p.blood_type || '',
+            smoker: !!p.smoker,
+            pregnant: !!p.pregnant,
+            habits: p.habits || '',
+            observations: p.observations || '',
         },
-        evolutionNotes: notes.map(n => ({
+        evolutionNotes: (notes ?? []).map(n => ({
             id: n.id,
             date: n.date,
             content: n.content,
             procedure: n.procedure || '',
         })),
-        history: events.map(e => ({
+        history: (events ?? []).map(e => ({
             id: e.id,
             date: e.date,
-            type: e.type,
+            type: e.type as import('../types').EventType,
             description: e.description,
             toothId: e.tooth_id,
         })),
         consentSigned: p.consent_signed || false,
-        odontogram: (p.odontogram as ToothData[]) || Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] as SurfaceData[] })),
+        odontogram: ensureOdontogram(p.odontogram),
         odontogramHistory: (p.odontogram_history as OdontogramSnapshot[]) || [],
         periodontogram: ensurePeriodontogramData(p.periodontogram),
         xrays: [],
-        budget: budgetItems.map(b => ({
-            id: b.id,
-            treatment: b.treatment,
-            toothId: b.tooth_id,
-            unitCost: b.unit_cost,
-            quantity: b.quantity,
-            status: b.status,
-            createdAt: b.created_at,
+        budget: (budgetItems ?? []).map(b => ({
+            id: b.id || '',
+            treatment: b.treatment || '',
+            toothId: b.tooth_id ?? undefined,
+            unitCost: b.unit_cost ?? 0,
+            quantity: b.quantity ?? 1,
+            status: b.status || 'pending',
+            createdAt: b.created_at || '',
         })),
-        payments: payments.map(pay => ({
-            id: pay.id,
-            amount: pay.amount,
-            method: pay.method,
+        payments: (payments ?? []).map(pay => ({
+            id: pay.id || '',
+            amount: pay.amount ?? 0,
+            method: (pay.method as import('../types').PaymentMethod) || 'cash',
             note: pay.note || '',
-            date: pay.date,
+            date: pay.date || '',
         })),
-        labWorks: labWorks.map(l => ({
+        labWorks: (labWorks ?? []).map(l => ({
             id: l.id,
             description: l.description,
             labName: l.lab_name,
             sentDate: l.sent_date,
             expectedDate: l.expected_date,
             cost: l.cost,
-            status: l.status,
+            status: l.status as import('../types').LabWorkStatus,
             createdAt: l.created_at,
         })),
         balance: 0,
-        consents: consents.map(c => ({
+        consents: (consents ?? []).map(c => ({
             id: c.id,
             title: c.title,
             content: c.content,
@@ -88,17 +117,19 @@ export function dbToPatient(p: any, notes: any[], events: any[], budgetItems: an
             signedAt: c.signed_at || '',
             witnessName: c.witness_name || '',
         })),
-        prescriptions: prescriptions.map(rx => ({
+        prescriptions: (prescriptions ?? []).map(rx => ({
             id: rx.id,
             date: rx.date,
             diagnosis: rx.diagnosis || '',
-            medications: rx.medications || [],
+            medications: (rx.medications as import('../types').PrescriptionMedication[]) || [],
             notes: rx.notes || '',
         })),
+        loadedCollections,
         createdAt: p.created_at,
         updatedAt: p.updated_at,
     };
 }
+
 
 export function usePatients() {
     const { user, clinicId, isGuest } = useAuth();
@@ -131,18 +162,26 @@ export function usePatients() {
                 return [];
             }
 
-            return (data || []).map(p => 
-                dbToPatient(
-                    p, 
-                    [], // evolution_notes empty in list view
-                    [], // clinical_events empty in list view
-                    p.budget_items || [], 
-                    p.payments || [], 
-                    [], // consent_forms empty in list view
-                    [], // prescriptions empty in list view
-                    []  // lab_works empty in list view
-                )
-            );
+            return (data || []).map(p => {
+                const row = p as unknown as import('../lib/dbTypes').DbPatientRow & {
+                    budget_items?: import('../lib/dbTypes').DbBudgetItemRow[] | null;
+                    payments?: import('../lib/dbTypes').DbPaymentRow[] | null;
+                };
+                const loaded: PatientCollection[] = [];
+                if (Array.isArray(row.budget_items)) loaded.push('budget');
+                if (Array.isArray(row.payments)) loaded.push('payments');
+                return dbToPatient(
+                    row,
+                    undefined,
+                    undefined,
+                    row.budget_items,
+                    row.payments,
+                    undefined,
+                    undefined,
+                    undefined,
+                    loaded,
+                );
+            });
         },
         enabled: !!clinicId && (isGuest || !!user),
     });
@@ -184,6 +223,9 @@ export function usePatient(patientId?: string) {
             }
 
             // Map the nested data to PatientRecord
+            const fullLoaded: PatientCollection[] = [
+                'evolutionNotes', 'history', 'budget', 'payments', 'consents', 'prescriptions', 'labWorks',
+            ];
             return dbToPatient(
                 data,
                 data.evolution_notes || [],
@@ -192,7 +234,8 @@ export function usePatient(patientId?: string) {
                 data.payments || [],
                 data.consent_forms || [],
                 data.prescriptions || [],
-                data.lab_works || []
+                data.lab_works || [],
+                fullLoaded,
             );
         },
         enabled: isGuest ? !!patientId : (!!patientId && !!clinicId),
@@ -203,7 +246,8 @@ export function usePatient(patientId?: string) {
 
 export function usePatientMutations() {
     const queryClient = useQueryClient();
-    const { user, clinicId, isGuest } = useAuth();
+    const { user, clinicId, isGuest, profile } = useAuth();
+    const canSeeMoney = canSeeClinicMoney(profile?.role);
 
     // Guest mode: local cache update only
     const guestPatientsUpdate = async (updater: (prev: PatientRecord[]) => PatientRecord[]) => {
@@ -228,17 +272,27 @@ export function usePatientMutations() {
             if (!clinicId) throw new Error('No doctor/clinic mapped');
             const doctorId = clinicId;
 
-            // 1. Main patient record
-            const { error: pErr } = await supabase.from('patients').upsert({
+            // ── Zod validation gate ──────────────────────────────────────────
+            // Validate the patient's identification before any DB write.
+            // This catches empty names, invalid emails, bad dates, etc.
+            const idValidation = PatientIdentificationSchema.safeParse(patient.identification);
+            if (!idValidation.success) {
+                const firstIssue = idValidation.error.issues[0];
+                throw new Error(`Datos inválidos: ${firstIssue.message} (campo: ${firstIssue.path.join('.')})`);
+            }
+
+            // 1. Main patient record (use validated/transformed data)
+            const validId = idValidation.data;
+            const patientRow = {
                 id: patient.id,
                 doctor_id: doctorId,
-                full_name: patient.identification.fullName,
-                birth_date: patient.identification.birthDate || null,
-                gender: patient.identification.gender || null,
-                address: patient.identification.address || null,
-                phone: patient.identification.phone || null,
-                email: patient.identification.email || null,
-                occupation: patient.identification.occupation || null,
+                full_name: validId.fullName,
+                birth_date: validId.birthDate || null,
+                gender: validId.gender || null,
+                address: validId.address || null,
+                phone: validId.phone || null,
+                email: validId.email || null,
+                occupation: validId.occupation || null,
                 allergies: patient.clinicalHistory.allergies,
                 medications: patient.clinicalHistory.medications || null,
                 previous_diseases: patient.clinicalHistory.previousDiseases || null,
@@ -249,80 +303,101 @@ export function usePatientMutations() {
                 odontogram_history: patient.odontogramHistory || [],
                 periodontogram: patient.periodontogram,
                 updated_at: patient.updatedAt || new Date().toISOString(),
-            }, { onConflict: 'id' });
+            };
+            const anamnesisExtras = {
+                blood_type: patient.clinicalHistory.bloodType || null,
+                smoker: patient.clinicalHistory.smoker ?? false,
+                pregnant: patient.clinicalHistory.pregnant ?? false,
+                habits: patient.clinicalHistory.habits || null,
+                observations: patient.clinicalHistory.observations || null,
+            };
+
+            let { error: pErr } = await supabase.from('patients').upsert(
+                { ...patientRow, ...anamnesisExtras },
+                { onConflict: 'id' },
+            );
+            if (pErr && /blood_type|smoker|pregnant|habits|observations/i.test(pErr.message)) {
+                console.warn('[usePatients] Faltan columnas de anamnesis. Ejecuta database/patient_anamnesis_fields.sql');
+                ({ error: pErr } = await supabase.from('patients').upsert(patientRow, { onConflict: 'id' }));
+            }
 
             if (pErr) throw new Error(`Error en paciente: ${pErr.message}`);
 
             // 2. Sub-tables sync logic
-            const syncSubTable = async (tableName: string, items: any[], mapFn: (i: any) => any) => {
+            const syncSubTable = async <T extends { id?: string }, R extends Record<string, unknown>>(
+                tableName: string,
+                key: PatientCollection,
+                items: T[] | null | undefined,
+                mapFn: (i: T) => R,
+            ) => {
                 const doctorId = clinicId;
-                
-                if (!items) return; // Safeguard contra undefined para evitar borrado accidental
+                if ((key === 'payments' || key === 'budget') && !canSeeMoney) return;
+                const mode = shouldSyncPatientCollection(patient.loadedCollections, key, items);
+                if (mode === 'skip') return;
 
-                // A. Upsert all current items
-                if (items.length > 0) {
-                    const mapped = items.map(mapFn);
-                    
-                    const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
-                    if (upsertErr) {
-                        console.error(`[Error Upserting ${tableName}]:`, upsertErr);
-                        throw upsertErr;
-                    }
-
-                    // B. Delete items belonging to this patient/doctor that are NOT in the current list
-                    const rawIds = items.map(i => i.id);
-                    const currentIds = rawIds.filter(id => typeof id === 'string' && id.length > 0);
-
-                    if (currentIds.length > 0) {
-                        const { error: delErr } = await supabase.from(tableName)
-                            .delete()
-                            .eq('patient_id', patient.id)
-                            .eq('doctor_id', doctorId)
-                            .not('id', 'in', `(${currentIds.join(',')})`); // PostgREST IN requires parentheses
-                        
-                        if (delErr) {
-                            console.error(`[Error Cleaning ${tableName}]:`, delErr);
-                            throw delErr;
-                        }
-                    }
-                } else {
-                    // C. If no items, delete all for this patient/doctor
+                if (mode === 'replace') {
                     const { error: delErr } = await supabase.from(tableName)
                         .delete()
                         .eq('patient_id', patient.id)
                         .eq('doctor_id', doctorId);
-                    
                     if (delErr) throw delErr;
+                    return;
+                }
+
+                const present = items ?? [];
+                const mapped = present.map(mapFn);
+                const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
+                if (upsertErr) {
+                    console.error(`[Error Upserting ${tableName}]:`, upsertErr);
+                    throw upsertErr;
+                }
+
+                const currentIds = present
+                    .map(i => i.id)
+                    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+                if (currentIds.length > 0) {
+                    const { error: delErr } = await supabase.from(tableName)
+                        .delete()
+                        .eq('patient_id', patient.id)
+                        .eq('doctor_id', doctorId)
+                        .not('id', 'in', `(${currentIds.join(',')})`);
+
+                    if (delErr) {
+                        console.error(`[Error Cleaning ${tableName}]:`, delErr);
+                        throw delErr;
+                    }
                 }
             };
 
-            await syncSubTable('evolution_notes', patient.evolutionNotes || [], n => ({
-                id: n.id, patient_id: patient.id, doctor_id: doctorId, date: n.date, content: n.content, procedure: n.procedure
-            }));
-
-            await syncSubTable('clinical_events', patient.history || [], e => ({
-                id: e.id, patient_id: patient.id, doctor_id: doctorId, date: e.date, type: e.type, description: e.description, tooth_id: e.toothId || null
-            }));
-
-            await syncSubTable('budget_items', patient.budget || [], b => ({
-                id: b.id, patient_id: patient.id, doctor_id: doctorId, treatment: b.treatment, tooth_id: b.toothId || null, unit_cost: b.unitCost, quantity: b.quantity, status: b.status, created_at: b.createdAt
-            }));
-
-            await syncSubTable('payments', patient.payments || [], p => ({
-                id: p.id, patient_id: patient.id, doctor_id: doctorId, amount: p.amount, method: p.method, note: p.note, date: p.date
-            }));
-
-            await syncSubTable('consent_forms', patient.consents || [], c => ({
-                id: c.id, patient_id: patient.id, doctor_id: doctorId, title: c.title, content: c.content, signature_data: c.signatureData, signed_at: c.signedAt, witness_name: c.witnessName || null
-            }));
-
-            await syncSubTable('prescriptions', patient.prescriptions || [], rx => ({
-                id: rx.id, patient_id: patient.id, doctor_id: doctorId, date: rx.date, diagnosis: rx.diagnosis, medications: rx.medications, notes: rx.notes
-            }));
-
-            await syncSubTable('lab_works', patient.labWorks || [], l => ({
-                id: l.id, patient_id: patient.id, doctor_id: doctorId, description: l.description, lab_name: l.labName, sent_date: l.sentDate, expected_date: l.expectedDate || null, cost: l.cost, status: l.status, created_at: l.createdAt
-            }));
+            // ── Sync sub-tables in PARALLEL ──────────────────────────────────
+            // All 7 sub-tables are independent of each other (no FK dependencies
+            // between them) so they can be upserted simultaneously.
+            // If any single sync fails, Promise.all rejects immediately, the
+            // mutation throws, and the optimistic update is rolled back.
+            await Promise.all([
+                syncSubTable('evolution_notes', 'evolutionNotes', patient.evolutionNotes, n => ({
+                    id: n.id, patient_id: patient.id, doctor_id: doctorId, date: n.date, content: n.content, procedure: n.procedure
+                })),
+                syncSubTable('clinical_events', 'history', patient.history, e => ({
+                    id: e.id, patient_id: patient.id, doctor_id: doctorId, date: e.date, type: e.type, description: e.description, tooth_id: e.toothId || null
+                })),
+                syncSubTable('budget_items', 'budget', patient.budget, b => ({
+                    id: b.id, patient_id: patient.id, doctor_id: doctorId, treatment: b.treatment, tooth_id: b.toothId || null, unit_cost: b.unitCost, quantity: b.quantity, status: b.status, created_at: b.createdAt
+                })),
+                syncSubTable('payments', 'payments', patient.payments, p => ({
+                    id: p.id, patient_id: patient.id, doctor_id: doctorId, amount: p.amount, method: p.method, note: p.note, date: p.date
+                })),
+                syncSubTable('consent_forms', 'consents', patient.consents, c => ({
+                    id: c.id, patient_id: patient.id, doctor_id: doctorId, title: c.title, content: c.content, signature_data: c.signatureData, signed_at: c.signedAt, witness_name: c.witnessName || null
+                })),
+                syncSubTable('prescriptions', 'prescriptions', patient.prescriptions, rx => ({
+                    id: rx.id, patient_id: patient.id, doctor_id: doctorId, date: rx.date, diagnosis: rx.diagnosis, medications: rx.medications, notes: rx.notes
+                })),
+                syncSubTable('lab_works', 'labWorks', patient.labWorks, l => ({
+                    id: l.id, patient_id: patient.id, doctor_id: doctorId, description: l.description, lab_name: l.labName, sent_date: l.sentDate, expected_date: l.expectedDate || null, cost: l.cost, status: l.status, created_at: l.createdAt
+                })),
+            ]);
 
             return patient;
         },

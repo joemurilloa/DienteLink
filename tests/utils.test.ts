@@ -7,6 +7,8 @@ import {
   createDefaultPeriodontogramData,
   migrateLegacyPeriodontogram,
   ensurePeriodontogramData,
+  createDefaultOdontogram,
+  ensureOdontogram,
 } from '../lib/utils';
 
 // ─── cn() ───
@@ -70,6 +72,24 @@ describe('generateId()', () => {
   it('returns a valid UUID format', () => {
     const id = generateId();
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  });
+});
+
+// ─── Odontogram helpers ───
+describe('ensureOdontogram()', () => {
+  it('creates 32 teeth when empty or missing', () => {
+    expect(ensureOdontogram([])).toHaveLength(32);
+    expect(ensureOdontogram(null)).toHaveLength(32);
+    expect(createDefaultOdontogram()[0]).toEqual({ id: 1, surfaces: [] });
+  });
+
+  it('keeps existing surfaces and fills missing ids', () => {
+    const result = ensureOdontogram([
+      { id: 14, surfaces: [{ surface: 'oclusal', condition: 'caries' }] },
+    ]);
+    expect(result).toHaveLength(32);
+    expect(result[13].surfaces).toEqual([{ surface: 'oclusal', condition: 'caries' }]);
+    expect(result[0].surfaces).toEqual([]);
   });
 });
 

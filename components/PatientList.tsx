@@ -28,13 +28,11 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = fal
     const isLoading = loading && showSkeleton;
 
     // Optimized search with debouncing
-    const baseFiltered = useOptimizedSearch(
+    const filteredPatients = useOptimizedSearch<PatientRecord>(
         patients,
         search,
         ['identification.fullName', 'identification.phone']
     );
-
-    const filteredPatients = baseFiltered;
 
     if (!loading && patients.length === 0) {
         return (

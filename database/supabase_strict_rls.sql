@@ -145,16 +145,17 @@ CREATE POLICY "RBAC: Delete prescriptions" ON public.prescriptions FOR DELETE US
 
 -- -------------------------------------------------------------
 -- FINANCIAL DATA (Budget Items, Payments)
--- ONLY Owner, Admin, Receptionist can Insert/Update. Assistant is Read-Only.
+-- SELECT: solo owner y admin (la pantalla tampoco se lo muestra al resto).
+-- INSERT/UPDATE: owner, admin y receptionist. Assistant no escribe.
 -- -------------------------------------------------------------
 -- Budget Items
-CREATE POLICY "RBAC: Select budget_items" ON public.budget_items FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "RBAC: Select budget_items" ON public.budget_items FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(public.get_my_role()) IN ('owner', 'admin'));
 CREATE POLICY "RBAC: Insert budget_items" ON public.budget_items FOR INSERT WITH CHECK ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'receptionist'));
 CREATE POLICY "RBAC: Update budget_items" ON public.budget_items FOR UPDATE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'receptionist'));
 CREATE POLICY "RBAC: Delete budget_items" ON public.budget_items FOR DELETE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin'));
 
 -- Payments
-CREATE POLICY "RBAC: Select payments" ON public.payments FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "RBAC: Select payments" ON public.payments FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(public.get_my_role()) IN ('owner', 'admin'));
 CREATE POLICY "RBAC: Insert payments" ON public.payments FOR INSERT WITH CHECK ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'receptionist'));
 CREATE POLICY "RBAC: Update payments" ON public.payments FOR UPDATE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'receptionist'));
 CREATE POLICY "RBAC: Delete payments" ON public.payments FOR DELETE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin'));

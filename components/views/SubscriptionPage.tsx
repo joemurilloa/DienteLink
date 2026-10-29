@@ -5,8 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../hooks/useSubscription';
 
 import { BILLING } from '../../lib/billing';
-import { prepareReceiptFile } from '../../lib/receiptFile';
-import BackupSettings from './Settings/BackupSettings';
+import { prepareReceiptFile, MAX_RECEIPT_BYTES } from '../../lib/receiptFile';
 
 const BANK_INFO = {
   bank:     BILLING.bank.name,
@@ -21,7 +20,8 @@ type Step = 'info' | 'upload' | 'done';
 const SubscriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, clinicId } = useAuth();
-  const subscription = useSubscription(clinicId, user?.created_at);
+  const subscription = useSubscription(clinicId, user?.created_at, user?.id);
+  const canPay = !profile?.clinic_id || profile.clinic_id === profile.id;
   const userEmail = user?.email ?? '';
 
   const [step, setStep] = useState<Step>('info');
@@ -45,7 +45,7 @@ const SubscriptionPage: React.FC = () => {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.size > 10 * 1024 * 1024) { setErrorMsg('Máximo 10MB.'); return; }
+    if (f.size > MAX_RECEIPT_BYTES) { setErrorMsg('Máximo 3 MB. Si es un PDF pesado, manda una captura.'); return; }
     const valid = ['image/jpeg','image/jpg','image/png','image/webp','application/pdf'];
     if (!valid.includes(f.type)) { setErrorMsg('Solo JPG, PNG, WebP o PDF.'); return; }
     setFile(f);
@@ -115,12 +115,13 @@ const SubscriptionPage: React.FC = () => {
             <p className="sub-success-text">
               {provisionalGranted ? (
                 <>
-                  Mientras lo revisamos, <strong>tienes acceso provisional durante 3 días.</strong> El mes se sumará
-                  a tu suscripción cuando confirmemos el pago.
+                  Recibimos tu foto. <strong>Sigues usando la app mientras la revisamos</strong> (hasta 3 días).
+                  El mes se suma cuando confirmemos el pago. Si pasa de 3 días, escríbenos por WhatsApp.
                 </>
               ) : (
                 <>
-                  Hemos recibido tu comprobante y <strong>lo revisaremos en menos de 24 horas.</strong>
+                  Recibimos tu foto. La revisamos a mano. El mes se suma cuando confirmemos el pago.
+                  Si no ves el plan activo, escríbenos por WhatsApp.
                 </>
               )}
             </p>
@@ -157,10 +158,29 @@ const SubscriptionPage: React.FC = () => {
           <p className="sub-hero-subtitle">Completa tu pago para mantener acceso ininterrumpido a todas las herramientas.</p>
         </div>
 
-        {!subscription.isActive && (
-          <div className="mb-6">
-            <BackupSettings />
+        {subscription.error && !subscription.isActive && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">No se pudo comprobar el plan.</p>
+            <p className="mt-1">{subscription.error}</p>
+            <button type="button" className="mt-3 font-semibold underline" onClick={() => subscription.refresh()}>
+              Reintentar
+            </button>
           </div>
+        )}
+
+        {subscription.lastReceiptStatus === 'rejected' && !subscription.isActive && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">La última foto no sirvió.</p>
+            <p className="mt-1">
+              {subscription.lastReceiptNote || 'Súbela otra vez más clara, o escríbenos por WhatsApp.'}
+            </p>
+          </div>
+        )}
+
+        {!subscription.isActive && (
+          <p className="mb-6 text-sm text-slate-500">
+            Los expedientes siguen guardados. Se vuelven a abrir cuando el plan de este consultorio está vigente.
+          </p>
         )}
 
         <div className="sub-grid-modern">
@@ -176,18 +196,26 @@ const SubscriptionPage: React.FC = () => {
                 <li><span className="feat-check">✓</span> Expedientes y pacientes ilimitados</li>
                 <li><span className="feat-check">✓</span> Odontograma profesional digital</li>
                 <li><span className="feat-check">✓</span> Agenda inteligente y citas</li>
-                <li><span className="feat-check">✓</span> Recordatorio a pacientes por WhatsApp en un toque</li>
+                <li><span className="feat-check">✓</span> Aviso a pacientes por WhatsApp (tú envías el mensaje)</li>
                 <li><span className="feat-check">✓</span> Portal de reserva para pacientes</li>
                 <li><span className="feat-check">✓</span> Control de pagos y presupuestos</li>
               </ul>
               <div className="sub-guarantee">
-                <span>🔒</span> Tus datos clínicos están seguros y respaldados, independientemente de tu suscripción.
+                <span>🔒</span> Los expedientes no se borran al vencer el plan. Vuelven a abrirse al renovarlo.
               </div>
             </div>
           </div>
 
-          {/* Right Column: Steps (Transfer & Upload) */}
           <div className="sub-col-right">
+            {!canPay ? (
+              <div className="sub-action-card">
+                <h2 className="sub-action-title">El plan lo renueva el dueño</h2>
+                <p className="sub-action-desc">
+                  Esta cuenta usa el acceso del consultorio. Cuando el plan vence, también se cierra aquí. El comprobante lo envía la cuenta del dueño.
+                </p>
+              </div>
+            ) : (
+            <>
             {/* Step 1 */}
             <div className="sub-action-card">
               <h2 className="sub-action-title">1. Realiza la transferencia</h2>
@@ -244,7 +272,7 @@ const SubscriptionPage: React.FC = () => {
                   <div className="sub-upload-empty">
                     <span className="sub-upl-icon">📸</span>
                     <span className="sub-upl-text">Toca para adjuntar comprobante</span>
-                    <span className="sub-upl-hint">JPG, PNG, WebP o PDF (Máx. 10MB)</span>
+                    <span className="sub-upl-hint">JPG, PNG, WebP o PDF (máx. 3 MB)</span>
                   </div>
                 )}
                 <input
@@ -285,6 +313,8 @@ const SubscriptionPage: React.FC = () => {
 
               {errorMsg && <div className="sub-error-modern" style={{ marginTop: 16, marginBottom: 0 }}>⚠️ {errorMsg}</div>}
             </div>
+            </>
+            )}
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { cn, createDefaultPeriodontogramData } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import DateInput from './DateInput';
+import { PatientIdentificationSchema, zodErrorToFieldErrors } from '../lib/schemas';
 
 interface Props {
     isOpen: boolean;
@@ -27,41 +28,21 @@ const NewPatientModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
 
     if (!isOpen) return null;
 
-    const validate = (): boolean => {
-        const newErrors: Record<string, string> = {};
-        const name = formData.fullName.trim();
-        if (!name) {
-            newErrors.fullName = 'El nombre es obligatorio';
-        } else if (name.length < 3) {
-            newErrors.fullName = 'Mínimo 3 caracteres';
-        }
-        if (!formData.birthDate) {
-            newErrors.birthDate = 'La fecha de nacimiento es obligatoria';
-        } else {
-            // String comparison is timezone-safe (YYYY-MM-DD sorts lexicographically)
-            const todayStr = new Date().toISOString().split('T')[0];
-            if (formData.birthDate > todayStr) newErrors.birthDate = 'La fecha no puede ser futura';
-        }
-        const phone = formData.phone.trim();
-        if (!phone) {
-            newErrors.phone = 'El teléfono es obligatorio';
-        } else if (phone.replace(/[\s\-\+\(\)]/g, '').length < 8) {
-            newErrors.phone = 'Teléfono inválido (mínimo 8 dígitos)';
-        }
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = 'Correo electrónico inválido';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validate()) return;
 
+        // Validate with shared Zod schema (same rules as the mutation layer)
+        const result = PatientIdentificationSchema.safeParse(formData);
+        if (!result.success) {
+            setErrors(zodErrorToFieldErrors(result.error));
+            return;
+        }
+
+        const validData = result.data;
         const newPatient: PatientRecord = {
             id: crypto.randomUUID(),
-            identification: { ...formData, fullName: formData.fullName.trim() },
+            identification: validData as PatientIdentification,
             clinicalHistory: {
                 allergies: [],
                 medications: '',

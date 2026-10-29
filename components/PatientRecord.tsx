@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { PatientRecord as PatientRecordType } from '../types';
-import { cn, ensurePeriodontogramData } from '../lib/utils';
+import { PatientRecord as PatientRecordType, ToothData, OdontogramSnapshot } from '../types';
+import { cn, ensurePeriodontogramData, ensureOdontogram } from '../lib/utils';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
@@ -116,6 +116,20 @@ const PatientRecord: React.FC<Props> = ({ patient, onUpdate }) => {
         setIsFocusMode(false);
         setActiveTab('budget');
     };
+    const handleOdontogramUpdate = (teeth: ToothData[]) => {
+        onUpdate({ ...patient, odontogram: teeth });
+    };
+    const handleSaveOdontogramSnapshot = () => {
+        const snapshot: OdontogramSnapshot = {
+            id: crypto.randomUUID(),
+            date: new Date().toISOString(),
+            teeth: JSON.parse(JSON.stringify(ensureOdontogram(patient.odontogram))),
+        };
+        return onUpdate({
+            ...patient,
+            odontogramHistory: [snapshot, ...(patient.odontogramHistory || [])].slice(0, 30),
+        });
+    };
     const [isExporting, setIsExporting] = useState(false);
 
     // Show wow banner only once for newly created patients (< 3 minutes)
@@ -222,8 +236,9 @@ const ENABLE_PERIODONTOGRAM = false;
                 <Odontogram
                     patientId={patient.id}
                     teeth={patient.odontogram || []}
-                    onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })}
+                    onUpdate={handleOdontogramUpdate}
                     snapshots={patient.odontogramHistory || []}
+                    onSaveSnapshot={canEditClinical ? handleSaveOdontogramSnapshot : undefined}
                     onAddToBudget={canViewFinancial ? handleAddToBudget : undefined}
                     readOnly={!canEditClinical}
                 />
@@ -264,7 +279,7 @@ const ENABLE_PERIODONTOGRAM = false;
             case 'odontogram':
                 return (
                     <div className="space-y-0 animate-in-up duration-500 min-h-[600px] h-full flex flex-col">
-                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={(teeth) => onUpdate({ ...patient, odontogram: teeth })} snapshots={patient.odontogramHistory || []} onAddToBudget={canViewFinancial ? handleAddToBudget : undefined} readOnly={!canEditClinical} />
+                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={handleOdontogramUpdate} snapshots={patient.odontogramHistory || []} onSaveSnapshot={canEditClinical ? handleSaveOdontogramSnapshot : undefined} onAddToBudget={canViewFinancial ? handleAddToBudget : undefined} readOnly={!canEditClinical} />
                     </div>
                 );
             case 'periodontogram':

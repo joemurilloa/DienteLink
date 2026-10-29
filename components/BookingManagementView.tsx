@@ -538,8 +538,8 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                       {req.status === 'approved' && req.patientPhone && (
                         <WhatsAppAction
                           storageKey={`reserva_${req.id}`}
-                          label="Avisar por WhatsApp"
-                          sentLabel="Paciente avisado"
+                          label="Abrir WhatsApp"
+                          sentLabel="Marcado"
                           title="Abrir WhatsApp con la confirmación de la cita"
                           send={() => whatsappService.sendBookingConfirmation(
                             req.patientPhone,

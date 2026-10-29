@@ -64,7 +64,7 @@ const WhatsAppAction: React.FC<Props> = ({
   persistLocal = true,
   onSent,
   label,
-  sentLabel = 'Enviado',
+  sentLabel = 'Marcado',
   variant = 'pill',
   title,
 }) => {

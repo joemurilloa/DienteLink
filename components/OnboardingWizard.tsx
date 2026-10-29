@@ -113,7 +113,7 @@ const OnboardingWizard: React.FC = () => {
 
                     <p className="text-xs text-slate-600">
                         Al continuar aceptas los{' '}
-                        <a href="#/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">términos de uso y privacidad</a>.
+                        <a href="/terminos" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">términos de uso y privacidad</a>.
                     </p>
 
                     <button

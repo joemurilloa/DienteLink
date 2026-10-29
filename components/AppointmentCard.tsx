@@ -122,9 +122,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
             storageKey={`reminder_${appointment.id}`}
             initiallySent={appointment.reminderStatus === 'sent'}
             persistLocal={false}
-            label="Enviar recordatorio por WhatsApp"
-            sentLabel="Recordatorio enviado"
-            title="Abrir WhatsApp con el recordatorio listo"
+            label="Abrir WhatsApp"
+            sentLabel="Marcado"
+            title="Abre WhatsApp con el texto listo. Tú pulsas Enviar."
             send={sendReminder}
             onSent={() => onReminderSent?.(appointment.id, 'sent')}
           />
@@ -248,8 +248,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                   storageKey={`reminder_${appointment.id}`}
                   initiallySent={appointment.reminderStatus === 'sent'}
                   persistLocal={false}
-                  label="Enviar recordatorio por WhatsApp"
-                  sentLabel="Recordatorio enviado"
+                  label="Abrir WhatsApp"
+                  sentLabel="Marcado"
                   send={sendReminder}
                   onSent={() => onReminderSent?.(appointment.id, 'sent')}
                 />

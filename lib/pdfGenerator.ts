@@ -121,6 +121,11 @@ export const generatePatientPDF = async (
                 ['Alergias', patient.clinicalHistory.allergies?.join(', ') || 'Ninguna registrada'],
                 ['Enfermedades Base', patient.clinicalHistory.previousDiseases || 'Ninguna registrada'],
                 ['Medicamentos Activos', patient.clinicalHistory.medications || 'Ninguno registrado'],
+                ['Tipo de sangre', patient.clinicalHistory.bloodType || 'No registrado'],
+                ['Fumador', patient.clinicalHistory.smoker ? 'Sí' : 'No'],
+                ['Embarazo', patient.clinicalHistory.pregnant ? 'Sí' : 'No'],
+                ['Hábitos', patient.clinicalHistory.habits || 'Ninguno registrado'],
+                ['Observaciones', patient.clinicalHistory.observations || 'Ninguna'],
                 ['Motivo de Consulta', patient.clinicalHistory.motiveOfConsult || 'Revisión general']
             ],
             columnStyles: { 0: { cellWidth: 45, fontStyle: 'bold', fillColor: LIGHT_BG } },

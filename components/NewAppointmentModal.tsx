@@ -8,6 +8,7 @@ import { cn, generateId, getInitials, getLocalISODate } from '../lib/utils';
 import { generateAvailableSlots } from '../services/bookingUtils';
 import { bookingService } from '../services/bookingService';
 import { sileo } from 'sileo';
+import { AppointmentSchema } from '../lib/schemas';
 
 const APPOINTMENT_TYPES: AppointmentType[] = ['Consulta', 'Seguimiento', 'Cirugía', 'Revisión'];
 
@@ -89,17 +90,22 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
     setIsCreating(true);
     setFormError('');
 
-    if (!newApt.patientName.trim()) {
-      setFormError('El nombre del paciente es requerido');
-      setIsCreating(false);
-      return;
-    }
-    if (newApt.patientName.trim().length < 3) {
-      setFormError('El nombre es demasiado corto');
+    // ── Schema validation (field-level rules) ────────────────────────
+    const schemaResult = AppointmentSchema.safeParse({
+      patientName: newApt.patientName,
+      date: newApt.date,
+      time: newApt.time,
+      type: newApt.type,
+      patientId: newApt.patientId,
+    });
+    if (!schemaResult.success) {
+      const firstIssue = schemaResult.error.issues[0];
+      setFormError(firstIssue.message);
       setIsCreating(false);
       return;
     }
 
+    // ── Business-logic checks (not schema concerns) ────────────────
     if (isPastSlot(newApt.date, newApt.time)) {
       setFormError('Ese horario ya pasó. Elige una hora posterior a la actual.');
       setIsCreating(false);

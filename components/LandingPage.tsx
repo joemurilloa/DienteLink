@@ -394,7 +394,7 @@ const LandingPage: React.FC = () => {
             id="reservas"
             n="04"
             title="Reservas"
-            text="Compartes un enlace con las horas que dejaste abiertas. El paciente elige una y la cita entra a tu agenda. La de María, a las 08:30, ya no sale como libre."
+            text="Compartes un enlace con las horas que dejaste abiertas. El paciente pide una hora y te llega como solicitud: tú la apruebas y recién entonces entra a la agenda. Mientras está pendiente, ese horario ya no sale como libre."
           >
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">Lo que ve tu paciente</p>
           <p className="text-base font-semibold text-slate-900">Elige un horario</p>

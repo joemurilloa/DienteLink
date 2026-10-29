@@ -1,5 +1,5 @@
 
-import { PerioSite, PerioToothData, PeriodontogramData, PatientRecord, Appointment } from '../types';
+import { PerioSite, PerioToothData, PeriodontogramData, PatientRecord, Appointment, ToothData } from '../types';
 
 export function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -50,6 +50,28 @@ export function getLocalISODate(date: Date = new Date()): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+// --- Odontogram helpers ---
+
+export function createDefaultOdontogram(): ToothData[] {
+  return Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] }));
+}
+
+/** Completa 32 piezas si llega vacío, incompleto o mal formado. Evita el spinner eterno. */
+export function ensureOdontogram(raw: unknown): ToothData[] {
+  if (!Array.isArray(raw) || raw.length === 0) return createDefaultOdontogram();
+  const byId = new Map<number, ToothData>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const tooth = item as ToothData;
+    if (typeof tooth.id !== 'number' || tooth.id < 1 || tooth.id > 32) continue;
+    byId.set(tooth.id, {
+      id: tooth.id,
+      surfaces: Array.isArray(tooth.surfaces) ? tooth.surfaces : [],
+    });
+  }
+  return Array.from({ length: 32 }, (_, i) => byId.get(i + 1) ?? { id: i + 1, surfaces: [] });
 }
 
 // --- Periodontogram helpers ---
