@@ -1,6 +1,7 @@
 
-# El disparador de la base llama a esta función con la clave pública (no es un JWT),
-# por eso no se verifica JWT; la función valida la solicitud contra la base.
+# pg_net no manda un JWT de usuario. La función exige el header
+# x-notify-secret (NOTIFY_WEBHOOK_SECRET), el mismo valor que Vault
+# guarda como notify_webhook_secret.
 [functions.notify-doctor-new-request]
 enabled = true
 verify_jwt = false

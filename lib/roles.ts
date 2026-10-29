@@ -26,6 +26,12 @@ export function canSeeClinicMoney(role: string | null | undefined): boolean {
   return normalized === 'owner' || normalized === 'admin';
 }
 
+/** Notas, eventos, consentimientos y recetas. La recepcionista no los ve. */
+export function canViewClinicalChart(role: string | null | undefined): boolean {
+  const normalized = normalizeClinicRole(role) ?? (role?.trim() ? null : 'owner');
+  return normalized === 'owner' || normalized === 'admin' || normalized === 'assistant';
+}
+
 export const ROLE_LABELS: Record<ClinicRole, string> = {
   owner: 'Propietario',
   admin: 'Administrador',

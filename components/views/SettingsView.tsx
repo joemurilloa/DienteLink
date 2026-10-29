@@ -39,7 +39,7 @@ const SettingsView: React.FC = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const subscription = useSubscription(clinicId, user?.created_at, user?.id);
+  const subscription = useSubscription(clinicId);
 
   // Contextual tip (show once)
   useSettingsTip();

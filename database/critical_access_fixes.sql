@@ -89,17 +89,6 @@ AS $$
        WHERE r.clinic_id = p_clinic_id
          AND r.status = 'pending'
          AND r.provisional_access_until > now()
-    )
-    OR (
-      NOT EXISTS (
-        SELECT 1 FROM public.subscriptions s WHERE s.clinic_id = p_clinic_id
-      )
-      AND EXISTS (
-        SELECT 1
-          FROM auth.users u
-         WHERE u.id = p_clinic_id
-           AND u.created_at + interval '14 days' > now()
-      )
     );
 $$;
 
@@ -140,14 +129,6 @@ BEGIN
        WHERE r.clinic_id = p_clinic_id
          AND r.status = 'pending'
          AND r.provisional_access_until > now()
-      UNION ALL
-      SELECT u.created_at + interval '14 days'
-        FROM auth.users u
-       WHERE u.id = p_clinic_id
-         AND NOT EXISTS (
-           SELECT 1 FROM public.subscriptions s WHERE s.clinic_id = p_clinic_id
-         )
-         AND u.created_at + interval '14 days' > now()
     ) ends;
 
   RETURN v_until;
@@ -328,26 +309,33 @@ AS $$
     FROM public.appointments a
     JOIN public.booking_settings b ON b.doctor_id = a.doctor_id
    WHERE a.doctor_id = p_doctor_id
-     AND a.status IN ('Programada', 'Completada')
+     AND a.status = 'Programada'
+     AND a.date >= to_char((now() AT TIME ZONE 'America/Tegucigalpa')::date, 'YYYY-MM-DD')
      AND b.is_active = true
      AND public.clinic_has_paid_access(p_doctor_id);
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_public_appointment_requests(p_doctor_id uuid)
-RETURNS TABLE (id uuid, requested_date text, requested_time text, status text, appointment_type text)
+DROP FUNCTION IF EXISTS public.get_public_appointment_requests(uuid);
+
+CREATE FUNCTION public.get_public_appointment_requests(p_doctor_id uuid)
+RETURNS TABLE (requested_date text, requested_time text)
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT ar.id, ar.requested_date, ar.requested_time, ar.status, ar.appointment_type
+  SELECT ar.requested_date, ar.requested_time
     FROM public.appointment_requests ar
     JOIN public.booking_settings b ON b.doctor_id = ar.doctor_id
    WHERE ar.doctor_id = p_doctor_id
      AND ar.status IN ('pending', 'approved')
+     AND ar.requested_date >= to_char((now() AT TIME ZONE 'America/Tegucigalpa')::date, 'YYYY-MM-DD')
      AND b.is_active = true
      AND public.clinic_has_paid_access(p_doctor_id);
 $$;
+
+REVOKE ALL ON FUNCTION public.get_public_appointment_requests(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_public_appointment_requests(uuid) TO anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.block_bookings_if_unpaid()
 RETURNS trigger

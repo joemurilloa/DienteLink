@@ -246,6 +246,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     bookingService.reset();
     try {
       ['dientelink_notifications_v2', 'dientelink_last_backup', 'dientelink_shown_tips'].forEach(k => localStorage.removeItem(k));
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('dientelink_notifications_v3_') || key.startsWith('dientelink_catalog_')) {
+          localStorage.removeItem(key);
+        }
+      }
     } catch { /* ignore */ }
     const { error } = await supabase.auth.signOut({ scope: 'global' });
     if (error) {

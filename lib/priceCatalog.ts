@@ -23,8 +23,6 @@ export const DEFAULT_CATALOG: CatalogItem[] = [
   { id: 'blanqueamiento', name: 'Blanqueamiento', cost: 3000 },
 ];
 
-export const storageKey = (id: string) => `dientelink_catalog_${id}`;
-
 export function parseCatalogItems(raw: unknown, emptyFallback: CatalogItem[] = DEFAULT_CATALOG): CatalogItem[] {
   if (!Array.isArray(raw)) return emptyFallback;
   const items: CatalogItem[] = [];
@@ -46,125 +44,54 @@ export function parseCatalogItems(raw: unknown, emptyFallback: CatalogItem[] = D
   return items.length > 0 ? items : emptyFallback;
 }
 
-/** Solo sube a la nube un catálogo que este navegador guardó de verdad. La lista de fábrica no cuenta. */
-export function localCatalogToMigrate(raw: string | null): CatalogItem[] | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return null;
-    const items = parseCatalogItems(parsed, []);
-    return items.length > 0 ? items : null;
-  } catch {
-    return null;
-  }
-}
-
-export function loadLocalCatalog(id: string): CatalogItem[] {
-  try {
-    const raw = localStorage.getItem(storageKey(id));
-    if (!raw) return DEFAULT_CATALOG;
-    const parsed = JSON.parse(raw);
-    return parseCatalogItems(parsed);
-  } catch {
-    return DEFAULT_CATALOG;
-  }
-}
-
-export function saveLocalCatalog(id: string, items: CatalogItem[]) {
-  try {
-    localStorage.setItem(storageKey(id), JSON.stringify(items));
-  } catch {
-    // ignore quota/storage errors
-  }
-}
-
 /**
  * Catálogo de precios de la clínica.
- * Sincronizado en Supabase (PostgreSQL) para todos los miembros del equipo,
- * con respaldo en localStorage para modo offline o invitado.
+ * La lista vive en Supabase y la caché de TanStack Query.
  */
 export function usePriceCatalog() {
-  const { clinicId, user, isGuest, profile } = useAuth();
+  const { clinicId, isGuest, profile } = useAuth();
   const queryClient = useQueryClient();
-  const activeId = clinicId || user?.id || 'default';
-  const canEdit = !isGuest && canSeeClinicMoney(profile?.role);
+  const activeId = clinicId || 'none';
+  const canEditRole = !isGuest && canSeeClinicMoney(profile?.role);
 
-  const { data: catalog = loadLocalCatalog(activeId), isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['priceCatalog', activeId],
+    enabled: !isGuest && !!clinicId,
     queryFn: async (): Promise<CatalogItem[]> => {
-      // Si estamos en modo demo o no hay clínica mapeada, usar local
-      if (isGuest || !clinicId) {
-        return loadLocalCatalog(activeId);
-      }
+      if (!clinicId) return DEFAULT_CATALOG;
+      const { data: row, error } = await supabase
+        .from('price_catalogs')
+        .select('items')
+        .eq('doctor_id', clinicId)
+        .maybeSingle();
 
-      try {
-        const { data, error } = await supabase
-          .from('price_catalogs')
-          .select('items')
-          .eq('doctor_id', clinicId)
-          .maybeSingle();
-
-        if (error) {
-          // Si la tabla aún no existe o hay error de red, usamos el respaldo local
-          console.warn('[usePriceCatalog] Usando respaldo local por error en Postgres:', error.message);
-          return loadLocalCatalog(activeId);
-        }
-
-        if (data && Array.isArray(data.items)) {
-          const parsed = parseCatalogItems(data.items, []);
-          if (parsed.length > 0) saveLocalCatalog(activeId, parsed);
-          return parsed.length > 0 ? parsed : loadLocalCatalog(activeId);
-        }
-
-        const custom = localCatalogToMigrate(
-          typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey(activeId)) : null,
-        );
-        if (canEdit && custom) {
-          const { error: seedErr } = await supabase
-            .from('price_catalogs')
-            .upsert(
-              {
-                doctor_id: clinicId,
-                items: custom,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'doctor_id' }
-            );
-          if (seedErr) {
-            console.warn('[usePriceCatalog] Error al sembrar catálogo inicial:', seedErr.message);
-          }
-          return custom;
-        }
-        return loadLocalCatalog(activeId);
-      } catch (err) {
-        console.warn('[usePriceCatalog] Excepción al consultar catálogo, usando local:', err);
-        return loadLocalCatalog(activeId);
-      }
+      if (error) throw error;
+      if (!row || !Array.isArray(row.items)) return DEFAULT_CATALOG;
+      const parsed = parseCatalogItems(row.items, []);
+      return parsed.length > 0 ? parsed : DEFAULT_CATALOG;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutos de caché en memoria
+    staleTime: 1000 * 60 * 5,
   });
+
+  const catalog = data ?? DEFAULT_CATALOG;
+  const canEdit = canEditRole && !isLoading && !isError && data !== undefined;
 
   const mutation = useMutation({
     mutationFn: async (newItems: CatalogItem[]) => {
-      saveLocalCatalog(activeId, newItems);
+      if (!canEditRole || !clinicId) return newItems;
 
-      if (!isGuest && clinicId && canEdit) {
-        const { error } = await supabase
-          .from('price_catalogs')
-          .upsert(
-            {
-              doctor_id: clinicId,
-              items: newItems,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'doctor_id' }
-          );
+      const { error } = await supabase
+        .from('price_catalogs')
+        .upsert(
+          {
+            doctor_id: clinicId,
+            items: newItems,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'doctor_id' }
+        );
 
-        if (error) {
-          console.error('[usePriceCatalog] Error al guardar catálogo en Postgres:', error);
-          throw error;
-        }
-      }
+      if (error) throw error;
       return newItems;
     },
     onMutate: async (newItems) => {

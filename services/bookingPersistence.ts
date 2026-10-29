@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getCache, setCache, delCache } from '../lib/simpleCache';
+import { getLocalISODate } from '../lib/utils';
 
 // Persistence helpers for BookingService. These wrap Supabase queries / RPCs
 // and centralize error handling for DB access.
@@ -137,7 +138,8 @@ export async function fetchConfirmedAppointments(doctorId: string) {
     .from('appointments')
     .select('date, time')
     .eq('doctor_id', doctorId)
-    .in('status', ['Programada', 'Completada']);
+    .eq('status', 'Programada')
+    .gte('date', getLocalISODate());
   if (error) throw error;
   const result = data ?? [];
   setCache(cacheKey, result, 10 * 1000);

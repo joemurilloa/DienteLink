@@ -117,28 +117,28 @@ USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND pub
 
 -- -------------------------------------------------------------
 -- CLINICAL DATA (Evolution Notes, Clinical Events/Odontogram, Consent Forms, Prescriptions)
--- ONLY Owner, Admin, Assistant can Insert/Update. Receptionist is Read-Only.
+-- SELECT / INSERT / UPDATE: owner, admin, assistant. La recepcionista no lee.
 -- -------------------------------------------------------------
 -- Evolution Notes
-CREATE POLICY "RBAC: Select evolution_notes" ON public.evolution_notes FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "RBAC: Select evolution_notes" ON public.evolution_notes FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Insert evolution_notes" ON public.evolution_notes FOR INSERT WITH CHECK ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Update evolution_notes" ON public.evolution_notes FOR UPDATE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Delete evolution_notes" ON public.evolution_notes FOR DELETE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin'));
 
 -- Clinical Events
-CREATE POLICY "RBAC: Select clinical_events" ON public.clinical_events FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "RBAC: Select clinical_events" ON public.clinical_events FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Insert clinical_events" ON public.clinical_events FOR INSERT WITH CHECK ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Update clinical_events" ON public.clinical_events FOR UPDATE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Delete clinical_events" ON public.clinical_events FOR DELETE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin'));
 
 -- Consent Forms
-CREATE POLICY "RBAC: Select consent_forms" ON public.consent_forms FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "RBAC: Select consent_forms" ON public.consent_forms FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Insert consent_forms" ON public.consent_forms FOR INSERT WITH CHECK ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Update consent_forms" ON public.consent_forms FOR UPDATE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Delete consent_forms" ON public.consent_forms FOR DELETE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin'));
 
 -- Prescriptions
-CREATE POLICY "RBAC: Select prescriptions" ON public.prescriptions FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "RBAC: Select prescriptions" ON public.prescriptions FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Insert prescriptions" ON public.prescriptions FOR INSERT WITH CHECK ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Update prescriptions" ON public.prescriptions FOR UPDATE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "RBAC: Delete prescriptions" ON public.prescriptions FOR DELETE USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND public.get_my_role() IN ('owner', 'admin'));

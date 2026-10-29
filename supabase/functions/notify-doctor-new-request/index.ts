@@ -1,8 +1,9 @@
 // @ts-nocheck
 // Aviso de solicitud nueva (pública) -> doctor + acuse al paciente.
-// Lo invoca un disparador de la base (ver database/notifications_setup.sql).
-// No usa secretos compartidos: ignora el contenido del payload salvo el id y
-// valida contra la base que la solicitud exista, sea reciente y no se haya avisado.
+// Lo invoca un disparador de la base (database/phase5_public_booking_hardening.sql).
+// verify_jwt queda en false porque pg_net no manda un JWT de usuario.
+// El header x-notify-secret tiene que coincidir con NOTIFY_WEBHOOK_SECRET
+// y con el secreto Vault notify_webhook_secret. Sin eso no se reclama la fila.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 import { Resend } from "https://esm.sh/resend@3.2.0"
 
@@ -12,8 +13,27 @@ const json = (body: unknown, status = 200) =>
 const esc = (s: unknown) =>
   s == null ? "" : String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 
+function secretsMatch(given: string, expected: string): boolean {
+  const a = new TextEncoder().encode(given)
+  const b = new TextEncoder().encode(expected)
+  const len = Math.max(a.length, b.length)
+  let diff = a.length ^ b.length
+  for (let i = 0; i < len; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0)
+  return diff === 0
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405)
+
+  const expectedSecret = Deno.env.get("NOTIFY_WEBHOOK_SECRET") ?? ""
+  const givenSecret = req.headers.get("x-notify-secret") ?? ""
+  if (!expectedSecret) {
+    console.error("NOTIFY_WEBHOOK_SECRET no está configurado")
+    return json({ error: "Aviso no configurado" }, 500)
+  }
+  if (!givenSecret || !secretsMatch(givenSecret, expectedSecret)) {
+    return json({ error: "No autorizado" }, 401)
+  }
 
   try {
     const payload = await req.json()

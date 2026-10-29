@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { PatientRecord, OdontogramSnapshot, PatientCollection, Payment } from '../types';
 import { shouldSyncPatientCollection } from '../lib/patientSync';
-import { canSeeClinicMoney } from '../lib/roles';
+import { canSeeClinicMoney, canViewClinicalChart } from '../lib/roles';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import { ensurePeriodontogramData, ensureOdontogram } from '../lib/utils';
@@ -188,7 +188,8 @@ export function usePatients() {
 }
 
 export function usePatient(patientId?: string) {
-    const { clinicId, isGuest } = useAuth();
+    const { clinicId, isGuest, profile } = useAuth();
+    const canViewChart = canViewClinicalChart(profile?.role);
     
     const { data: patient, ...rest } = useQuery({
         queryKey: ['patient', patientId, clinicId],
@@ -224,7 +225,8 @@ export function usePatient(patientId?: string) {
 
             // Map the nested data to PatientRecord
             const fullLoaded: PatientCollection[] = [
-                'evolutionNotes', 'history', 'budget', 'payments', 'consents', 'prescriptions', 'labWorks',
+                ...(canViewChart ? ['evolutionNotes', 'history', 'consents', 'prescriptions'] as const : []),
+                'budget', 'payments', 'labWorks',
             ];
             return dbToPatient(
                 data,
@@ -248,6 +250,7 @@ export function usePatientMutations() {
     const queryClient = useQueryClient();
     const { user, clinicId, isGuest, profile } = useAuth();
     const canSeeMoney = canSeeClinicMoney(profile?.role);
+    const canViewChart = canViewClinicalChart(profile?.role);
 
     // Guest mode: local cache update only
     const guestPatientsUpdate = async (updater: (prev: PatientRecord[]) => PatientRecord[]) => {
@@ -332,6 +335,7 @@ export function usePatientMutations() {
             ) => {
                 const doctorId = clinicId;
                 if ((key === 'payments' || key === 'budget') && !canSeeMoney) return;
+                if ((key === 'evolutionNotes' || key === 'history' || key === 'consents' || key === 'prescriptions') && !canViewChart) return;
                 const mode = shouldSyncPatientCollection(patient.loadedCollections, key, items);
                 if (mode === 'skip') return;
 

@@ -1,16 +1,28 @@
-# DienteLink — Database Migrations
+# DienteLink — Base de datos
 
-Todos los scripts SQL se ejecutan **manualmente** en el SQL Editor de Supabase (`app.supabase.com`).
-No se usa Supabase CLI migrations en este proyecto.
+El esquema oficial está en `supabase/migrations/20261029071346_baseline_public.sql`.
+Es una foto del esquema `public` que ya está en producción, sin datos de pacientes.
+Esa versión ya quedó marcada como aplicada. No se vuelve a ejecutar en el proyecto en vivo.
 
-> [!IMPORTANT]
-> Si la base **ya está en producción**, no vuelvas a correr los scripts 01–29. Pega solo `phase1_access_hardening.sql` y después `phase2_schema_consolidation.sql`. Volver a ejecutar un script viejo puede pisar una función nueva.
->
-> Una instalación desde cero sí sigue el orden de abajo y termina con los scripts 30 y 31.
+A partir de aquí, cada cambio de esquema es un archivo nuevo en `supabase/migrations/` y se aplica con:
+
+```
+npx supabase db push
+```
+
+`db push` solo corre migraciones que todavía no están en el historial. El baseline no se vuelve a aplicar.
+
+Los archivos de esta carpeta `database/` son archivo histórico. No los vuelvas a pegar en el SQL Editor de una base que ya funciona: un script viejo puede pisar una función o una política más nueva.
+
+Las políticas de Storage no están en el baseline. El rol de la CLI no puede leer ese esquema. Siguen aplicadas en producción. En un proyecto nuevo hay que revisar `supabase_storage_receipts.sql` y `phase1_access_hardening.sql`.
 
 ---
 
-## 🔵 Orden de ejecución — Instalación desde cero
+---
+
+## Archivo histórico
+
+Este orden sirvió para construir la base a mano. No es el camino para una instalación nueva ni para el proyecto que ya está en producción. La instalación nueva parte del baseline de `supabase/migrations`.
 
 ### Fase 1: Esquema base
 | # | Archivo | Descripción |
@@ -68,6 +80,9 @@ No se usa Supabase CLI migrations en este proyecto.
 | 31 | `phase2_schema_consolidation.sql` | Funciones públicas con search_path y plan vigente. Roles solo owner, admin, assistant, receptionist |
 | 32 | `phase3_price_catalog.sql` | Catálogo de precios sincronizado en Postgres para toda la clínica con RLS |
 | 33 | `phase4_user_notifications.sql` | Avisos de la app por usuario, con RLS |
+| 34 | `phase5_public_booking_hardening.sql` | La página pública ya no ve el id de la solicitud. Solo bloquean hueco las citas Programada de hoy en adelante. El aviso por correo exige secreto en Vault |
+| 35 | `phase6_clinical_read.sql` | Notas, eventos, recetas y consentimientos los leen solo owner, admin y assistant |
+| 36 | `phase7_trial_from_database.sql` | Toda clínica dueña tiene fila de suscripción. Sin fila no hay prueba. El vencimiento lo escribe la base |
 
 ---
 
@@ -78,7 +93,9 @@ No se usa Supabase CLI migrations en este proyecto.
 
 ---
 
-## ✅ Checklist de instalación rápida
+## Checklist histórico
+
+Estos pasos ya quedaron absorbidos por el baseline. No los marques ni los vuelvas a correr en producción.
 
 ```
 [ ] 01 supabase_schema.sql
@@ -109,4 +126,7 @@ No se usa Supabase CLI migrations en este proyecto.
 [ ] 31 phase2_schema_consolidation.sql
 [ ] 32 phase3_price_catalog.sql
 [ ] 33 phase4_user_notifications.sql
+[ ] 34 phase5_public_booking_hardening.sql
+[ ] 35 phase6_clinical_read.sql
+[ ] 36 phase7_trial_from_database.sql
 ```

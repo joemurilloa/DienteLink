@@ -10,7 +10,11 @@
 
 -- 1. Function that creates a trial subscription
 CREATE OR REPLACE FUNCTION public.create_trial_subscription()
-RETURNS TRIGGER AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO public.subscriptions (
     clinic_id,
@@ -18,6 +22,7 @@ BEGIN
     plan,
     amount,
     currency,
+    trial_started_at,
     current_period_start,
     current_period_end,
     created_at,
@@ -29,15 +34,16 @@ BEGIN
     15.00,
     'USD',
     now(),
+    now(),
     now() + interval '14 days',
     now(),
     now()
   )
-  ON CONFLICT (clinic_id) DO NOTHING; -- Don't overwrite existing subscriptions
-  
+  ON CONFLICT (clinic_id) DO NOTHING;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- 2. Trigger that fires after a new profile is inserted
 DROP TRIGGER IF EXISTS on_profile_created_start_trial ON public.profiles;

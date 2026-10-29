@@ -20,7 +20,7 @@ type Step = 'info' | 'upload' | 'done';
 const SubscriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, clinicId } = useAuth();
-  const subscription = useSubscription(clinicId, user?.created_at, user?.id);
+  const subscription = useSubscription(clinicId);
   const canPay = !profile?.clinic_id || profile.clinic_id === profile.id;
   const userEmail = user?.email ?? '';
 

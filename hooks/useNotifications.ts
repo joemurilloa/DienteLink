@@ -1,6 +1,6 @@
 /**
- * Avisos de la app. Se guardan por usuario en Postgres y en este navegador.
- * La demo y un fallo de red se quedan en localStorage.
+ * Avisos de la app. Se guardan por usuario en Postgres.
+ * TanStack Query es la caché. La demo no persiste avisos.
  */
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -11,15 +11,12 @@ import { formatAppDate } from '../lib/utils';
 import { AppointmentRequest } from '../types';
 import {
   MAX_STORED,
-  mergeNotifications,
   type AppNotification,
   type NotificationType,
 } from '../lib/notificationSync';
 
 export type { AppNotification, NotificationType };
 
-const STORAGE_PREFIX = 'dientelink_notifications_v3_';
-const LEGACY_KEY = 'dientelink_notifications_v2';
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface NotificationRow {
@@ -31,29 +28,6 @@ interface NotificationRow {
   is_read: boolean;
   action_path: string | null;
   dedupe_key: string | null;
-}
-
-function storageKeyFor(userId: string | null) {
-  return `${STORAGE_PREFIX}${userId || 'anon'}`;
-}
-
-function loadStored(key: string): AppNotification[] {
-  try {
-    localStorage.removeItem(LEGACY_KEY);
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed: AppNotification[] = JSON.parse(raw);
-    const cutoff = Date.now() - RETENTION_MS;
-    return parsed.filter((n) => new Date(n.timestamp).getTime() > cutoff);
-  } catch {
-    return [];
-  }
-}
-
-function saveStored(key: string, notifications: AppNotification[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify(notifications.slice(0, MAX_STORED)));
-  } catch { /* quota */ }
 }
 
 function rowToNotification(row: NotificationRow): AppNotification {
@@ -89,17 +63,15 @@ function makeId() {
 export function useNotifications() {
   const { user, isGuest } = useAuth();
   const userId = user?.id ?? null;
-  const storageKey = storageKeyFor(userId);
   const queryClient = useQueryClient();
   const queryKey = ['notifications', userId || 'local'] as const;
   const canSync = !!userId && !isGuest;
 
   const query = useQuery({
     queryKey,
+    enabled: canSync,
     queryFn: async (): Promise<AppNotification[]> => {
-      const local = loadStored(storageKey);
-      if (!canSync || !userId) return local;
-
+      if (!userId) return [];
       const cutoff = new Date(Date.now() - RETENTION_MS).toISOString();
       const { data, error } = await supabase
         .from('user_notifications')
@@ -109,37 +81,20 @@ export function useNotifications() {
         .order('created_at', { ascending: false })
         .limit(MAX_STORED);
 
-      if (error) {
-        console.warn('[useNotifications] Usando avisos locales:', error.message);
-        return local;
-      }
-
-      const cloud = ((data || []) as NotificationRow[]).map(rowToNotification);
-      const { list, toUpload } = mergeNotifications(cloud, local);
-      if (toUpload.length > 0) {
-        const { error: uploadError } = await supabase
-          .from('user_notifications')
-          .upsert(toUpload.map((item) => ({ ...toRow(item), user_id: userId })), { onConflict: 'id', ignoreDuplicates: true });
-        if (uploadError) {
-          console.warn('[useNotifications] No se pudieron subir avisos locales:', uploadError.message);
-        }
-      }
-      saveStored(storageKey, list);
-      return list;
+      if (error) throw error;
+      return ((data || []) as NotificationRow[]).map(rowToNotification);
     },
   });
 
-  const notifications = query.data ?? loadStored(storageKey);
+  const notifications = query.data ?? [];
   const listRef = useRef(notifications);
   listRef.current = notifications;
-  const syncRef = useRef({ canSync, userId, storageKey });
-  syncRef.current = { canSync, userId, storageKey };
+  const syncRef = useRef({ canSync, userId });
+  syncRef.current = { canSync, userId };
 
   const writeCache = useCallback((next: AppNotification[]) => {
-    const { userId: uid, storageKey: key } = syncRef.current;
-    const trimmed = next.slice(0, MAX_STORED);
-    queryClient.setQueryData(['notifications', uid || 'local'], trimmed);
-    saveStored(key, trimmed);
+    const { userId: uid } = syncRef.current;
+    queryClient.setQueryData(['notifications', uid || 'local'], next.slice(0, MAX_STORED));
   }, [queryClient]);
 
   const addNotification = useCallback((
@@ -168,9 +123,11 @@ export function useNotifications() {
       .from('user_notifications')
       .upsert({ ...toRow(notification), user_id: uid }, { onConflict: 'id' })
       .then(({ error }) => {
-        if (error) console.warn('[useNotifications] No se guardó el aviso:', error.message);
+        if (!error) return;
+        console.warn('[useNotifications] No se guardó el aviso:', error.message);
+        void queryClient.invalidateQueries({ queryKey: ['notifications', uid] });
       });
-  }, [writeCache]);
+  }, [queryClient, writeCache]);
 
   const markRead = useCallback((id: string) => {
     writeCache(listRef.current.map((n) => (n.id === id ? { ...n, read: true } : n)));

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { computeTrialDaysLeft, daysRemaining, trialEndFromStart } from '../lib/billing';
+import { daysRemaining } from '../lib/billing';
 
 export interface SubscriptionState {
   status: 'trial' | 'active' | 'expired' | 'inactive' | 'pending' | null;
@@ -48,12 +48,7 @@ async function fetchLatestReceipt(clinicId: string) {
   } | null;
 }
 
-function isMissingRpc(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false;
-  return error.code === 'PGRST202' || /could not find the function|schema cache/i.test(error.message || '');
-}
-
-export function useSubscription(clinicId: string | null, accountCreatedAt?: string | null, accountUserId?: string | null): SubscriptionState {
+export function useSubscription(clinicId: string | null): SubscriptionState {
   const confirmed = useRef(false);
   const seenClinic = useRef<string | null>(null);
   if (seenClinic.current !== clinicId) {
@@ -154,33 +149,30 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
 
       if (!row) {
         const access = await supabase.rpc('clinic_access_until', { p_clinic_id: clinicId });
-        const isOwner = !!accountUserId && clinicId === accountUserId;
-        if (access.error && !(isMissingRpc(access.error) && isOwner)) {
+        if (access.error) {
           deny('No se pudo verificar la suscripción de este consultorio.');
           return;
         }
-        if (!access.error) {
-          const until = parseDate(access.data as string | null);
-          const daysLeft = daysRemaining(until);
-          confirmed.current = true;
-          setState({
-            status: daysLeft > 0 ? 'trial' : 'inactive',
-            isActive: daysLeft > 0,
-            isTrial: daysLeft > 0,
-            isExpired: daysLeft <= 0,
-            daysLeft,
-            expiresSoon: daysLeft > 0 && daysLeft <= 4,
-            expiresAt: until,
-            trialStartedAt: null,
-            isProvisional: false,
-            provisionalUntil: null,
-            lastReceiptStatus: null,
-            lastReceiptNote: null,
-            loading: false,
-            error: null,
-          });
-          return;
-        }
+        const until = parseDate(access.data as string | null);
+        const daysLeft = daysRemaining(until);
+        confirmed.current = true;
+        setState({
+          status: daysLeft > 0 ? 'trial' : 'inactive',
+          isActive: daysLeft > 0,
+          isTrial: daysLeft > 0,
+          isExpired: daysLeft <= 0,
+          daysLeft,
+          expiresSoon: daysLeft > 0 && daysLeft <= 4,
+          expiresAt: until,
+          trialStartedAt: null,
+          isProvisional: false,
+          provisionalUntil: null,
+          lastReceiptStatus: null,
+          lastReceiptNote: null,
+          loading: false,
+          error: null,
+        });
+        return;
       }
       // Consulta independiente como respaldo: evita depender de que la caché
       // de esquema de PostgREST ya exponga las columnas nuevas de la vista.
@@ -190,46 +182,8 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
         : null;
       const lastReceiptStatus = latestReceipt?.status ?? null;
       const lastReceiptNote = latestReceipt?.reviewed_note ?? null;
-      const accountStart = accountCreatedAt ? new Date(accountCreatedAt) : null;
-
-      if (!row) {
-        // Solo el dueño, y solo si todavía no está la función en Supabase.
-        // Cuenta los 14 días desde la creación de SU cuenta.
-        if (!accountUserId || clinicId !== accountUserId) {
-          deny('No se pudo verificar la suscripción de este consultorio.');
-          return;
-        }
-        const trialDaysLeft = computeTrialDaysLeft({
-          isTrial: true,
-          accountCreatedAt: accountStart,
-        });
-        const isProvisional = !!receiptProvisionalUntil && receiptProvisionalUntil.getTime() > Date.now();
-        const provisionalDaysLeft = isProvisional
-          ? Math.ceil((receiptProvisionalUntil.getTime() - Date.now()) / 86_400_000)
-          : 0;
-        const daysLeft = Math.max(trialDaysLeft, provisionalDaysLeft);
-        confirmed.current = true;
-        setState({
-          status: 'trial',
-          isActive: daysLeft > 0,
-          isTrial: trialDaysLeft > 0,
-          isExpired: daysLeft <= 0,
-          daysLeft,
-          expiresSoon: daysLeft > 0 && daysLeft <= 4,
-          expiresAt: isProvisional ? receiptProvisionalUntil : (accountStart ? trialEndFromStart(accountStart) : null),
-          trialStartedAt: accountStart,
-          isProvisional,
-          provisionalUntil: receiptProvisionalUntil,
-          lastReceiptStatus,
-          lastReceiptNote,
-          loading: false,
-          error: null,
-        });
-        return;
-      }
 
       const trialStartedAt = parseDate(row.trial_started_at);
-      const periodStart = parseDate(row.current_period_start);
       const expiresAt = parseDate(row.current_period_end);
       const provisionalUntil = receiptProvisionalUntil ?? parseDate(row.provisional_access_until);
       const isTrial = row.is_trial ?? row.status === 'trial';
@@ -238,18 +192,16 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
         && provisionalUntil.getTime() > Date.now()
         && (!expiresAt || provisionalUntil.getTime() > expiresAt.getTime())
       );
-      const daysLeft = computeTrialDaysLeft({
-        isTrial,
-        expiresAt,
-        trialStartedAt,
-        periodStart,
-        accountCreatedAt: accountStart,
-      });
-      const isExpired = isProvisional ? false : (row.is_expired ?? daysLeft <= 0);
-      const isActive = isProvisional || (row.is_active ?? ((row.status === 'active' || row.status === 'trial') && daysLeft > 0));
-      const effectiveDaysLeft = isProvisional && provisionalUntil
-        ? Math.max(daysLeft, Math.ceil((provisionalUntil.getTime() - Date.now()) / 86_400_000))
-        : daysLeft;
+      const serverDays = typeof row.days_left === 'number' ? row.days_left : daysRemaining(expiresAt);
+      const provisionalDays = isProvisional && provisionalUntil
+        ? Math.ceil((provisionalUntil.getTime() - Date.now()) / 86_400_000)
+        : 0;
+      const effectiveDaysLeft = Math.max(serverDays, provisionalDays);
+      const periodOpen = !!expiresAt
+        && expiresAt.getTime() > Date.now()
+        && (row.status === 'active' || row.status === 'trial');
+      const isExpired = isProvisional ? false : (row.is_expired ?? !periodOpen);
+      const isActive = isProvisional || (typeof row.is_active === 'boolean' ? row.is_active : periodOpen);
 
       confirmed.current = true;
       setState({
@@ -272,7 +224,7 @@ export function useSubscription(clinicId: string | null, accountCreatedAt?: stri
       console.error('[useSubscription] Unexpected error:', err);
       deny('No se pudo verificar la suscripción. Reintenta en un momento.');
     }
-  }, [clinicId, accountCreatedAt, accountUserId]);
+  }, [clinicId]);
 
   useEffect(() => {
     fetchSubscription();

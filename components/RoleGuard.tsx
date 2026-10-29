@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../services/authService';
-import { canSeeClinicMoney, normalizeClinicRole, profileRole } from '../lib/roles';
+import { canSeeClinicMoney, canViewClinicalChart, normalizeClinicRole, profileRole } from '../lib/roles';
 import { UserRole } from '../types';
 
 interface RoleGuardProps {
@@ -36,8 +36,8 @@ export function useRoleAccess() {
   return {
     role: userRole,
     isAdmin: hasFullAccess,
-    canViewClinical: hasFullAccess || isAssistant,
-    canEditClinical: hasFullAccess || isAssistant,
+    canViewClinical: canViewClinicalChart(profile?.role),
+    canEditClinical: canViewClinicalChart(profile?.role),
     canViewFinancial: canSeeClinicMoney(profile?.role),
     canEditFinancial: canSeeClinicMoney(profile?.role),
     canManageAppointments: true,

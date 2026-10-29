@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canSeeClinicMoney, normalizeClinicRole, profileRole } from '../lib/roles';
+import { canSeeClinicMoney, canViewClinicalChart, normalizeClinicRole, profileRole } from '../lib/roles';
 
 describe('normalizeClinicRole', () => {
   it('acepta los cuatro roles de la base', () => {
@@ -22,6 +22,10 @@ describe('normalizeClinicRole', () => {
     expect(canSeeClinicMoney('receptionist')).toBe(false);
     expect(canSeeClinicMoney('doctor')).toBe(true);
     expect(canSeeClinicMoney('')).toBe(true);
+    expect(canViewClinicalChart('assistant')).toBe(true);
+    expect(canViewClinicalChart('receptionist')).toBe(false);
+    expect(canViewClinicalChart('hacker')).toBe(false);
+    expect(canViewClinicalChart('')).toBe(true);
   });
 
   it('un perfil sin rol se muestra como dueño y uno raro no', () => {

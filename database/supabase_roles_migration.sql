@@ -66,7 +66,7 @@ DROP POLICY IF EXISTS "Clinic staff can insert evolution_notes" ON public.evolut
 DROP POLICY IF EXISTS "Clinic staff can update evolution_notes" ON public.evolution_notes;
 DROP POLICY IF EXISTS "Clinic staff can delete evolution_notes" ON public.evolution_notes;
 
-CREATE POLICY "Clinic staff can view evolution_notes"   ON public.evolution_notes FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "Clinic staff can view evolution_notes"   ON public.evolution_notes FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "Clinic staff can insert evolution_notes" ON public.evolution_notes FOR INSERT WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can update evolution_notes" ON public.evolution_notes FOR UPDATE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can delete evolution_notes" ON public.evolution_notes FOR DELETE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
@@ -77,7 +77,7 @@ DROP POLICY IF EXISTS "Clinic staff can insert clinical_events" ON public.clinic
 DROP POLICY IF EXISTS "Clinic staff can update clinical_events" ON public.clinical_events;
 DROP POLICY IF EXISTS "Clinic staff can delete clinical_events" ON public.clinical_events;
 
-CREATE POLICY "Clinic staff can view clinical_events"   ON public.clinical_events FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "Clinic staff can view clinical_events"   ON public.clinical_events FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "Clinic staff can insert clinical_events" ON public.clinical_events FOR INSERT WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can update clinical_events" ON public.clinical_events FOR UPDATE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can delete clinical_events" ON public.clinical_events FOR DELETE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
@@ -110,7 +110,7 @@ DROP POLICY IF EXISTS "Clinic staff can insert consent_forms" ON public.consent_
 DROP POLICY IF EXISTS "Clinic staff can update consent_forms" ON public.consent_forms;
 DROP POLICY IF EXISTS "Clinic staff can delete consent_forms" ON public.consent_forms;
 
-CREATE POLICY "Clinic staff can view consent_forms"   ON public.consent_forms FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "Clinic staff can view consent_forms"   ON public.consent_forms FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "Clinic staff can insert consent_forms" ON public.consent_forms FOR INSERT WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can update consent_forms" ON public.consent_forms FOR UPDATE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can delete consent_forms" ON public.consent_forms FOR DELETE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
@@ -121,7 +121,7 @@ DROP POLICY IF EXISTS "Clinic staff can insert prescriptions" ON public.prescrip
 DROP POLICY IF EXISTS "Clinic staff can update prescriptions" ON public.prescriptions;
 DROP POLICY IF EXISTS "Clinic staff can delete prescriptions" ON public.prescriptions;
 
-CREATE POLICY "Clinic staff can view prescriptions"   ON public.prescriptions FOR SELECT USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
+CREATE POLICY "Clinic staff can view prescriptions"   ON public.prescriptions FOR SELECT USING ((doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) AND lower(btrim(public.get_my_role())) IN ('owner', 'admin', 'assistant'));
 CREATE POLICY "Clinic staff can insert prescriptions" ON public.prescriptions FOR INSERT WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can update prescriptions" ON public.prescriptions FOR UPDATE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id()) WITH CHECK (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());
 CREATE POLICY "Clinic staff can delete prescriptions" ON public.prescriptions FOR DELETE USING (doctor_id = auth.uid() OR doctor_id = public.get_my_clinic_id());

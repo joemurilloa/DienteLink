@@ -356,15 +356,16 @@ export class BookingService {
           console.error('[BookingService] getPublicAppointmentRequests RPC error:', error);
           return [];
         }
-        return (data || []).map((d: any) => ({
-          id: d.id,
+        // La RPC pública solo devuelve fecha y hora. El id no sale del consultorio.
+        return (data || []).map((d: { requested_date: string; requested_time: string }) => ({
+          id: '',
           patientName: '',
           patientEmail: '',
           patientPhone: '',
           requestedDate: d.requested_date,
           requestedTime: d.requested_time,
-          appointmentType: d.appointment_type,
-          status: d.status,
+          appointmentType: 'Consulta' as AppointmentType,
+          status: 'pending' as const,
           createdAt: '',
           doctorId,
         }));
@@ -471,11 +472,13 @@ export class BookingService {
 
     if (this.userId === did) {
       requests = this.requests;
+      const today = getLocalISODate();
       const { data: apptData } = await supabase
         .from('appointments')
         .select('date, time')
         .eq('doctor_id', did)
-        .in('status', ['Programada', 'Completada']);
+        .eq('status', 'Programada')
+        .gte('date', today);
       confirmedAppointments = (apptData || []).map(a => ({ date: a.date, time: a.time }));
     } else {
       const [reqs, appts] = await Promise.all([

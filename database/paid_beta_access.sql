@@ -102,17 +102,6 @@ AS $$
        WHERE r.clinic_id = p_clinic_id
          AND r.status = 'pending'
          AND r.provisional_access_until > now()
-    )
-    OR (
-      NOT EXISTS (
-        SELECT 1 FROM public.subscriptions s WHERE s.clinic_id = p_clinic_id
-      )
-      AND EXISTS (
-        SELECT 1
-          FROM auth.users u
-         WHERE u.id = p_clinic_id
-           AND u.created_at + interval '14 days' > now()
-      )
     );
 $$;
 

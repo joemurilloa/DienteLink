@@ -28,26 +28,42 @@ BEGIN
   END LOOP;
 END $$;
 
--- 3. Nuevo disparador: solo envía el id; la función valida todo contra la base.
---    Usa la clave pública (anon/publishable), no la service_role.
+-- 3. Disparador: solo envía el id. La función exige el header x-notify-secret.
+--    El secreto vive en Vault (notify_webhook_secret), no en este archivo.
+--    La apikey es la clave pública: el gateway la pide, y no autoriza el aviso.
 CREATE OR REPLACE FUNCTION public.notify_new_appointment_request()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, net
+SET search_path = public, vault, net
 AS $$
+DECLARE
+  hook_secret text;
 BEGIN
   BEGIN
+    SELECT ds.decrypted_secret
+      INTO hook_secret
+      FROM vault.decrypted_secrets ds
+     WHERE ds.name = 'notify_webhook_secret'
+     ORDER BY ds.created_at DESC
+     LIMIT 1;
+
+    IF hook_secret IS NULL OR btrim(hook_secret) = '' THEN
+      RAISE WARNING 'notify_webhook_secret no está en Vault; no se envía el aviso';
+      RETURN NEW;
+    END IF;
+
     PERFORM net.http_post(
       url     := 'https://jrzydxpcyonrzhbpzibc.supabase.co/functions/v1/notify-doctor-new-request',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'apikey', 'sb_publishable_dmra7_LLEYmD5yYo2C7t_g_0GzD1hpf'
+        'apikey', 'sb_publishable_dmra7_LLEYmD5yYo2C7t_g_0GzD1hpf',
+        'x-notify-secret', hook_secret
       ),
       body    := jsonb_build_object('record', jsonb_build_object('id', NEW.id))
     );
   EXCEPTION WHEN OTHERS THEN
-    NULL; -- un fallo de correo nunca debe impedir guardar la solicitud
+    RAISE WARNING 'No se pudo avisar la solicitud nueva: %', SQLERRM;
   END;
   RETURN NEW;
 END;

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CATALOG,
-  localCatalogToMigrate,
   parseCatalogItems,
   suggestBudgetItem,
   CatalogItem,
@@ -45,14 +44,6 @@ describe('priceCatalog', () => {
       expect(result[2].id).toBeTruthy();
     });
 
-    it('no migra la lista de fábrica ni un catálogo vacío', () => {
-      expect(localCatalogToMigrate(null)).toBeNull();
-      expect(localCatalogToMigrate('')).toBeNull();
-      expect(localCatalogToMigrate('[]')).toBeNull();
-      expect(localCatalogToMigrate('not-json')).toBeNull();
-      const custom = localCatalogToMigrate(JSON.stringify([{ id: 'a', name: 'Limpieza', cost: 700 }]));
-      expect(custom).toEqual([{ id: 'a', name: 'Limpieza', cost: 700 }]);
-    });
   });
 
   describe('suggestBudgetItem', () => {
