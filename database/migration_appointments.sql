@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ==============================================================================
 -- MIGRACIÃ“N: ActualizaciÃ³n de la tabla 'appointments' para el nuevo flujo
 -- ==============================================================================

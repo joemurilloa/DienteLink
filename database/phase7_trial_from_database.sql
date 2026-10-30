@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- DienteLink â€” Fase 7
 -- Pegar despuÃ©s de phase6_clinical_read.sql.

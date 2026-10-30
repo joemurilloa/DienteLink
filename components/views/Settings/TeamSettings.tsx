@@ -31,6 +31,7 @@ const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
 const TeamSettings: React.FC = () => {
   const { teamMembers, invitations, loading, inviteMember, isInviting, cancelInvitation, removeMember, updateMemberRole, isUpdatingRole } = useTeam();
   const { isAdmin, role: currentUserRole } = useRoleAccess();
+  const callerIsOwner = currentUserRole === 'owner';
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('receptionist');
   const [error, setError] = useState('');
@@ -129,7 +130,7 @@ const TeamSettings: React.FC = () => {
             >
               <option value="receptionist">Recepcionista</option>
               <option value="assistant">Asistente Clínico</option>
-              <option value="admin">Administrador</option>
+              {callerIsOwner && <option value="admin">Administrador</option>}
             </select>
           </div>
           <button
@@ -187,7 +188,10 @@ const TeamSettings: React.FC = () => {
         ) : (
           <div className="space-y-2">
             {teamMembers.map(member => {
-              const isOwner = member.role === 'owner';
+              const memberIsOwner = member.role === 'owner';
+              const memberIsAdmin = member.role === 'admin';
+              const canEditMember =
+                !memberIsOwner && (callerIsOwner || (!memberIsAdmin && currentUserRole === 'admin'));
               const isEditing = editingMemberId === member.id;
               const cfg = ROLE_CONFIG[member.role] || ROLE_CONFIG.owner;
               const initials = member.full_name.split(' ').filter(Boolean).map(w => w[0]).join('').substring(0, 2).toUpperCase() || '??';
@@ -196,13 +200,13 @@ const TeamSettings: React.FC = () => {
                 <div key={member.id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${isOwner ? 'bg-gradient-to-br from-indigo-500 to-violet-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'}`}>
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${memberIsOwner ? 'bg-gradient-to-br from-indigo-500 to-violet-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'}`}>
                         {initials}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-800 flex items-center gap-2 flex-wrap">
                           {member.full_name}
-                          {isOwner && <Crown size={12} className="text-indigo-500 flex-shrink-0" />}
+                          {memberIsOwner && <Crown size={12} className="text-indigo-500 flex-shrink-0" />}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <RoleBadge role={member.role} />
@@ -210,8 +214,8 @@ const TeamSettings: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Actions: only for non-owner members */}
-                    {!isOwner && (
+                    {/* Actions: owner gestiona todos; admin solo assistant/receptionist */}
+                    {canEditMember && (
                       <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                         {!isEditing ? (
                           <>
@@ -242,7 +246,7 @@ const TeamSettings: React.FC = () => {
                             >
                               <option value="receptionist">Recepcionista</option>
                               <option value="assistant">Asistente Clínico</option>
-                              <option value="admin">Administrador</option>
+                              {callerIsOwner && <option value="admin">Administrador</option>}
                             </select>
                             <button
                               onClick={() => handleUpdateRole(member.id)}

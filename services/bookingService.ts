@@ -244,21 +244,33 @@ export class BookingService {
     return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
   }
 
+  /**
+   * Aprueba vía RPC atómico (paciente + cita + request).
+   * El cliente solo invalida caché; no crea filas a medias.
+   */
+  async approveRequestAtomic(
+    requestId: string,
+    forceOverlap = false,
+  ): Promise<persistence.ApproveAppointmentResult> {
+    const result = await persistence.approveAppointmentRequestAtomic(requestId, forceOverlap);
+    const local = this.requests.find(r => r.id === requestId);
+    if (local) {
+      local.status = 'approved';
+      local.respondedAt = new Date().toISOString();
+    }
+    window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+    return result;
+  }
+
+  /** @deprecated Preferir approveRequestAtomic (RPC transaccional). */
   async approveRequest(requestId: string): Promise<AppointmentRequest | null> {
-    const request = this.requests.find(r => r.id === requestId);
-    if (!request || request.status !== 'pending') return null;
-
-    request.status = 'approved';
-    request.respondedAt = new Date().toISOString();
-
     try {
-      await persistence.updateAppointmentRequestStatus(requestId, 'approved', request.respondedAt);
-      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      await this.approveRequestAtomic(requestId, false);
+      return this.requests.find(r => r.id === requestId) ?? null;
     } catch (err) {
       console.error('[BookingService] approveRequest error:', err);
+      return null;
     }
-
-    return request;
   }
 
   async rejectRequest(requestId: string): Promise<AppointmentRequest | null> {

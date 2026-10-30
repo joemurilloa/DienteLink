@@ -1,3 +1,6 @@
+-- ARCHIVO HIST”RICO. NO EJECUTAR EN PRODUCCI”N.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- Sprint 1: se elimin√≥ la API de WhatsApp. Ejecutar una vez en Supabase SQL Editor.
 SELECT cron.unschedule('trigger-whatsapp-reminders')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'trigger-whatsapp-reminders');

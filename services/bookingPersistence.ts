@@ -58,7 +58,34 @@ export async function updateAppointmentRequestStatus(requestId: string, newStatu
       delCache(`public_appts:${did}`);
       delCache(`confirmed_appts:${did}`);
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[bookingPersistence] cache invalidate failed', e);
+  }
+}
+
+export type ApproveAppointmentResult = {
+  request_id: string;
+  status: string;
+  idempotent?: boolean;
+  patient_id: string | null;
+  appointment_id: string | null;
+  possible_duplicates: boolean;
+  candidate_ids?: string[];
+  matched_by?: string;
+};
+
+/** Aprueba solicitud + paciente + cita en una sola transacción (RPC). */
+export async function approveAppointmentRequestAtomic(
+  requestId: string,
+  forceOverlap = false,
+): Promise<ApproveAppointmentResult> {
+  const { data, error } = await supabase.rpc('approve_appointment_request', {
+    p_request_id: requestId,
+    p_force_overlap: forceOverlap,
+  });
+  // Propagar code (DL409/DL403/…) para que el cliente no parsee solo el mensaje.
+  if (error) throw error;
+  return data as ApproveAppointmentResult;
 }
 
 export async function deleteAppointmentRequest(requestId: string) {

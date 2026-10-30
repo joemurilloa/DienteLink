@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { sileo } from 'sileo';
 import { useAuth } from '../../services/authService';
-import { BILLING, daysRemaining, isPlatformAdmin, planDaysLabel, type PlanDays } from '../../lib/billing';
+import { BILLING, daysRemaining, planDaysLabel, type PlanDays } from '../../lib/billing';
 import { useAdminBilling, type AdminClinic, type AdminReceipt } from '../../hooks/useAdminBilling';
 import ConfirmModal from '../ConfirmModal';
 
@@ -63,8 +63,7 @@ const ReceiptRow: React.FC<{ receipt: AdminReceipt }> = ({ receipt }) => {
 
 const AdminBillingView: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const allowed = isPlatformAdmin(user?.email);
+  const { isPlatformAdmin: allowed } = useAuth();
   const { clinics, loading, error, refresh, extend, rejectPending, extendingId, now } = useAdminBilling(allowed);
   const [query, setQuery] = useState('');
   const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({});
@@ -82,7 +81,7 @@ const AdminBillingView: React.FC = () => {
   if (!allowed) return <Navigate to="/" replace />;
 
   const confirmExtend = async () => {
-    if (!pending || !isPlatformAdmin(user?.email)) return;
+    if (!pending || !allowed) return;
     const { clinic, days } = pending;
     try {
       const result = await extend(clinic.clinic_id, days);
@@ -99,7 +98,7 @@ const AdminBillingView: React.FC = () => {
   };
 
   const confirmReject = async () => {
-    if (!rejectClinic || !isPlatformAdmin(user?.email)) return;
+    if (!rejectClinic || !allowed) return;
     try {
       const result = await rejectPending(rejectClinic.clinic_id);
       sileo.success({

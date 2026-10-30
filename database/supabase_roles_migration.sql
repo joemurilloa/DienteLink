@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- =============================================================
 -- DienteLink: REPAIR SCRIPT â€” Restaurar acceso completo
 -- Ejecuta esto en Supabase SQL Editor si tienes errores 403

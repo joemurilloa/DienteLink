@@ -1,13 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { PatientRecord, OdontogramSnapshot, PatientCollection, Payment } from '../types';
-import { shouldSyncPatientCollection } from '../lib/patientSync';
 import { canSeeClinicMoney, canViewClinicalChart } from '../lib/roles';
 import { useAuth } from '../services/authService';
 import { sileo } from 'sileo';
 import { ensurePeriodontogramData, ensureOdontogram } from '../lib/utils';
 import { DEMO_PATIENTS } from '../lib/demoData';
 import { PatientIdentificationSchema } from '../lib/schemas';
+import {
+  addPaymentViaRpc,
+  isSavePatientRpcEnabled,
+  MissingPatientVersionError,
+  savePatientViaRpc,
+} from '../lib/savePatientRpc';
+import { savePatientLegacy } from '../lib/savePatientLegacy';
+import { isRpcVersionConflict, rpcErrorMessage } from '../lib/rpcErrors';
 
 // ===================== Helpers =====================
 function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
@@ -28,6 +35,7 @@ import {
     DbConsentFormRow,
     DbPrescriptionRow,
     DbLabWorkRow,
+    mergePatientClinical,
 } from '../lib/dbTypes';
 
 export function dbToPatient(
@@ -41,28 +49,29 @@ export function dbToPatient(
     labWorks?: DbLabWorkRow[] | null,
     loadedCollections?: PatientCollection[],
 ): PatientRecord {
+    const row = mergePatientClinical(p);
     return {
-        id: p.id,
+        id: row.id,
         identification: {
-            fullName: p.full_name || '',
-            birthDate: p.birth_date || '',
-            gender: p.gender || '',
-            address: p.address || '',
-            phone: p.phone || '',
-            email: p.email || '',
-            occupation: p.occupation || '',
+            fullName: row.full_name || '',
+            birthDate: row.birth_date || '',
+            gender: row.gender || '',
+            address: row.address || '',
+            phone: row.phone || '',
+            email: row.email || '',
+            occupation: row.occupation || '',
         },
         clinicalHistory: {
-            allergies: p.allergies || [],
-            medications: p.medications || '',
-            previousDiseases: p.previous_diseases || '',
-            familyHistory: p.family_history || '',
-            motiveOfConsult: p.motive_of_consult || '',
-            bloodType: p.blood_type || '',
-            smoker: !!p.smoker,
-            pregnant: !!p.pregnant,
-            habits: p.habits || '',
-            observations: p.observations || '',
+            allergies: row.allergies || [],
+            medications: row.medications || '',
+            previousDiseases: row.previous_diseases || '',
+            familyHistory: row.family_history || '',
+            motiveOfConsult: row.motive_of_consult || '',
+            bloodType: row.blood_type || '',
+            smoker: !!row.smoker,
+            pregnant: !!row.pregnant,
+            habits: row.habits || '',
+            observations: row.observations || '',
         },
         evolutionNotes: (notes ?? []).map(n => ({
             id: n.id,
@@ -77,10 +86,10 @@ export function dbToPatient(
             description: e.description,
             toothId: e.tooth_id,
         })),
-        consentSigned: p.consent_signed || false,
-        odontogram: ensureOdontogram(p.odontogram),
-        odontogramHistory: (p.odontogram_history as OdontogramSnapshot[]) || [],
-        periodontogram: ensurePeriodontogramData(p.periodontogram),
+        consentSigned: row.consent_signed || false,
+        odontogram: ensureOdontogram(row.odontogram),
+        odontogramHistory: (row.odontogram_history as OdontogramSnapshot[]) || [],
+        periodontogram: ensurePeriodontogramData(row.periodontogram),
         xrays: [],
         budget: (budgetItems ?? []).map(b => ({
             id: b.id || '',
@@ -125,9 +134,16 @@ export function dbToPatient(
             notes: rx.notes || '',
         })),
         loadedCollections,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
+        version: row.version,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
     };
+}
+
+function withoutSoftDeleted<T extends { deleted_at?: string | null }>(
+  rows: T[] | null | undefined,
+): T[] {
+  return (rows ?? []).filter((r) => r.deleted_at == null);
 }
 
 
@@ -148,13 +164,14 @@ export function usePatients() {
             const { data, error } = await supabase
                 .from('patients')
                 .select(`
-                    id, full_name, birth_date, gender, address, phone, email, occupation, 
-                    allergies, medications, previous_diseases, family_history, motive_of_consult, consent_signed, 
-                    created_at, updated_at,
-                    budget_items (id, unit_cost, quantity, status),
-                    payments (id, amount, method, date)
+                    id, full_name, birth_date, gender, address, phone, email, occupation,
+                    motive_of_consult, consent_signed, created_at, updated_at, version, deleted_at,
+                    patient_clinical (allergies, medications, previous_diseases, family_history, blood_type, smoker, pregnant, habits, observations),
+                    budget_items (id, unit_cost, quantity, status, deleted_at),
+                    payments (id, amount, method, date, deleted_at)
                 `)
                 .eq('doctor_id', clinicId)
+                .is('deleted_at', null)
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -164,9 +181,11 @@ export function usePatients() {
 
             return (data || []).map(p => {
                 const row = p as unknown as import('../lib/dbTypes').DbPatientRow & {
-                    budget_items?: import('../lib/dbTypes').DbBudgetItemRow[] | null;
-                    payments?: import('../lib/dbTypes').DbPaymentRow[] | null;
+                    budget_items?: (import('../lib/dbTypes').DbBudgetItemRow & { deleted_at?: string | null })[] | null;
+                    payments?: (import('../lib/dbTypes').DbPaymentRow & { deleted_at?: string | null })[] | null;
                 };
+                const budget = withoutSoftDeleted(row.budget_items);
+                const payments = withoutSoftDeleted(row.payments);
                 const loaded: PatientCollection[] = [];
                 if (Array.isArray(row.budget_items)) loaded.push('budget');
                 if (Array.isArray(row.payments)) loaded.push('payments');
@@ -174,8 +193,8 @@ export function usePatients() {
                     row,
                     undefined,
                     undefined,
-                    row.budget_items,
-                    row.payments,
+                    budget,
+                    payments,
                     undefined,
                     undefined,
                     undefined,
@@ -206,6 +225,7 @@ export function usePatient(patientId?: string) {
                 .from('patients')
                 .select(`
                     *,
+                    patient_clinical (*),
                     evolution_notes (*),
                     clinical_events (*),
                     budget_items (*),
@@ -216,6 +236,7 @@ export function usePatient(patientId?: string) {
                 `)
                 .eq('id', patientId)
                 .eq('doctor_id', clinicId)
+                .is('deleted_at', null)
                 .single();
 
             if (error) {
@@ -230,13 +251,13 @@ export function usePatient(patientId?: string) {
             ];
             return dbToPatient(
                 data,
-                data.evolution_notes || [],
-                data.clinical_events || [],
-                data.budget_items || [],
-                data.payments || [],
-                data.consent_forms || [],
-                data.prescriptions || [],
-                data.lab_works || [],
+                withoutSoftDeleted(data.evolution_notes),
+                withoutSoftDeleted(data.clinical_events),
+                withoutSoftDeleted(data.budget_items),
+                withoutSoftDeleted(data.payments),
+                withoutSoftDeleted(data.consent_forms),
+                withoutSoftDeleted(data.prescriptions),
+                withoutSoftDeleted(data.lab_works),
                 fullLoaded,
             );
         },
@@ -273,137 +294,30 @@ export function usePatientMutations() {
             }
 
             if (!clinicId) throw new Error('No doctor/clinic mapped');
-            const doctorId = clinicId;
 
-            // ── Zod validation gate ──────────────────────────────────────────
-            // Validate the patient's identification before any DB write.
-            // This catches empty names, invalid emails, bad dates, etc.
             const idValidation = PatientIdentificationSchema.safeParse(patient.identification);
             if (!idValidation.success) {
                 const firstIssue = idValidation.error.issues[0];
                 throw new Error(`Datos inválidos: ${firstIssue.message} (campo: ${firstIssue.path.join('.')})`);
             }
 
-            // 1. Main patient record (use validated/transformed data)
-            const validId = idValidation.data;
-            const patientRow = {
-                id: patient.id,
-                doctor_id: doctorId,
-                full_name: validId.fullName,
-                birth_date: validId.birthDate || null,
-                gender: validId.gender || null,
-                address: validId.address || null,
-                phone: validId.phone || null,
-                email: validId.email || null,
-                occupation: validId.occupation || null,
-                allergies: patient.clinicalHistory.allergies,
-                medications: patient.clinicalHistory.medications || null,
-                previous_diseases: patient.clinicalHistory.previousDiseases || null,
-                family_history: patient.clinicalHistory.familyHistory || null,
-                motive_of_consult: patient.clinicalHistory.motiveOfConsult || null,
-                consent_signed: patient.consentSigned,
-                odontogram: patient.odontogram,
-                odontogram_history: patient.odontogramHistory || [],
-                periodontogram: patient.periodontogram,
-                updated_at: patient.updatedAt || new Date().toISOString(),
-            };
-            const anamnesisExtras = {
-                blood_type: patient.clinicalHistory.bloodType || null,
-                smoker: patient.clinicalHistory.smoker ?? false,
-                pregnant: patient.clinicalHistory.pregnant ?? false,
-                habits: patient.clinicalHistory.habits || null,
-                observations: patient.clinicalHistory.observations || null,
-            };
-
-            let { error: pErr } = await supabase.from('patients').upsert(
-                { ...patientRow, ...anamnesisExtras },
-                { onConflict: 'id' },
-            );
-            if (pErr && /blood_type|smoker|pregnant|habits|observations/i.test(pErr.message)) {
-                console.warn('[usePatients] Faltan columnas de anamnesis. Ejecuta database/patient_anamnesis_fields.sql');
-                ({ error: pErr } = await supabase.from('patients').upsert(patientRow, { onConflict: 'id' }));
+            if (!isSavePatientRpcEnabled()) {
+                return savePatientLegacy(patient, {
+                    clinicId,
+                    canSeeMoney,
+                    canViewChart,
+                });
             }
 
-            if (pErr) throw new Error(`Error en paciente: ${pErr.message}`);
+            const previous =
+                queryClient.getQueryData<PatientRecord>(['patient', patient.id, clinicId]) ??
+                queryClient.getQueryData<PatientRecord[]>(['patients', clinicId])?.find((p) => p.id === patient.id);
 
-            // 2. Sub-tables sync logic
-            const syncSubTable = async <T extends { id?: string }, R extends Record<string, unknown>>(
-                tableName: string,
-                key: PatientCollection,
-                items: T[] | null | undefined,
-                mapFn: (i: T) => R,
-            ) => {
-                const doctorId = clinicId;
-                if ((key === 'payments' || key === 'budget') && !canSeeMoney) return;
-                if ((key === 'evolutionNotes' || key === 'history' || key === 'consents' || key === 'prescriptions') && !canViewChart) return;
-                const mode = shouldSyncPatientCollection(patient.loadedCollections, key, items);
-                if (mode === 'skip') return;
-
-                if (mode === 'replace') {
-                    const { error: delErr } = await supabase.from(tableName)
-                        .delete()
-                        .eq('patient_id', patient.id)
-                        .eq('doctor_id', doctorId);
-                    if (delErr) throw delErr;
-                    return;
-                }
-
-                const present = items ?? [];
-                const mapped = present.map(mapFn);
-                const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
-                if (upsertErr) {
-                    console.error(`[Error Upserting ${tableName}]:`, upsertErr);
-                    throw upsertErr;
-                }
-
-                const currentIds = present
-                    .map(i => i.id)
-                    .filter((id): id is string => typeof id === 'string' && id.length > 0);
-
-                if (currentIds.length > 0) {
-                    const { error: delErr } = await supabase.from(tableName)
-                        .delete()
-                        .eq('patient_id', patient.id)
-                        .eq('doctor_id', doctorId)
-                        .not('id', 'in', `(${currentIds.join(',')})`);
-
-                    if (delErr) {
-                        console.error(`[Error Cleaning ${tableName}]:`, delErr);
-                        throw delErr;
-                    }
-                }
-            };
-
-            // ── Sync sub-tables in PARALLEL ──────────────────────────────────
-            // All 7 sub-tables are independent of each other (no FK dependencies
-            // between them) so they can be upserted simultaneously.
-            // If any single sync fails, Promise.all rejects immediately, the
-            // mutation throws, and the optimistic update is rolled back.
-            await Promise.all([
-                syncSubTable('evolution_notes', 'evolutionNotes', patient.evolutionNotes, n => ({
-                    id: n.id, patient_id: patient.id, doctor_id: doctorId, date: n.date, content: n.content, procedure: n.procedure
-                })),
-                syncSubTable('clinical_events', 'history', patient.history, e => ({
-                    id: e.id, patient_id: patient.id, doctor_id: doctorId, date: e.date, type: e.type, description: e.description, tooth_id: e.toothId || null
-                })),
-                syncSubTable('budget_items', 'budget', patient.budget, b => ({
-                    id: b.id, patient_id: patient.id, doctor_id: doctorId, treatment: b.treatment, tooth_id: b.toothId || null, unit_cost: b.unitCost, quantity: b.quantity, status: b.status, created_at: b.createdAt
-                })),
-                syncSubTable('payments', 'payments', patient.payments, p => ({
-                    id: p.id, patient_id: patient.id, doctor_id: doctorId, amount: p.amount, method: p.method, note: p.note, date: p.date
-                })),
-                syncSubTable('consent_forms', 'consents', patient.consents, c => ({
-                    id: c.id, patient_id: patient.id, doctor_id: doctorId, title: c.title, content: c.content, signature_data: c.signatureData, signed_at: c.signedAt, witness_name: c.witnessName || null
-                })),
-                syncSubTable('prescriptions', 'prescriptions', patient.prescriptions, rx => ({
-                    id: rx.id, patient_id: patient.id, doctor_id: doctorId, date: rx.date, diagnosis: rx.diagnosis, medications: rx.medications, notes: rx.notes
-                })),
-                syncSubTable('lab_works', 'labWorks', patient.labWorks, l => ({
-                    id: l.id, patient_id: patient.id, doctor_id: doctorId, description: l.description, lab_name: l.labName, sent_date: l.sentDate, expected_date: l.expectedDate || null, cost: l.cost, status: l.status, created_at: l.createdAt
-                })),
-            ]);
-
-            return patient;
+            const { patient: saved } = await savePatientViaRpc(patient, previous, {
+                includeClinical: canViewChart,
+                includeMoney: canSeeMoney,
+            });
+            return saved;
         },
         // Optimistic Updates!!! This completely replaces the local 800ms debounce cache with instant UI reactions.
         onMutate: async (newPatient) => {
@@ -429,16 +343,45 @@ export function usePatientMutations() {
             return { previous, previousPatient };
         },
         onError: (err, newPatient, context) => {
+            const versionConflict =
+                err instanceof MissingPatientVersionError || isRpcVersionConflict(err);
+            if (versionConflict) {
+                // Descartar pendingRemovedIds locales; invalidate recarga verdad del servidor.
+                if (context?.previous) {
+                    queryClient.setQueryData(
+                        ['patients', clinicId],
+                        context.previous.map((p) =>
+                            p.id === newPatient.id ? { ...p, pendingRemovedIds: undefined } : p,
+                        ),
+                    );
+                }
+                if (context?.previousPatient) {
+                    queryClient.setQueryData(['patient', newPatient.id, clinicId], {
+                        ...context.previousPatient,
+                        pendingRemovedIds: undefined,
+                    });
+                }
+                sileo.error({
+                    title: 'Conflicto de versión',
+                    description:
+                        'Recarga el expediente. Los borrados pendientes no se aplicaron (sin reintento).',
+                });
+                return;
+            }
             if (context?.previous) {
                 queryClient.setQueryData(['patients', clinicId], context.previous);
             }
             if (context?.previousPatient) {
                 queryClient.setQueryData(['patient', newPatient.id, clinicId], context.previousPatient);
             }
-            sileo.error({ title: 'Error al sincronizar datos', description: 'Los cambios fueron revertidos. Verifica tu conexión.' });
+            sileo.error({
+                title: 'Error al sincronizar datos',
+                description: rpcErrorMessage(err) || 'Los cambios fueron revertidos. Verifica tu conexión.',
+            });
         },
         onSettled: (data, error, variables) => {
             if (isGuest) return;
+            // DL412: invalidar para forzar recarga; no reintentar el mutate.
             queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
             queryClient.invalidateQueries({ queryKey: ['patient', variables.id, clinicId] });
         }
@@ -495,6 +438,19 @@ export function usePatientMutations() {
             }
 
             if (!clinicId) throw new Error('No doctor/clinic mapped');
+
+            if (isSavePatientRpcEnabled()) {
+                const previous =
+                    queryClient.getQueryData<PatientRecord>(['patient', patientId, clinicId]) ??
+                    queryClient.getQueryData<PatientRecord[]>(['patients', clinicId])?.find((p) => p.id === patientId);
+                if (!previous) throw new MissingPatientVersionError();
+                const { patient: saved } = await addPaymentViaRpc(previous, payment, {
+                    includeMoney: canSeeMoney,
+                });
+                queryClient.setQueryData(['patient', patientId, clinicId], saved);
+                return { patientId, payment, version: saved.version };
+            }
+
             const { error } = await supabase.from('payments').insert({
                 id: payment.id,
                 patient_id: patientId,

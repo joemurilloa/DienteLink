@@ -57,8 +57,9 @@ export async function createFullBackup(opts: BackupOptions): Promise<{ patients:
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from('patients')
-      .select('*, evolution_notes(*), clinical_events(*), budget_items(*), payments(*), consent_forms(*), prescriptions(*), lab_works(*)')
+      .select('*, patient_clinical(*), evolution_notes(*), clinical_events(*), budget_items(*), payments(*), consent_forms(*), prescriptions(*), lab_works(*)')
       .eq('doctor_id', clinicId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`No se pudieron leer los pacientes: ${error.message}`);
@@ -75,8 +76,20 @@ export async function createFullBackup(opts: BackupOptions): Promise<{ patients:
     .eq('doctor_id', clinicId);
   if (aptErr) throw new Error(`No se pudieron leer las citas: ${aptErr.message}`);
 
+  const alive = <T extends { deleted_at?: string | null }>(rows: T[] | null | undefined) =>
+    (rows ?? []).filter((r) => r.deleted_at == null);
+
   const patients: PatientRecord[] = rawPatients.map(p =>
-    dbToPatient(p, p.evolution_notes || [], p.clinical_events || [], p.budget_items || [], p.payments || [], p.consent_forms || [], p.prescriptions || [], p.lab_works || [])
+    dbToPatient(
+      p,
+      alive(p.evolution_notes),
+      alive(p.clinical_events),
+      alive(p.budget_items),
+      alive(p.payments),
+      alive(p.consent_forms),
+      alive(p.prescriptions),
+      alive(p.lab_works),
+    )
   );
 
   const JSZip = (await import('jszip')).default;

@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- DienteLink â€” Acceso provisional al subir un comprobante
 -- Ejecutar en Supabase SQL Editor despuÃ©s de:

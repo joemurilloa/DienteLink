@@ -5,8 +5,8 @@ import { Resend } from "https://esm.sh/resend@3.2.0"
 // El comprobante NO se guarda en Storage: viaja por correo y se descarta.
 // En la base solo queda el registro "por revisar" (sin imagen).
 
-const ADMIN_EMAIL = 'joemurilloa@gmail.com';
-const APP_URL = 'https://diente-link.vercel.app';
+const ADMIN_EMAIL = Deno.env.get("ADMIN_NOTIFY_EMAIL") ?? "";
+const APP_URL = Deno.env.get("APP_URL") ?? "https://diente-link.vercel.app";
 const MAX_BYTES = 3 * 1024 * 1024;
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -73,6 +73,10 @@ Deno.serve(async (req) => {
       console.error("[submit-receipt] RESEND_API_KEY no está configurado");
       return fail(500, 'El envío de comprobantes no está configurado. Escríbenos por WhatsApp.');
     }
+    if (!ADMIN_EMAIL) {
+      console.error("[submit-receipt] ADMIN_NOTIFY_EMAIL no está configurado");
+      return fail(500, 'El envío de comprobantes no está configurado. Escríbenos por WhatsApp.');
+    }
 
     const body = await req.json();
     const mimeType = String(body?.mimeType ?? '');
@@ -85,10 +89,9 @@ Deno.serve(async (req) => {
     const approxBytes = Math.floor(contentBase64.length * 3 / 4);
     if (approxBytes > MAX_BYTES) return fail(413, 'El comprobante pesa demasiado (máximo 3 MB).');
 
-    const asUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
-    const { data: rows, error: rpcError } = await asUser.rpc('submit_payment_receipt', {
+    // Solo service_role puede llamar el RPC; el archivo ya se validó arriba.
+    const { data: rows, error: rpcError } = await admin.rpc('submit_payment_receipt', {
+      p_clinic_id: user.id,
       p_email_referencia: user.email ?? '',
       p_notes: notes || null,
     });

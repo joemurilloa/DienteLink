@@ -1,3 +1,6 @@
+-- ARCHIVO HIST”RICO. NO EJECUTAR EN PRODUCCI”N.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- =============================================================
 -- DienteLink: Public Booking RPC Functions
 -- Estas funciones son la versi√≥n can√≥nica.

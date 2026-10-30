@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- DienteLink â€” Fase 5
 -- Pegar en el SQL Editor DESPUÃ‰S de phase4_user_notifications.sql.
@@ -100,7 +103,7 @@ BEGIN
       url     := 'https://jrzydxpcyonrzhbpzibc.supabase.co/functions/v1/notify-doctor-new-request',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'apikey', 'sb_publishable_dmra7_LLEYmD5yYo2C7t_g_0GzD1hpf',
+        'apikey', current_setting('app.settings.supabase_publishable_key', true),
         'x-notify-secret', hook_secret
       ),
       body    := jsonb_build_object('record', jsonb_build_object('id', NEW.id))

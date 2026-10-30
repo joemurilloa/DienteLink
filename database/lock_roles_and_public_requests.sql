@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- DienteLink â€” Roles, equipo y solicitudes pÃºblicas
 -- Pegar TODO en el SQL Editor de Supabase y ejecutar (Run).

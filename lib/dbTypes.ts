@@ -1,18 +1,27 @@
 /**
  * dbTypes.ts — TypeScript interfaces for raw Supabase database rows.
  *
- * These types describe the shape of data as it comes directly from
- * the Supabase PostgREST API — before it is transformed into the
- * domain types defined in types.ts.
- *
- * Having explicit DB row types eliminates the `any` usage in dbToPatient()
- * and all related mapping functions, giving us compile-time safety when
- * the schema changes.
+ * patients guarda identidad + motivo/consentimiento.
+ * El expediente clínico vive en patient_clinical (RLS por rol).
  */
 
-// ---------------------------------------------------------------------------
-// patients table
-// ---------------------------------------------------------------------------
+export interface DbPatientClinicalRow {
+  patient_id: string;
+  doctor_id: string;
+  allergies: string[] | null;
+  medications: string | null;
+  previous_diseases: string | null;
+  family_history: string | null;
+  blood_type: string | null;
+  smoker: boolean | null;
+  pregnant: boolean | null;
+  habits: string | null;
+  observations: string | null;
+  odontogram: unknown;
+  odontogram_history: unknown;
+  periodontogram: unknown;
+  updated_at?: string;
+}
 
 export interface DbPatientRow {
   id: string;
@@ -24,28 +33,65 @@ export interface DbPatientRow {
   phone: string | null;
   email: string | null;
   occupation: string | null;
-  allergies: string[] | null;
-  medications: string | null;
-  previous_diseases: string | null;
-  family_history: string | null;
   motive_of_consult: string | null;
-  blood_type: string | null;
-  smoker: boolean | null;
-  pregnant: boolean | null;
-  habits: string | null;
-  observations: string | null;
   consent_signed: boolean | null;
-  odontogram: unknown;       // validated via ensureOdontogram()
-  odontogram_history: unknown;
-  periodontogram: unknown;   // validated via ensurePeriodontogramData()
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  version?: number;
+  /** Embed 1:1; null si el rol no puede leer el expediente. */
+  patient_clinical?: DbPatientClinicalRow | DbPatientClinicalRow[] | null;
+  /** Campos clínicos aplanados (tras mergePatientClinical). */
+  allergies?: string[] | null;
+  medications?: string | null;
+  previous_diseases?: string | null;
+  family_history?: string | null;
+  blood_type?: string | null;
+  smoker?: boolean | null;
+  pregnant?: boolean | null;
+  habits?: string | null;
+  observations?: string | null;
+  odontogram?: unknown;
+  odontogram_history?: unknown;
+  periodontogram?: unknown;
 }
 
-// ---------------------------------------------------------------------------
-// evolution_notes table
-// ---------------------------------------------------------------------------
+export function mergePatientClinical<T extends DbPatientRow>(p: T): T {
+  const raw = p.patient_clinical;
+  const clinical = Array.isArray(raw) ? raw[0] : raw;
+  if (!clinical) {
+    return {
+      ...p,
+      allergies: p.allergies ?? [],
+      medications: p.medications ?? '',
+      previous_diseases: p.previous_diseases ?? '',
+      family_history: p.family_history ?? '',
+      blood_type: p.blood_type ?? null,
+      smoker: p.smoker ?? false,
+      pregnant: p.pregnant ?? false,
+      habits: p.habits ?? null,
+      observations: p.observations ?? null,
+      odontogram: p.odontogram ?? [],
+      odontogram_history: p.odontogram_history ?? [],
+      periodontogram: p.periodontogram ?? null,
+    };
+  }
+  return {
+    ...p,
+    allergies: clinical.allergies,
+    medications: clinical.medications,
+    previous_diseases: clinical.previous_diseases,
+    family_history: clinical.family_history,
+    blood_type: clinical.blood_type,
+    smoker: clinical.smoker,
+    pregnant: clinical.pregnant,
+    habits: clinical.habits,
+    observations: clinical.observations,
+    odontogram: clinical.odontogram,
+    odontogram_history: clinical.odontogram_history,
+    periodontogram: clinical.periodontogram,
+  };
+}
 
 export interface DbEvolutionNoteRow {
   id: string;
@@ -55,10 +101,6 @@ export interface DbEvolutionNoteRow {
   content: string;
   procedure: string | null;
 }
-
-// ---------------------------------------------------------------------------
-// clinical_events table
-// ---------------------------------------------------------------------------
 
 export interface DbClinicalEventRow {
   id: string;
@@ -70,10 +112,6 @@ export interface DbClinicalEventRow {
   tooth_id: number | null;
 }
 
-// ---------------------------------------------------------------------------
-// budget_items table
-// ---------------------------------------------------------------------------
-
 export interface DbBudgetItemRow {
   id: string;
   patient_id: string;
@@ -82,13 +120,9 @@ export interface DbBudgetItemRow {
   tooth_id: number | null;
   unit_cost: number;
   quantity: number;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: string;
   created_at: string;
 }
-
-// ---------------------------------------------------------------------------
-// payments table
-// ---------------------------------------------------------------------------
 
 export interface DbPaymentRow {
   id: string;
@@ -100,38 +134,26 @@ export interface DbPaymentRow {
   date: string;
 }
 
-// ---------------------------------------------------------------------------
-// consent_forms table
-// ---------------------------------------------------------------------------
-
 export interface DbConsentFormRow {
   id: string;
   patient_id: string;
   doctor_id: string;
   title: string;
   content: string;
-  signature_data: string | null;
-  signed_at: string | null;
+  signature_data: string;
+  signed_at: string;
   witness_name: string | null;
 }
-
-// ---------------------------------------------------------------------------
-// prescriptions table
-// ---------------------------------------------------------------------------
 
 export interface DbPrescriptionRow {
   id: string;
   patient_id: string;
   doctor_id: string;
   date: string;
-  diagnosis: string | null;
-  medications: unknown[];  // JSON array — validated at read time
+  diagnosis: string;
+  medications: unknown;
   notes: string | null;
 }
-
-// ---------------------------------------------------------------------------
-// lab_works table
-// ---------------------------------------------------------------------------
 
 export interface DbLabWorkRow {
   id: string;
@@ -144,33 +166,4 @@ export interface DbLabWorkRow {
   cost: number;
   status: string;
   created_at: string;
-}
-
-// ---------------------------------------------------------------------------
-// appointments table
-// ---------------------------------------------------------------------------
-
-export interface DbAppointmentRow {
-  id: string;
-  doctor_id: string;
-  patient_id: string | null;
-  patient_name: string;
-  phone_number: string | null;
-  time: string;
-  date: string;
-  type: string;
-  status: string;
-  reminder_status: string | null;
-  reminder_scheduled_at: string | null;
-  created_at: string;
-}
-
-// ---------------------------------------------------------------------------
-// price_catalogs table
-// ---------------------------------------------------------------------------
-
-export interface DbPriceCatalogRow {
-  doctor_id: string;
-  items: unknown;
-  updated_at: string;
 }

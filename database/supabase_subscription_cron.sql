@@ -1,3 +1,6 @@
+-- ARCHIVO HIST”RICO. NO EJECUTAR EN PRODUCCI”N.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- DienteLink ‚Äî Cron Job de Expiraci√≥n Autom√°tica
 -- Run AFTER supabase_subscriptions_v2.sql

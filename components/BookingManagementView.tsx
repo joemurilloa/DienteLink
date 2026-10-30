@@ -5,17 +5,19 @@ import {
   Settings, Share2, Copy, Eye, Plus, Trash2, Save, Globe,
   Bell, RefreshCw, Link2, MoreVertical
 } from 'lucide-react';
-import { DoctorAvailability, PublicBookingSettings, AppointmentRequest, Appointment, PatientRecord } from '../types';
+import { DoctorAvailability, PublicBookingSettings, AppointmentRequest } from '../types';
 import { bookingService } from '../services/bookingService';
 import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
-import { usePatients, usePatientMutations } from '../hooks/usePatients';
-import { cn, generateId, getInitials, formatAppDate, createDefaultPeriodontogramData } from '../lib/utils';
+import { cn, getInitials, formatAppDate } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import ConfirmModal from './ConfirmModal';
 import { whatsappService } from '../services/whatsappService';
 import { useAuth } from '../services/authService';
 import WhatsAppAction from './WhatsAppAction';
+import { queryClient } from '../lib/queryClient';
+import { useRoleAccess } from './RoleGuard';
+import { isRpcConflict, isRpcForbidden, isRpcInvalidState, rpcErrorMessage } from '../lib/rpcErrors';
 
 interface Props {
   onBack: () => void;
@@ -32,17 +34,17 @@ const daysOfWeek = [
 ];
 
 export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
-  const { profile } = useAuth();
+  const { profile, clinicId } = useAuth();
+  const { canApproveBookings } = useRoleAccess();
   const { data: appointments = [] } = useAppointments();
-  const { data: patients = [] } = usePatients();
-  const { createAppointment, deleteAppointment } = useAppointmentMutations();
-  const { savePatient } = usePatientMutations();
+  const { deleteAppointment } = useAppointmentMutations();
   const [activeTab, setActiveTab] = useState<'requests' | 'config' | 'share'>('requests');
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [notifyReq, setNotifyReq] = useState<AppointmentRequest | null>(null);
   const [loadingReqs, setLoadingReqs] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [availability, setAvailability] = useState<DoctorAvailability>(() => bookingService.getDoctorAvailability());
   const [settings, setSettings] = useState<PublicBookingSettings>(() => bookingService.getBookingSettings());
   const [hasChanges, setHasChanges] = useState(false);
@@ -98,93 +100,58 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     sileo.success({ title: 'Solicitudes actualizadas' });
   };
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (id: string, forceOverlap = false) => {
     const req = requests.find(r => r.id === id);
     if (!req) return;
-
-    const conflict = appointments.find(a =>
-      a.date === req.requestedDate && a.time === req.requestedTime && a.status !== 'Eliminada'
-    );
-    if (conflict) {
-      sileo.warning({
-        title: 'Horario ocupado',
-        description: `${conflict.patientName} ya tiene cita el ${formatAppDate(req.requestedDate)} a las ${req.requestedTime}. Declina o reprograma.`,
-      });
+    if (!canApproveBookings) {
+      sileo.error({ title: 'Sin permiso', description: 'Tu rol no puede aprobar reservas.' });
       return;
     }
 
-    const approved = await bookingService.approveRequest(id);
-    if (!approved) return;
+    setApprovingId(id);
+    try {
+      const result = await bookingService.approveRequestAtomic(id, forceOverlap);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] }),
+        queryClient.invalidateQueries({ queryKey: ['patients', clinicId] }),
+      ]);
+      setRequests(bookingService.getAppointmentRequests());
 
-    // Liga la cita al expediente si el teléfono coincide con un paciente existente
-    // (últimos 8 dígitos, ignora +504, espacios y guiones).
-    const digits = (v?: string) => (v || '').replace(/\D/g, '').slice(-8);
-    const reqPhone = digits(req.patientPhone);
-    const existing = reqPhone.length === 8
-      ? patients.find(p => digits(p.identification.phone) === reqPhone)
-      : undefined;
-
-    // El teléfono identifica al paciente: si no existe, se crea su expediente básico.
-    let patientId = existing?.id || '';
-    if (!existing && reqPhone.length === 8) {
-      const newPatient: PatientRecord = {
-        id: crypto.randomUUID(),
-        identification: {
-          fullName: req.patientName.trim(),
-          birthDate: '',
-          gender: '' as any,
-          address: '',
-          phone: req.patientPhone || '',
-          email: req.patientEmail || '',
-          occupation: '',
-        },
-        clinicalHistory: { allergies: [], medications: '', previousDiseases: '', familyHistory: '', motiveOfConsult: '' },
-        evolutionNotes: [],
-        history: [],
-        consentSigned: false,
-        odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
-        periodontogram: createDefaultPeriodontogramData(),
-        budget: [],
-        payments: [],
-        xrays: [],
-        balance: 0,
-        consents: [],
-        prescriptions: [],
-      };
-      try {
-        await savePatient.mutateAsync(newPatient);
-        patientId = newPatient.id;
-      } catch (e) {
-        console.error('No se pudo crear el paciente', e);
+      if (result.possible_duplicates) {
+        sileo.warning({
+          title: 'Cita creada — revisar duplicados',
+          description: 'Había varios pacientes parecidos; se creó un expediente nuevo para no mezclar historiales.',
+        });
       }
+
+      if (req.patientPhone) {
+        setNotifyReq(req);
+      } else {
+        sileo.success({
+          title: 'Cita en la agenda',
+          description: `${formatAppDate(req.requestedDate)} a las ${req.requestedTime}. No hay teléfono para avisar.`,
+        });
+      }
+    } catch (err: unknown) {
+      if (isRpcConflict(err)) {
+        sileo.warning({
+          title: 'Horario ocupado',
+          description: `${formatAppDate(req.requestedDate)} a las ${req.requestedTime}. Declina, reprograma o fuerza el solape.`,
+        });
+      } else if (isRpcInvalidState(err)) {
+        sileo.info({
+          title: 'Ya estaba procesada',
+          description: 'Esta solicitud ya no está pendiente. Actualiza la lista.',
+        });
+        setRequests(bookingService.getAppointmentRequests());
+      } else if (isRpcForbidden(err)) {
+        sileo.error({ title: 'Sin permiso', description: 'Tu rol no puede aprobar reservas.' });
+      } else {
+        sileo.error({ title: 'No se pudo aprobar', description: rpcErrorMessage(err) });
+      }
+    } finally {
+      setApprovingId(null);
     }
-
-    const appointment: Appointment = {
-      id: generateId(),
-      patientId,
-      patientName: req.patientName,
-      phoneNumber: req.patientPhone || '',
-      time: req.requestedTime,
-      date: req.requestedDate,
-      type: req.appointmentType,
-      status: 'Programada',
-      reminderStatus: 'not_sent',
-    };
-    
-    createAppointment.mutate(appointment, {
-      onSuccess: () => {
-        if (req.patientPhone) {
-          setNotifyReq(req);
-        } else {
-          sileo.success({
-            title: 'Cita en la agenda',
-            description: `${formatAppDate(req.requestedDate)} a las ${req.requestedTime}. No hay teléfono para avisar.`,
-          });
-        }
-      }
-    });
-
-    setRequests(bookingService.getAppointmentRequests());
   };
 
   const tellPatient = () => {
@@ -219,40 +186,20 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     if (!req) return;
 
     if (newStatus === 'approved') {
-      await bookingService.updateRequestStatus(id, 'approved');
-      const alreadyExists = appointments.some(a =>
+      await handleApprove(id, false);
+      return;
+    }
+
+    if (req.status === 'approved') {
+      const linkedAppt = appointments.find(a =>
         a.patientName === req.patientName && a.date === req.requestedDate && a.time === req.requestedTime && a.status !== 'Eliminada'
       );
-      if (!alreadyExists) {
-        const appointment: Appointment = {
-          id: generateId(),
-          patientId: '',
-          patientName: req.patientName,
-          phoneNumber: req.patientPhone || '',
-          time: req.requestedTime,
-          date: req.requestedDate,
-          type: req.appointmentType,
-          status: 'Programada',
-          reminderStatus: 'not_sent',
-        };
-        createAppointment.mutate(appointment, {
-          onSuccess: () => sileo.success({ title: `Aprobada para el ${formatAppDate(req.requestedDate)}` })
-        });
-      } else {
-        sileo.success({ title: `Restaurada para el ${formatAppDate(req.requestedDate)}` });
+      if (linkedAppt) {
+        deleteAppointment.mutate(linkedAppt.id);
       }
-    } else {
-      if (req.status === 'approved') {
-        const linkedAppt = appointments.find(a =>
-          a.patientName === req.patientName && a.date === req.requestedDate && a.time === req.requestedTime && a.status !== 'Eliminada'
-        );
-        if (linkedAppt) {
-          deleteAppointment.mutate(linkedAppt.id);
-        }
-      }
-      await bookingService.updateRequestStatus(id, newStatus);
-      sileo.info({ title: 'Estado actualizado' });
     }
+    await bookingService.updateRequestStatus(id, newStatus);
+    sileo.info({ title: 'Estado actualizado' });
     setRequests(bookingService.getAppointmentRequests());
   };
 
@@ -531,7 +478,13 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t border-slate-300 md:border-0 pt-4 md:pt-0">
                       {req.status === 'pending' && (
                         <>
-                           <button onClick={() => handleApprove(req.id)} className="px-5 py-2.5 bg-blue-600 text-white rounded-[10px] text-[13px] font-bold hover:bg-blue-700 transition-all">Aprobar</button>
+                           <button
+                             disabled={!canApproveBookings || approvingId === req.id}
+                             onClick={() => handleApprove(req.id)}
+                             className="px-5 py-2.5 bg-blue-600 text-white rounded-[10px] text-[13px] font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
+                           >
+                             {approvingId === req.id ? 'Aprobando…' : 'Aprobar'}
+                           </button>
                            <button onClick={() => handleReject(req.id)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-[10px] text-[13px] font-bold hover:bg-slate-200 transition-all">Declinar</button>
                         </>
                       )}

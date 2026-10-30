@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- DienteLink - Security fixes. Pegar TODO en Supabase SQL Editor y ejecutar (Run).
 -- Este archivo es solo ASCII a proposito (sin acentos) para evitar errores de pegado.
 

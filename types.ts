@@ -258,6 +258,13 @@ export interface PatientRecord {
    * Si la clave no está, guardar no borra esa tabla.
    */
   loadedCollections?: PatientCollection[];
+  /**
+   * Borrados explícitos de UI por colección (removedIds del RPC).
+   * Nunca inferir solo por diff de cache.
+   */
+  pendingRemovedIds?: Partial<Record<PatientCollection, string[]>>;
+  /** Concurrencia optimista (patients.version). Ausente = alta. */
+  version?: number;
   createdAt?: string;
   updatedAt?: string;
 }

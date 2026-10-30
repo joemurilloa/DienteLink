@@ -2,8 +2,6 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../services/authService';
 import type { SubscriptionState } from '../hooks/useSubscription';
-import { isPlatformAdmin } from '../lib/billing';
-
 interface Props {
   subscription: SubscriptionState;
   children: React.ReactNode;
@@ -15,10 +13,10 @@ interface Props {
  * Demo y el admin de la plataforma siguen entrando.
  */
 export const SubscriptionGate: React.FC<Props> = ({ subscription, children }) => {
-  const { profile, isGuest, user } = useAuth();
+  const { profile, isGuest, isPlatformAdmin } = useAuth();
   const location = useLocation();
 
-  if (isPlatformAdmin(user?.email)) return <>{children}</>;
+  if (isPlatformAdmin) return <>{children}</>;
   if (isGuest) return <>{children}</>;
 
   if (!profile || subscription.loading) {

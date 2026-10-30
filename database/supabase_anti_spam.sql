@@ -1,3 +1,6 @@
+-- ARCHIVO HIST”RICO. NO EJECUTAR EN PRODUCCI”N.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- =============================================================
 -- DienteLink: Anti-Spam Trigger para Citas P√∫blicas (SEC-09)
 -- Previene ataques DoS o saturaci√≥n de la base de datos limitando

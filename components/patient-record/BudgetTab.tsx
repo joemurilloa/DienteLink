@@ -17,6 +17,7 @@ import { sileo } from 'sileo';
 import { generatePaymentReceiptPDF, generateAccountStatementPDF, generateBudgetPDF } from '../../lib/invoiceGenerator';
 import { whatsappService } from '../../services/whatsappService';
 import { useAuth } from '../../services/authService';
+import { removeCollectionItem } from '../../lib/savePatientRpc';
 import ConfirmModal from '../ConfirmModal';
 import WhatsAppAction from '../WhatsAppAction';
 
@@ -79,7 +80,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
     };
 
     const handleDeleteTreatment = (id: string) => {
-        onUpdate({ ...patient, budget: budgetItems.filter(b => b.id !== id) });
+        onUpdate(removeCollectionItem({ ...patient, budget: budgetItems }, 'budget', id));
     };
 
     const handleToggleStatus = (id: string) => {
@@ -108,7 +109,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
     };
 
     const handleDeletePayment = (id: string) => {
-        onUpdate({ ...patient, payments: payments.filter(p => p.id !== id) });
+        onUpdate(removeCollectionItem({ ...patient, payments }, 'payments', id));
     };
 
     return (

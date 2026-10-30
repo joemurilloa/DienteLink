@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- =============================================================
 -- DienteLink: Security & Data Integrity Fixes
 -- Run this ONCE in Supabase SQL Editor (app.supabase.com)

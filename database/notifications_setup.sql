@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- Avisos por correo: solicitud nueva -> doctor (+ acuse al paciente)
 -- Ejecutar en el SQL Editor de Supabase. Es idempotente.
@@ -57,7 +60,7 @@ BEGIN
       url     := 'https://jrzydxpcyonrzhbpzibc.supabase.co/functions/v1/notify-doctor-new-request',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'apikey', 'sb_publishable_dmra7_LLEYmD5yYo2C7t_g_0GzD1hpf',
+        'apikey', current_setting('app.settings.supabase_publishable_key', true),
         'x-notify-secret', hook_secret
       ),
       body    := jsonb_build_object('record', jsonb_build_object('id', NEW.id))

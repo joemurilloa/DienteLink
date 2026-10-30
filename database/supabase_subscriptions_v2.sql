@@ -1,3 +1,10 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
+DO $$ BEGIN
+  RAISE EXCEPTION 'Archivo histórico. Usa supabase/migrations/.';
+END $$;
+
 -- ============================================================
 -- DienteLink â€” Subscriptions v2 + Payment Receipts
 -- Run this in the Supabase SQL Editor

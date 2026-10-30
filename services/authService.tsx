@@ -16,6 +16,8 @@ interface AuthContextType {
   clinicId: string | null;
   loading: boolean;
   isGuest: boolean;
+  /** Viene de RPC is_platform_admin() en la base, no del email del cliente. */
+  isPlatformAdmin: boolean;
   enterGuestMode: () => void;
   exitGuestMode: () => void;
   signOut: () => Promise<void>;
@@ -74,8 +76,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<DoctorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const isGuestRef = useRef(false);
   const savedProfileRef = useRef<DoctorProfile | null>(null);
+
+  const refreshPlatformAdmin = async () => {
+    try {
+      const { data, error } = await supabase.rpc('is_platform_admin');
+      setIsPlatformAdmin(!error && data === true);
+    } catch {
+      setIsPlatformAdmin(false);
+    }
+  };
 
   const enterGuestMode = () => {
     isGuestRef.current = true;
@@ -131,6 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
                 setProfile(prof);
                 setCurrencyConfig(prof.currency, prof.locale);
+                await refreshPlatformAdmin();
                 return;
               }
             }
@@ -156,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         document.documentElement.setAttribute('data-theme', prof.theme_color || 'blue');
         setProfile(prof);
         setCurrencyConfig(prof.currency, prof.locale);
+        await refreshPlatformAdmin();
       }
     } catch (err) {
       console.error("Unexpected error in fetchProfile:", err);
@@ -216,6 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_OUT') {
         queryClient.clear();
         setProfile(null);
+        setIsPlatformAdmin(false);
       }
 
       const stillExchangingCode = waitingForOAuth && event === 'INITIAL_SESSION';
@@ -240,6 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(null);
       setUser(null);
       setProfile(null);
+      setIsPlatformAdmin(false);
     });
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -299,7 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clinicId = isGuest ? 'demo' : (profile?.clinic_id || profile?.id || null);
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, clinicId, loading, isGuest, enterGuestMode, exitGuestMode, signOut, updateProfile, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, session, profile, clinicId, loading, isGuest, isPlatformAdmin, enterGuestMode, exitGuestMode, signOut, updateProfile, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

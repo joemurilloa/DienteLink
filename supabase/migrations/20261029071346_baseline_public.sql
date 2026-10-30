@@ -646,6 +646,26 @@ BEGIN
 END;
 $function$;
 
+-- Definidas antes de clinic_access_until / current_clinic_has_paid_access
+-- (LANGUAGE sql valida dependencias al CREATE; el dump original iba en orden alfabético).
+CREATE OR REPLACE FUNCTION public.get_my_clinic_id()
+ RETURNS uuid
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT clinic_id FROM public.profiles WHERE id = auth.uid();
+$function$;
+
+CREATE OR REPLACE FUNCTION public.get_my_role()
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT role FROM profiles WHERE id = auth.uid();
+$function$;
+
 CREATE OR REPLACE FUNCTION public.clinic_access_until(p_clinic_id uuid)
  RETURNS timestamp with time zone
  LANGUAGE plpgsql
@@ -773,24 +793,6 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.get_my_clinic_id()
- RETURNS uuid
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-  SELECT clinic_id FROM public.profiles WHERE id = auth.uid();
-$function$;
-
-CREATE OR REPLACE FUNCTION public.get_my_role()
- RETURNS text
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-  SELECT role FROM profiles WHERE id = auth.uid();
-$function$;
-
 CREATE OR REPLACE FUNCTION public.get_public_appointment_requests(p_doctor_id uuid)
  RETURNS TABLE(requested_date text, requested_time text)
  LANGUAGE sql
@@ -913,20 +915,14 @@ AS $function$
   );
 $function$;
 
+-- Stub: la definición real (tabla platform_admins) llega en migraciones posteriores.
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
  RETURNS boolean
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  SELECT EXISTS (
-    SELECT 1
-    FROM auth.users u
-    WHERE u.id = auth.uid()
-      AND lower(u.email) = 'joemurilloa@gmail.com'
-      AND lower(coalesce(auth.jwt() ->> 'email', '')) = 'joemurilloa@gmail.com'
-      AND u.email_confirmed_at IS NOT NULL
-  );
+  SELECT false;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.notify_new_appointment_request()
@@ -955,7 +951,12 @@ BEGIN
       url     := 'https://jrzydxpcyonrzhbpzibc.supabase.co/functions/v1/notify-doctor-new-request',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'apikey', 'sb_publishable_dmra7_LLEYmD5yYo2C7t_g_0GzD1hpf',
+        'apikey', coalesce(
+          (SELECT ds.decrypted_secret FROM vault.decrypted_secrets ds
+            WHERE ds.name = 'supabase_publishable_key'
+            ORDER BY ds.created_at DESC LIMIT 1),
+          ''
+        ),
         'x-notify-secret', hook_secret
       ),
       body    := jsonb_build_object('record', jsonb_build_object('id', NEW.id))

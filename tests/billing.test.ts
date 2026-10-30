@@ -68,7 +68,7 @@ describe('isPlatformAdmin', () => {
     expect(isPlatformAdmin(BILLING.adminEmail)).toBe(true);
     expect(isPlatformAdmin(BILLING.adminEmail.toUpperCase())).toBe(true);
     expect(isPlatformAdmin('otro@clinica.com')).toBe(false);
-    expect(isPlatformAdmin('joemurilloa+hack@gmail.com')).toBe(false);
+    expect(isPlatformAdmin('admin+hack@dientelink.app')).toBe(false);
     expect(isPlatformAdmin(null)).toBe(false);
   });
 });

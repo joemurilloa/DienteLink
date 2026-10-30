@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- DienteLink â€” Comprobantes solo por correo (sin guardar imÃ¡genes)
 -- Ejecutar en Supabase SQL Editor DESPUÃ‰S de

@@ -10,13 +10,19 @@ export const BILLING = {
     account: '747076151',
     holder: 'Joe Antonio Murillo Argueta',
   },
-  adminEmail: 'joemurilloa@gmail.com',
+  /** Solo copy de UI / correo de contacto. Auth real = RPC is_platform_admin(). */
+  adminEmail: (import.meta.env.VITE_ADMIN_CONTACT_EMAIL as string | undefined)?.trim()
+    || 'admin@dientelink.app',
 } as const;
 
 /** Paquetes que el admin interno puede sumar a una clínica. */
 export const PLAN_DAYS = [30, 60, 90, 365] as const;
 export type PlanDays = (typeof PLAN_DAYS)[number];
 
+/**
+ * Solo para copy/tests de UI. La autorización real es RPC is_platform_admin()
+ * (tabla platform_admins) expuesta en AuthContext.isPlatformAdmin.
+ */
 export function isPlatformAdmin(email?: string | null): boolean {
   return !!email && email.trim().toLowerCase() === BILLING.adminEmail.toLowerCase();
 }

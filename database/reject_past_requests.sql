@@ -1,3 +1,6 @@
+-- ARCHIVO HIST”RICO. NO EJECUTAR EN PRODUCCI”N.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- Rechaza solicitudes p√∫blicas con fecha/hora que ya pas√≥ (hora de Honduras)
 create or replace function public.reject_past_appointment_request()
 returns trigger language plpgsql as $$

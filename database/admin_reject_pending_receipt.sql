@@ -1,3 +1,6 @@
+-- ARCHIVO HIST”RICO. NO EJECUTAR EN PRODUCCI”N.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- Admin: rechazar comprobantes pendientes sin sumar d√≠as
 -- Ejecutar en Supabase SQL Editor.

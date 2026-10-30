@@ -9,7 +9,6 @@ import PriceCatalogSettings from './Settings/PriceCatalogSettings';
 import BackupSettings from './Settings/BackupSettings';
 import ClinicHoursSettings from './Settings/ClinicHoursSettings';
 import { openProblemReport } from '../../lib/support';
-import { isPlatformAdmin } from '../../lib/billing';
 import { roleLabel } from '../../lib/roles';
 
 const CURRENCY_OPTIONS = [
@@ -35,7 +34,7 @@ const CURRENCY_OPTIONS = [
 
 const SettingsView: React.FC = () => {
   const { canViewFinancial, isAdmin } = useRoleAccess();
-  const { profile, updateProfile, clinicId, user } = useAuth();
+  const { profile, updateProfile, clinicId, user, isPlatformAdmin } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -97,7 +96,7 @@ const SettingsView: React.FC = () => {
       </header>
 
       <div className="max-w-2xl space-y-5">
-        {isPlatformAdmin(user?.email) && (
+        {isPlatformAdmin && (
           <div className="card-premium p-6 border border-blue-100 bg-blue-50/40">
             <h3 className="text-base font-bold text-slate-900">Panel interno de cobros</h3>
             <p className="text-sm text-slate-500 mt-1 mb-4">

@@ -1,3 +1,6 @@
+-- ARCHIVO HIST”RICO. NO EJECUTAR EN PRODUCCI”N.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- =============================================
 -- FIX: Eliminar el check constraint que bloquea 
 -- los status en espa√±ol (Programada, Eliminada, etc.)

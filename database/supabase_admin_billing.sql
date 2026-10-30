@@ -1,17 +1,12 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
+DO $$ BEGIN
+  RAISE EXCEPTION 'Archivo histórico. Usa supabase/migrations/ (platform_admins + is_platform_admin).';
+END $$;
+
 -- ============================================================
--- DienteLink â€” Panel interno de cobros
--- Ejecutar en el SQL Editor de Supabase DESPUÃ‰S de
--- supabase_subscriptions_v2.sql
---
--- SEGURIDAD:
---   Activar dÃ­as SOLO es posible si la sesiÃ³n autenticada
---   pertenece a joemurilloa@gmail.com (email confirmado en
---   auth.users + mismo email en el JWT firmado por Supabase).
---   Cualquier otro usuario recibe "No autorizado".
---
--- REGLA DE ORO:
---   Expirar o dejar de pagar NUNCA borra pacientes, citas,
---   expedientes ni comprobantes. Solo se corta el ACCESO.
+-- (rest of file intentionally unreachable)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
@@ -24,10 +19,10 @@ AS $$
   SELECT EXISTS (
     SELECT 1
     FROM auth.users u
+    JOIN public.platform_admins a ON lower(a.email) = lower(u.email)
     WHERE u.id = auth.uid()
-      AND lower(u.email) = 'joemurilloa@gmail.com'
-      AND lower(coalesce(auth.jwt() ->> 'email', '')) = 'joemurilloa@gmail.com'
       AND u.email_confirmed_at IS NOT NULL
+      AND lower(coalesce(auth.jwt() ->> 'email', '')) = lower(u.email)
   );
 $$;
 

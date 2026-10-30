@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================================
 -- DienteLink â€” Storage Setup para Comprobantes de Pago
 -- El comprobante viaja por correo. Este bucket queda privado.

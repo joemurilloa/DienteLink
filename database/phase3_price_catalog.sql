@@ -1,3 +1,6 @@
+-- ARCHIVO HISTÓRICO. NO EJECUTAR EN PRODUCCIÓN.
+-- Fuente de verdad: supabase/migrations/
+-- Ver database/README.md
 -- ============================================================
 -- DienteLink â€” Fase 3: CatÃ¡logo de precios en Postgres
 -- Pegar en el SQL Editor de Supabase y ejecutar (Run).

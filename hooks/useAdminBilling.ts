@@ -44,7 +44,7 @@ export function useAdminBilling(enabled: boolean) {
     if (rpcError) {
       const missing = rpcError.message?.includes('Could not find') || rpcError.code === 'PGRST202';
       setError(missing
-        ? 'Falta volver a ejecutar database/supabase_admin_billing.sql en el SQL Editor de Supabase.'
+        ? 'Falta aplicar las migraciones de Supabase (npx supabase db push).'
         : rpcError.message);
       setClinics([]);
       setLoading(false);
