@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { getCache, setCache, delCache } from '../lib/simpleCache';
-import { getLocalISODate } from '../lib/utils';
+import { appointmentBlocksSlot, pickBookingPatient } from '../lib/approveLegacyMatch';
+import { isMissingRpc, RpcSqlState } from '../lib/rpcErrors';
 
 // Persistence helpers for BookingService. These wrap Supabase queries / RPCs
 // and centralize error handling for DB access.
@@ -15,6 +16,10 @@ export async function fetchDoctorInitData(doctorId: string) {
     supabase.from('booking_settings').select('*').eq('doctor_id', doctorId).maybeSingle(),
     supabase.from('appointment_requests').select('*').eq('doctor_id', doctorId).order('created_at', { ascending: false }),
   ]);
+
+  if (availRes.error) throw availRes.error;
+  if (settingsRes.error) throw settingsRes.error;
+  if (reqRes.error) throw reqRes.error;
 
   return {
     availabilityRow: availRes.data ?? null,
@@ -74,7 +79,133 @@ export type ApproveAppointmentResult = {
   matched_by?: string;
 };
 
-/** Aprueba solicitud + paciente + cita en una sola transacción (RPC). */
+function approveError(code: string, message: string): Error & { code: string } {
+  const err = new Error(message) as Error & { code: string };
+  err.code = code;
+  return err;
+}
+
+/**
+ * Mismo resultado que approve_appointment_request, con columnas que ya existen
+ * en producción. Se usa solo cuando el RPC todavía no está en el esquema.
+ * Paciente, cita y solicitud van en llamadas distintas: si la cita no se crea,
+ * se intenta borrar el paciente recién insertado.
+ */
+async function approveAppointmentRequestLegacy(
+  requestId: string,
+  forceOverlap: boolean,
+): Promise<ApproveAppointmentResult> {
+  const { data: request, error: reqErr } = await supabase
+    .from('appointment_requests')
+    .select('id, doctor_id, patient_name, patient_email, patient_phone, requested_date, requested_time, appointment_type, status')
+    .eq('id', requestId)
+    .maybeSingle();
+  if (reqErr) throw reqErr;
+  if (!request) throw approveError(RpcSqlState.NotFound, 'NOT_FOUND: solicitud no encontrada');
+  if (request.status === 'approved') {
+    return {
+      request_id: request.id,
+      status: 'approved',
+      idempotent: true,
+      patient_id: null,
+      appointment_id: null,
+      possible_duplicates: false,
+    };
+  }
+  if (request.status !== 'pending') {
+    throw approveError(RpcSqlState.InvalidState, `NOT_PENDING: la solicitud ya no está pendiente (${request.status})`);
+  }
+
+  const clinicId = request.doctor_id as string;
+  if (!forceOverlap) {
+    const { data: slots, error: slotErr } = await supabase
+      .from('appointments')
+      .select('id, status, deleted_at')
+      .eq('doctor_id', clinicId)
+      .eq('date', request.requested_date)
+      .eq('time', request.requested_time);
+    if (slotErr) throw slotErr;
+    const blocked = (slots ?? []).some((row) => row.deleted_at == null && appointmentBlocksSlot(row.status));
+    if (blocked) throw approveError(RpcSqlState.Conflict, 'APPOINTMENT_CONFLICT: horario ocupado');
+  }
+
+  const { data: people, error: peopleErr } = await supabase
+    .from('patients')
+    .select('id, full_name, phone, email')
+    .eq('doctor_id', clinicId)
+    .is('deleted_at', null);
+  if (peopleErr) throw peopleErr;
+
+  const match = pickBookingPatient(
+    people ?? [],
+    request.patient_name,
+    request.patient_email,
+    request.patient_phone,
+  );
+  const possibleDuplicates = match.kind === 'many';
+  let patientId = match.kind === 'one' ? match.id : crypto.randomUUID();
+  let createdPatient = false;
+
+  if (match.kind !== 'one') {
+    const { error: patientErr } = await supabase.from('patients').insert({
+      id: patientId,
+      doctor_id: clinicId,
+      full_name: String(request.patient_name ?? '').trim(),
+      phone: request.patient_phone || null,
+      email: request.patient_email || null,
+      consent_signed: false,
+    });
+    if (patientErr) throw patientErr;
+    createdPatient = true;
+  }
+
+  const appointmentId = crypto.randomUUID();
+  const { error: apptErr } = await supabase.from('appointments').insert({
+    id: appointmentId,
+    doctor_id: clinicId,
+    patient_id: patientId,
+    patient_name: String(request.patient_name ?? '').trim(),
+    phone_number: request.patient_phone || null,
+    date: request.requested_date,
+    time: request.requested_time,
+    type: request.appointment_type || 'Consulta',
+    status: 'Programada',
+    reminder_status: 'not_sent',
+  });
+  if (apptErr) {
+    if (createdPatient) {
+      await supabase.from('patients').delete().eq('id', patientId).eq('doctor_id', clinicId);
+    }
+    throw apptErr;
+  }
+
+  const { data: updated, error: updErr } = await supabase
+    .from('appointment_requests')
+    .update({ status: 'approved', responded_at: new Date().toISOString() })
+    .eq('id', requestId)
+    .eq('status', 'pending')
+    .select('id');
+  if (updErr || !updated?.length) {
+    await supabase.from('appointments').delete().eq('id', appointmentId).eq('doctor_id', clinicId);
+    if (createdPatient) {
+      await supabase.from('patients').delete().eq('id', patientId).eq('doctor_id', clinicId);
+    }
+    if (updErr) throw updErr;
+    throw approveError(RpcSqlState.InvalidState, 'NOT_PENDING: la solicitud cambió durante la aprobación');
+  }
+
+  return {
+    request_id: request.id,
+    status: 'approved',
+    idempotent: false,
+    patient_id: patientId,
+    appointment_id: appointmentId,
+    possible_duplicates: possibleDuplicates,
+    matched_by: match.kind === 'one' ? 'linked' : possibleDuplicates ? 'created_ambiguous' : 'created',
+  };
+}
+
+/** Aprueba solicitud + paciente + cita. RPC si existe; si no, el esquema actual. */
 export async function approveAppointmentRequestAtomic(
   requestId: string,
   forceOverlap = false,
@@ -83,9 +214,9 @@ export async function approveAppointmentRequestAtomic(
     p_request_id: requestId,
     p_force_overlap: forceOverlap,
   });
-  // Propagar code (DL409/DL403/…) para que el cliente no parsee solo el mensaje.
-  if (error) throw error;
-  return data as ApproveAppointmentResult;
+  if (!error) return data as ApproveAppointmentResult;
+  if (!isMissingRpc(error)) throw error;
+  return approveAppointmentRequestLegacy(requestId, forceOverlap);
 }
 
 export async function deleteAppointmentRequest(requestId: string) {
@@ -156,19 +287,3 @@ export async function rpcGetPublicAppointments(doctorId: string) {
   return res;
 }
 
-export async function fetchConfirmedAppointments(doctorId: string) {
-  const cacheKey = `confirmed_appts:${doctorId}`;
-  const cached: any = getCache(cacheKey);
-  if (cached) return cached;
-
-  const { data, error } = await supabase
-    .from('appointments')
-    .select('date, time')
-    .eq('doctor_id', doctorId)
-    .eq('status', 'Programada')
-    .gte('date', getLocalISODate());
-  if (error) throw error;
-  const result = data ?? [];
-  setCache(cacheKey, result, 10 * 1000);
-  return result;
-}

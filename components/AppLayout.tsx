@@ -55,28 +55,56 @@ const AppLayout: React.FC<AppLayoutProps> = ({ subscription }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { clinicId, isGuest } = useAuth();
   const [servicesReady, setServicesReady] = useState(false);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+  const [bookingAttempt, setBookingAttempt] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (!clinicId) {
       setServicesReady(false);
+      setServicesError(null);
       return;
     }
 
     if (isGuest) {
-      setServicesReady(true);
-      setPendingCount(0);
-      return;
+      let cancelled = false;
+      setServicesError(null);
+      bookingService.init('demo').then(() => {
+        if (cancelled) return;
+        setServicesReady(true);
+        setPendingCount(0);
+      }).catch((error) => {
+        console.error(error);
+        if (cancelled) return;
+        setServicesReady(false);
+        setServicesError('No se pudo preparar la demo.');
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
+    let cancelled = false;
     const initServices = async () => {
+      setServicesReady(false);
+      setServicesError(null);
       await bookingService.init(clinicId);
+      if (cancelled) return;
       setPendingCount(bookingService.getPendingRequests().length);
       setServicesReady(true);
     };
 
-    initServices().catch(console.error);
-  }, [clinicId, isGuest]);
+    initServices().catch((error) => {
+      console.error(error);
+      if (cancelled) return;
+      setServicesReady(false);
+      setServicesError('No se pudo cargar la agenda del consultorio. Reintenta antes de cambiar el horario.');
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clinicId, isGuest, bookingAttempt]);
 
   useEffect(() => {
     const refresh = () => setPendingCount(bookingService.getPendingRequests().length);
@@ -109,9 +137,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ subscription }) => {
 
       {!servicesReady ? (
         <div className="flex items-center justify-center w-full h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
-            <p className="text-sm text-slate-400 font-medium">Cargando datos...</p>
+          <div className="text-center max-w-sm px-6">
+            {servicesError ? (
+              <>
+                <p className="text-sm font-semibold text-slate-800 mb-2">No se cargó la agenda</p>
+                <p className="text-sm text-slate-500 mb-4">{servicesError}</p>
+                <button
+                  type="button"
+                  onClick={() => setBookingAttempt((n) => n + 1)}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700"
+                >
+                  Reintentar
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+                <p className="text-sm text-slate-400 font-medium">Cargando datos...</p>
+              </>
+            )}
           </div>
         </div>
       ) : (

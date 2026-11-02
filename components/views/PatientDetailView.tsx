@@ -14,7 +14,7 @@ const fdiOf = (id: number) => FDI[id - 1] ?? id;
 const PatientDetailView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { patient, isLoading } = usePatient(id);
+  const { patient, isLoading, isError, refetch } = usePatient(id);
   const { savePatient } = usePatientMutations();
   const [displayPatient, setDisplayPatient] = useState<PatientRecordType | undefined>(patient);
 
@@ -44,6 +44,22 @@ const PatientDetailView: React.FC = () => {
   if (isLoading) return (
     <div className="flex items-center justify-center h-screen">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  );
+
+  if (isError) return (
+    <div className="flex items-center justify-center h-screen">
+      <div className="text-center px-6">
+        <p className="text-lg font-semibold text-slate-600 mb-2">No se pudo cargar el expediente</p>
+        <p className="text-sm text-slate-500 mb-4">No es un paciente inexistente. La consulta falló.</p>
+        <button
+          type="button"
+          onClick={() => { void refetch(); }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+        >
+          Reintentar
+        </button>
+      </div>
     </div>
   );
 

@@ -15,6 +15,7 @@ import {
 } from '../lib/savePatientRpc';
 import { savePatientLegacy } from '../lib/savePatientLegacy';
 import { isRpcVersionConflict, rpcErrorMessage } from '../lib/rpcErrors';
+import { patientListSelect } from '../lib/patientSelect';
 
 // ===================== Helpers =====================
 function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
@@ -163,20 +164,14 @@ export function usePatients() {
             // Explicitly selecting columns to avoid fetching heavy JSONB fields like odontogram.
             const { data, error } = await supabase
                 .from('patients')
-                .select(`
-                    id, full_name, birth_date, gender, address, phone, email, occupation,
-                    motive_of_consult, consent_signed, created_at, updated_at, version, deleted_at,
-                    patient_clinical (allergies, medications, previous_diseases, family_history, blood_type, smoker, pregnant, habits, observations),
-                    budget_items (id, unit_cost, quantity, status, deleted_at),
-                    payments (id, amount, method, date, deleted_at)
-                `)
+                .select(patientListSelect(isSavePatientRpcEnabled()))
                 .eq('doctor_id', clinicId)
                 .is('deleted_at', null)
                 .order('created_at', { ascending: false });
 
             if (error) {
                 console.error("Error fetching patients list:", error);
-                return [];
+                throw error;
             }
 
             return (data || []).map(p => {
@@ -241,7 +236,9 @@ export function usePatient(patientId?: string) {
 
             if (error) {
                 console.error(`Error fetching full details for patient ${patientId}:`, error);
-                return undefined;
+                const code = (error as { code?: string }).code;
+                if (code === 'PGRST116') return undefined;
+                throw error;
             }
 
             // Map the nested data to PatientRecord

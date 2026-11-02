@@ -16,7 +16,7 @@ interface GlobalSearchProps {
 const EMPTY_ARRAY: PatientRecord[] = [];
 
 const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
-    const { data: allPatients = EMPTY_ARRAY } = usePatients();
+    const { data: allPatients = EMPTY_ARRAY, isError: patientsError } = usePatients();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<PatientRecord[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -141,7 +141,14 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                     </div>
                 )}
 
-                {query.length >= 2 && results.length === 0 && (
+                {patientsError && (
+                    <div className="p-8 text-center">
+                        <p className="text-slate-700 font-medium">No se pudieron cargar los pacientes</p>
+                        <p className="text-xs text-slate-400 mt-1">La búsqueda vacía no significa que no existan.</p>
+                    </div>
+                )}
+
+                {!patientsError && query.length >= 2 && results.length === 0 && (
                     <div className="p-8 text-center">
                         <p className="text-slate-500 font-medium">No se encontraron pacientes</p>
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
@@ -150,7 +157,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                     </div>
                 )}
 
-                {query.length < 2 && (
+                {!patientsError && query.length < 2 && (
                     <div className="p-8 text-center">
                         <p className="text-slate-500 font-medium text-sm">
                             Escribe al menos 2 caracteres para buscar

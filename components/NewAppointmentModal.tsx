@@ -33,7 +33,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
 }) => {
   const { data: appointments = [] } = useAppointments();
   const { createAppointment } = useAppointmentMutations();
-  const { data: patientsList = [] } = usePatients();
+  const { data: patientsList = [], isError: patientsError } = usePatients();
 
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState('');
@@ -248,6 +248,9 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
 
                   {showDropdown && (
                     <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 max-h-[240px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
+                      {patientsError && (
+                        <p className="px-4 pt-3 text-xs text-amber-700">No se cargó la lista de pacientes. Puedes escribir el nombre, pero no verás los expedientes existentes.</p>
+                      )}
                       {(() => {
                         const query = newApt.patientName.toLowerCase().trim();
                         const matches = query

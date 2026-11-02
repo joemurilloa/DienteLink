@@ -40,6 +40,8 @@ const PublicBookingPage: React.FC = () => {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState('');
+  const [slotAttempt, setSlotAttempt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -98,7 +100,15 @@ const PublicBookingPage: React.FC = () => {
         if (showLoader) setLoadingSlots(true);
         try {
           const available = await bookingService.getAvailableSlotsForDate(selectedDate, doctorId);
-          if (!cancelled) setAvailableTimes(available);
+          if (!cancelled) {
+            setAvailableTimes(available);
+            setSlotsError('');
+          }
+        } catch {
+          if (!cancelled) {
+            setAvailableTimes([]);
+            setSlotsError('No se pudieron comprobar los horarios ocupados. Elige otro momento cuando vuelvan a cargar.');
+          }
         } finally {
           if (!cancelled) setLoadingSlots(false);
         }
@@ -109,7 +119,7 @@ const PublicBookingPage: React.FC = () => {
       const interval = setInterval(() => loadSlots(false), 30000);
       return () => { cancelled = true; clearInterval(interval); };
     }
-  }, [selectedDate, availability, doctorId]);
+  }, [selectedDate, availability, doctorId, slotAttempt]);
 
   const formatDate = (dateStr: string) => {
     // 'YYYY-MM-DD' se interpreta como UTC y retrocede un día en Honduras (UTC-6).
@@ -420,6 +430,17 @@ const PublicBookingPage: React.FC = () => {
                       ))}
                     </div>
                     <p className="text-sm text-slate-500 text-center">Consultando disponibilidad...</p>
+                  </div>
+                ) : slotsError ? (
+                  <div className="text-center py-10">
+                    <p className="text-sm text-slate-600 mb-4">{slotsError}</p>
+                    <button
+                      type="button"
+                      onClick={() => setSlotAttempt((n) => n + 1)}
+                      className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                    >
+                      Reintentar
+                    </button>
                   </div>
                 ) : availableTimes.length === 0 ? (
                   <div className="text-center py-10">

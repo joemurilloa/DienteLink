@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shouldSyncPatientCollection } from '../lib/patientSync';
+import { legacyExplicitRemovedIds, shouldSyncPatientCollection } from '../lib/patientSync';
 
 describe('shouldSyncPatientCollection', () => {
   it('no borra nada en un alta nueva, que no trae colecciones cargadas', () => {
@@ -12,8 +12,16 @@ describe('shouldSyncPatientCollection', () => {
     expect(shouldSyncPatientCollection(['budget', 'payments'], 'prescriptions', undefined)).toBe('skip');
   });
 
-  it('borra la tabla solo cuando el expediente completo llegó vacío', () => {
+  it('marca replace cuando el expediente completo llegó vacío, sin borrar la tabla', () => {
     expect(shouldSyncPatientCollection(['payments', 'budget'], 'payments', [])).toBe('replace');
+    expect(legacyExplicitRemovedIds(['payments'], 'payments', [], undefined)).toEqual([]);
+  });
+
+  it('solo borra ids declarados, aunque la lista traiga menos filas', () => {
+    expect(
+      legacyExplicitRemovedIds(['payments'], 'payments', [{ id: 'p1' }], ['p2', 'p2', '']),
+    ).toEqual(['p2']);
+    expect(legacyExplicitRemovedIds(['budget'], 'evolutionNotes', [], ['n1'])).toEqual([]);
   });
 
   it('actualiza cuando la colección cargada tiene filas', () => {

@@ -74,3 +74,9 @@ export function isRpcSoftDeleted(err: unknown): boolean {
   if (code === RpcSqlState.SoftDeleted) return true;
   return rpcErrorMessage(err).includes('GONE:') || rpcErrorMessage(err).includes('soft-deleted');
 }
+
+/** La función no está en el esquema que ve este rol (migración aún no aplicada). */
+export function isMissingRpc(err: unknown): boolean {
+  if (rpcErrorCode(err) === 'PGRST202') return true;
+  return rpcErrorMessage(err).includes('Could not find the function');
+}

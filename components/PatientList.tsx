@@ -12,11 +12,14 @@ interface Props {
     onAdd: () => void;
     /** Carga real de datos */
     loading?: boolean;
+    /** La consulta falló. No es una clínica vacía. */
+    error?: boolean;
+    onRetry?: () => void;
 }
 
 const SKELETON_DELAY_MS = 200;
 
-const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = false }) => {
+const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = false, error = false, onRetry }) => {
     const [search, setSearch] = useState('');
     // Skeleton solo si la carga real supera SKELETON_DELAY_MS
     const [showSkeleton, setShowSkeleton] = useState(false);
@@ -33,6 +36,26 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = fal
         search,
         ['identification.fullName', 'identification.phone']
     );
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
+                <h2 className="text-xl font-bold text-slate-900 mb-2">No se pudieron cargar los pacientes</h2>
+                <p className="text-slate-500 max-w-sm mb-6 text-sm">
+                    La lista no está vacía: la consulta falló. Recarga antes de dar de alta a alguien.
+                </p>
+                {onRetry && (
+                    <button
+                        type="button"
+                        onClick={onRetry}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-blue-700"
+                    >
+                        Reintentar
+                    </button>
+                )}
+            </div>
+        );
+    }
 
     if (!loading && patients.length === 0) {
         return (

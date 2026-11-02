@@ -9,7 +9,7 @@ import { usePatientsTip } from '../ContextualTips';
 const PatientsView: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { data: patients = [], isLoading } = usePatients();
+  const { data: patients = [], isLoading, isError, refetch } = usePatients();
   const { savePatient } = usePatientMutations();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -44,6 +44,8 @@ const PatientsView: React.FC = () => {
       <PatientList
         patients={patients}
         loading={isLoading}
+        error={isError}
+        onRetry={() => { void refetch(); }}
         onSelect={(p) => navigate(`/patient/${p.id}`)}
         onAdd={handleAdd}
       />

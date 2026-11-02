@@ -4,6 +4,7 @@ import {
   isRpcConflict,
   isRpcForbidden,
   isRpcInvalidState,
+  isMissingRpc,
   isRpcNotFound,
   rpcErrorCode,
 } from '../lib/rpcErrors';
@@ -23,5 +24,11 @@ describe('rpcErrors', () => {
     expect(isRpcInvalidState({ message: 'NOT_PENDING: ya no está pendiente' })).toBe(true);
     expect(isRpcForbidden({ message: 'FORBIDDEN: sin clínica' })).toBe(true);
     expect(isRpcConflict({ message: 'otro error' })).toBe(false);
+  });
+
+  it('reconoce un RPC que todavía no está en el esquema', () => {
+    expect(isMissingRpc({ code: 'PGRST202', message: 'Could not find the function public.approve_appointment_request' })).toBe(true);
+    expect(isMissingRpc({ message: 'Could not find the function public.save_patient' })).toBe(true);
+    expect(isMissingRpc({ code: 'DL403', message: 'FORBIDDEN' })).toBe(false);
   });
 });

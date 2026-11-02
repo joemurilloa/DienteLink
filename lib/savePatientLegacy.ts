@@ -1,11 +1,12 @@
 import { supabase } from './supabase';
 import type { PatientCollection, PatientRecord } from '../types';
-import { shouldSyncPatientCollection } from './patientSync';
+import { legacyExplicitRemovedIds, shouldSyncPatientCollection } from './patientSync';
 import { PatientIdentificationSchema } from './schemas';
 
 /**
- * Camino viejo (N upserts). Riesgo conocido: [] + loadedCollections = wipe.
- * Activo solo con VITE_USE_SAVE_PATIENT_RPC !== 'true'.
+ * Camino viejo (N upserts). Activo solo con VITE_USE_SAVE_PATIENT_RPC !== 'true'.
+ * No borra una tabla porque el array llegó vacío, ni por diferencia contra la caché.
+ * Solo elimina ids en pendingRemovedIds.
  *
  * Retiro (verificable):
  * 1) Reloj de 14 días: empieza solo tras smoke limpio en desechable (no desde
@@ -95,32 +96,26 @@ export async function savePatientLegacy(
     const mode = shouldSyncPatientCollection(patient.loadedCollections, key, items);
     if (mode === 'skip') return;
 
-    if (mode === 'replace') {
-      const { error: delErr } = await supabase
-        .from(tableName)
-        .delete()
-        .eq('patient_id', patient.id)
-        .eq('doctor_id', doctorId);
-      if (delErr) throw delErr;
-      return;
+    const present = items ?? [];
+    if (present.length > 0) {
+      const mapped = present.map(mapFn);
+      const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
+      if (upsertErr) throw upsertErr;
     }
 
-    const present = items ?? [];
-    const mapped = present.map(mapFn);
-    const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
-    if (upsertErr) throw upsertErr;
-
-    const currentIds = present
-      .map((i) => i.id)
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
-
-    if (currentIds.length > 0) {
+    const removedIds = legacyExplicitRemovedIds(
+      patient.loadedCollections,
+      key,
+      items,
+      patient.pendingRemovedIds?.[key],
+    );
+    if (removedIds.length > 0) {
       const { error: delErr } = await supabase
         .from(tableName)
         .delete()
         .eq('patient_id', patient.id)
         .eq('doctor_id', doctorId)
-        .not('id', 'in', `(${currentIds.join(',')})`);
+        .in('id', removedIds);
       if (delErr) throw delErr;
     }
   };

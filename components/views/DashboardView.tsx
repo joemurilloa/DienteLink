@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
 
   const { data: allAppointments = [] } = useAppointments();
   const { updateAppointment } = useAppointmentMutations();
-  const { data: allPatients = [] } = usePatients();
+  const { data: allPatients = [], isError: patientsError, refetch: refetchPatients } = usePatients();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNewAptOpen, setIsNewAptOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
@@ -219,6 +219,19 @@ const Dashboard: React.FC = () => {
           </div>
         </header>
 
+        {patientsError && (
+          <div style={{ order: 0 }} className="flex items-center justify-between gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl">
+            <p className="text-sm text-amber-950">No se pudieron cargar los pacientes. El conteo en cero no es real.</p>
+            <button
+              type="button"
+              onClick={() => { void refetchPatients(); }}
+              className="text-sm font-semibold text-amber-800 whitespace-nowrap"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
         {/* ── Pending Requests Banner (Clean alert if any) ──────────────── */}
         {pendingRequests.length > 0 && (
           <div
@@ -327,14 +340,14 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-3 gap-3 sm:gap-4" style={{ order: 3 }}>
           <StatPill label="Citas hoy" value={todayCount} sub="agendadas" />
           <StatPill label="Pendientes" value={pendingCount} sub="por atender" />
-          <StatPill label="Pacientes" value={allPatients.length} sub="en total" />
+          <StatPill label="Pacientes" value={patientsError ? '—' : allPatients.length} sub={patientsError ? 'sin cargar' : 'en total'} />
         </div>
 
         {/* ── Primeros pasos (cuentas nuevas) ─────────────────────────────── */}
         {isAdmin && !isGuest && (
           <div style={{ order: 4 }}>
           <GettingStarted
-            hasPatient={allPatients.length > 0}
+            hasPatient={patientsError || allPatients.length > 0}
             hasAppointment={allAppointments.some(a => a.status !== 'Eliminada')}
             hasPayment={allPatients.some(p => (p.payments || []).length > 0)}
             onNewAppointment={() => setIsNewAptOpen(true)}

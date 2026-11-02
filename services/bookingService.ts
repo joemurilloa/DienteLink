@@ -28,31 +28,28 @@ export class BookingService {
   private settings: PublicBookingSettings | null = null;
   private requests: AppointmentRequest[] = [];
   private _ready = false;
+  /** True solo tras una lectura exitosa. Un fallo no autoriza a guardar el horario default. */
+  private availabilityLoaded = false;
   private realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   // --- Initialization ---
   async init(userId: string): Promise<void> {
     this.userId = userId;
+    this.availabilityLoaded = false;
+    this._ready = false;
+    this.availability = null;
+    const { availabilityRow, settingsRow, requestRows } = await persistence.fetchDoctorInitData(userId);
+
+    this.availability = availabilityRow ? dbToAvailability(availabilityRow) : this.getDefaultAvailability(userId);
+    this.settings = settingsRow ? dbToSettings(settingsRow) : null;
+    this.requests = (requestRows || []).map(dbToRequest);
+    this.availabilityLoaded = true;
+    this._ready = true;
+
     try {
-      const { availabilityRow, settingsRow, requestRows } = await persistence.fetchDoctorInitData(userId);
-
-      this.availability = availabilityRow ? dbToAvailability(availabilityRow) : this.getDefaultAvailability(userId);
-      this.settings = settingsRow ? dbToSettings(settingsRow) : null;
-      this.requests = (requestRows || []).map(dbToRequest);
-      this._ready = true;
-
-      // Subscribe to realtime updates for this doctor (best-effort)
-      try {
-        this.setupRealtime(userId);
-      } catch (e) {
-        console.error('[BookingService] setupRealtime failed:', e);
-      }
+      this.setupRealtime(userId);
     } catch (e) {
-      console.error('[BookingService] init failed:', e);
-      this.availability = this.getDefaultAvailability(userId);
-      this.settings = this.getDefaultBookingSettings();
-      this.requests = [];
-      this._ready = true;
+      console.error('[BookingService] setupRealtime failed:', e);
     }
   }
 
@@ -92,6 +89,7 @@ export class BookingService {
     this.settings = null;
     this.requests = [];
     this._ready = false;
+    this.availabilityLoaded = false;
   }
 
   private uid(): string {
@@ -138,23 +136,24 @@ export class BookingService {
   }
 
   async saveDoctorAvailability(availability: DoctorAvailability): Promise<void> {
-    const doctorId = this.uid();
-    availability.lastUpdated = new Date().toISOString();
-    this.availability = availability;
-
-    try {
-      await persistence.upsertDoctorAvailability(doctorId, {
-        weekly_schedule: availability.weeklySchedule,
-        slot_duration: availability.slotDuration,
-        buffer_time: availability.bufferTime,
-        advance_booking_days: availability.advanceBookingDays,
-        updated_at: availability.lastUpdated,
-      });
-    } catch (err) {
-      console.error('[BookingService] saveDoctorAvailability error:', err);
-      sileo.error({ title: 'Error al guardar disponibilidad', description: 'Los cambios no se pudieron sincronizar.' });
+    if (!this.availabilityLoaded) {
+      throw new Error('El horario no se cargó. Recarga la página antes de guardar.');
     }
-    window.dispatchEvent(new CustomEvent('availabilityUpdated', { detail: availability }));
+    const doctorId = this.uid();
+    if (!doctorId) {
+      throw new Error('Sesión no lista');
+    }
+    const next = { ...availability, lastUpdated: new Date().toISOString() };
+
+    await persistence.upsertDoctorAvailability(doctorId, {
+      weekly_schedule: next.weeklySchedule,
+      slot_duration: next.slotDuration,
+      buffer_time: next.bufferTime,
+      advance_booking_days: next.advanceBookingDays,
+      updated_at: next.lastUpdated,
+    });
+    this.availability = next;
+    window.dispatchEvent(new CustomEvent('availabilityUpdated', { detail: next }));
   }
 
   // ===================== BOOKING SETTINGS =====================
@@ -327,8 +326,6 @@ export class BookingService {
   // ===================== PUBLIC METHODS (no auth required) =====================
 
    async getPublicBookingSettings(doctorId: string): Promise<PublicBookingSettings> {
-     // Use RPC function (bypasses RLS via SECURITY DEFINER)
-    try {
       const { data, error } = await persistence.rpcGetPublicBookingSettings(doctorId);
       if (error) {
         console.error('[BookingService] getPublicBookingSettings RPC error:', error);
@@ -338,15 +335,9 @@ export class BookingService {
         return { ...this.getDefaultBookingSettings(), isActive: false };
       }
       return dbToSettings(data[0]);
-    } catch (err) {
-      console.error('[BookingService] getPublicBookingSettings error:', err);
-      return this.getDefaultBookingSettings();
-    }
    }
 
    async getPublicDoctorAvailability(doctorId: string): Promise<DoctorAvailability> {
-     // Use RPC function (bypasses RLS via SECURITY DEFINER)
-    try {
       const { data, error } = await persistence.rpcGetPublicDoctorAvailability(doctorId);
       if (error) {
         console.error('[BookingService] getPublicDoctorAvailability RPC error:', error);
@@ -354,52 +345,37 @@ export class BookingService {
       }
       if (!data || data.length === 0) return this.getDefaultAvailability(doctorId);
       return dbToAvailability(data[0]);
-    } catch (err) {
-      console.error('[BookingService] getPublicDoctorAvailability error:', err);
-      return this.getDefaultAvailability(doctorId);
-    }
    }
 
    async getPublicAppointmentRequests(doctorId: string): Promise<AppointmentRequest[]> {
-     // Try RPC function (bypasses RLS)
-      try {
-        const { data, error } = await persistence.rpcGetPublicAppointmentRequests(doctorId);
-        if (error) {
-          console.error('[BookingService] getPublicAppointmentRequests RPC error:', error);
-          return [];
-        }
-        // La RPC pública solo devuelve fecha y hora. El id no sale del consultorio.
-        return (data || []).map((d: { requested_date: string; requested_time: string }) => ({
-          id: '',
-          patientName: '',
-          patientEmail: '',
-          patientPhone: '',
-          requestedDate: d.requested_date,
-          requestedTime: d.requested_time,
-          appointmentType: 'Consulta' as AppointmentType,
-          status: 'pending' as const,
-          createdAt: '',
-          doctorId,
-        }));
-      } catch (err) {
-        console.error('[BookingService] getPublicAppointmentRequests error:', err);
-        return [];
+      const { data, error } = await persistence.rpcGetPublicAppointmentRequests(doctorId);
+      if (error || data == null) {
+        console.error('[BookingService] getPublicAppointmentRequests RPC error:', error);
+        throw new Error('No se pudieron consultar las solicitudes de horario');
       }
+      // La RPC pública solo devuelve fecha y hora. El id no sale del consultorio.
+      return data.map((d: { requested_date: string; requested_time: string }) => ({
+        id: '',
+        patientName: '',
+        patientEmail: '',
+        patientPhone: '',
+        requestedDate: d.requested_date,
+        requestedTime: d.requested_time,
+        appointmentType: 'Consulta' as AppointmentType,
+        status: 'pending' as const,
+        createdAt: '',
+        doctorId,
+      }));
    }
 
-  /** Fetch confirmed appointments from the appointments table (for public slot checking) */
+  /** Cupos ocupados para la página pública. Un fallo no se disfraza de “día libre”. */
   async getPublicAppointments(doctorId: string): Promise<{ date: string; time: string }[]> {
-    // Try RPC function first (bypasses RLS)
-    try {
-      const { data, error } = await persistence.rpcGetPublicAppointments(doctorId);
-      if (!error && data) return data.map((a: any) => ({ date: a.date, time: a.time }));
-      // fallback to fetchConfirmedAppointments
-      const appts = await persistence.fetchConfirmedAppointments(doctorId);
-      return (appts || []).map((a: any) => ({ date: a.date, time: a.time }));
-    } catch (err) {
-      console.error('[BookingService] getPublicAppointments error:', err);
-      return [];
+    const { data, error } = await persistence.rpcGetPublicAppointments(doctorId);
+    if (error || data == null) {
+      console.error('[BookingService] getPublicAppointments RPC error:', error);
+      throw new Error('No se pudieron consultar los horarios ocupados');
     }
+    return data.map((a: { date: string; time: string }) => ({ date: a.date, time: a.time }));
   }
 
   async createAppointmentRequest(
@@ -485,12 +461,13 @@ export class BookingService {
     if (this.userId === did) {
       requests = this.requests;
       const today = getLocalISODate();
-      const { data: apptData } = await supabase
+      const { data: apptData, error: apptError } = await supabase
         .from('appointments')
         .select('date, time')
         .eq('doctor_id', did)
         .eq('status', 'Programada')
         .gte('date', today);
+      if (apptError) throw apptError;
       confirmedAppointments = (apptData || []).map(a => ({ date: a.date, time: a.time }));
     } else {
       const [reqs, appts] = await Promise.all([

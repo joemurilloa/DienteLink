@@ -2123,4 +2123,49 @@ body {
   .sub-success-title {
     font-size: 22px;
   }
+}
+
+/* Landing: un solo desplazamiento corto. Quieto si el sistema pide menos movimiento. */
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-rise {
+    animation: landing-rise 360ms ease-out both;
+    animation-play-state: paused;
+  }
+
+  .is-in .landing-rise {
+    animation-play-state: running;
+  }
+
+  .landing-rise-now {
+    animation: landing-rise 360ms ease-out both;
+  }
+
+  .landing-delay {
+    animation-delay: 40ms;
+  }
+
+  .landing-chart .landing-occlusal {
+    transition: fill 450ms ease-out, stroke 450ms ease-out;
+  }
+
+  .landing-chart:not(.is-in) .landing-occlusal {
+    fill: #ffffff;
+    stroke: #d1d5db;
+  }
+
+  .landing-chart.is-in .landing-occlusal {
+    fill: #ef4444;
+    stroke: #ef4444;
+  }
 }

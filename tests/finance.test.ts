@@ -25,7 +25,7 @@ describe('computeFinance', () => {
 
   it('registra un pago del total del presupuesto', () => {
     const before = patient({ id: 'a', budget: [item(600)], payments: [] });
-    const after = applyPayment(before, 600, 'cash');
+    const after = applyPayment(before, 600, 'cash', '', '2026-10-05');
     expect(after.payments).toHaveLength(1);
     expect(after.payments?.[0].amount).toBe(600);
     expect(after.payments?.[0].method).toBe('cash');

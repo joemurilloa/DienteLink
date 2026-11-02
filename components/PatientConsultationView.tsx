@@ -18,7 +18,7 @@ const PatientConsultationView: React.FC = () => {
   const patientId = searchParams.get('patientId');
   const appointmentId = searchParams.get('appointmentId');
   
-  const { patient: fullPatient, isLoading: isLoadingPatient } = usePatient(patientId || undefined);
+  const { patient: fullPatient, isLoading: isLoadingPatient, isError: patientError, refetch: refetchPatient } = usePatient(patientId || undefined);
   const { data: allAppointments = [] } = useAppointments();
   const { savePatient } = usePatientMutations();
   const { updateAppointment } = useAppointmentMutations();
@@ -177,6 +177,21 @@ const PatientConsultationView: React.FC = () => {
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-slate-50">
         <Loader2 size={32} className="animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (patientError) {
+    return (
+      <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 gap-3 px-6 text-center">
+        <p className="text-sm font-semibold text-slate-800">No se pudo cargar el expediente</p>
+        <button
+          type="button"
+          onClick={() => { void refetchPatient(); }}
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }

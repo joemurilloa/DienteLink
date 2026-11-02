@@ -101,11 +101,14 @@ const BookingConfiguration: React.FC<Props> = ({ onClose }) => {
   };
 
   const handleSave = async () => {
-    await bookingService.saveDoctorAvailability(availability);
-    await bookingService.saveBookingSettings(settings);
-    setHasChanges(false);
-    
-    sileo.success({ title: '¡Configuración guardada exitosamente! ⚙️', description: 'Tu agenda pública ya está actualizada' });
+    try {
+      await bookingService.saveDoctorAvailability(availability);
+      await bookingService.saveBookingSettings(settings);
+      setHasChanges(false);
+      sileo.success({ title: 'Configuración guardada', description: 'Tu agenda pública ya está actualizada' });
+    } catch {
+      sileo.error({ title: 'No se pudo guardar la configuración' });
+    }
   };
 
   const copyPublicUrl = () => {
