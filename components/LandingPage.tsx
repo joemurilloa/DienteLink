@@ -147,17 +147,23 @@ const ChartTooth: React.FC<{ id: number; caries?: boolean }> = ({ id, caries }) 
   </div>
 );
 
-const Arch: React.FC<{ caption: string; ids: number[] }> = ({ caption, ids }) => (
+const Quadrant: React.FC<{ side: string; ids: number[] }> = ({ side, ids }) => (
   <div>
-    <p className="mb-2 text-center text-sm text-slate-500">{caption}</p>
-    <div className="mb-1 grid grid-cols-2 text-center text-xs text-slate-500">
-      <span>Derecho</span>
-      <span>Izquierdo</span>
-    </div>
+    <p className="mb-1 text-center text-xs text-slate-500">{side}</p>
     <div className="grid grid-cols-8 gap-x-0.5 gap-y-2">
       {ids.map(id => (
-        <ChartTooth key={`${caption}-${id}`} id={id} caries={id === CARIES_TOOTH} />
+        <ChartTooth key={`${side}-${id}`} id={id} caries={id === CARIES_TOOTH} />
       ))}
+    </div>
+  </div>
+);
+
+const Arch: React.FC<{ caption: string; ids: number[] }> = ({ caption, ids }) => (
+  <div>
+    <p className="mb-3 text-center text-sm text-slate-500">{caption}</p>
+    <div className="space-y-4">
+      <Quadrant side="Derecho" ids={ids.slice(0, 8)} />
+      <Quadrant side="Izquierdo" ids={ids.slice(8)} />
     </div>
   </div>
 );
@@ -177,32 +183,34 @@ const Tooth26: React.FC = () => (
   </div>
 );
 
+const AGENDA = [
+  { time: '08:30', name: 'María Fernández', note: 'Consulta', now: true },
+  { time: '09:30', name: 'Ana López', note: 'Limpieza', now: false },
+  { time: '11:00', name: 'Horario libre', note: 'Disponible', now: false },
+] as const;
+
 const ProductPreview: React.FC = () => (
   <div
     id="producto"
     role="img"
-    aria-label={`Ejemplo del ${TODAY_LABEL}: siguiente paciente María Fernández a las 08:30. En su ficha, la pieza 26 tiene caries en la cara oclusal.`}
+    aria-label={`Agenda del ${TODAY_LABEL}. Siguiente paciente: María Fernández a las 08:30, consulta.`}
     className="overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-[0_12px_32px_-12px_rgba(15,23,42,0.12)]"
   >
     <div aria-hidden>
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <span className="text-sm text-slate-500">Ejemplo</span>
+        <span className="text-sm font-medium text-slate-900">Agenda de hoy</span>
         <DentalLogo size={18} variant="blue" />
       </div>
       <div className="p-4 sm:p-5">
         <p className="text-sm text-slate-500">{TODAY_LABEL}</p>
-        <div className="mt-3 rounded-[14px] border border-slate-200 px-3 py-3">
-          <p className="text-sm font-medium text-blue-700">Siguiente paciente</p>
-          <p className="mt-1 text-base font-semibold text-slate-900">María Fernández</p>
-          <p className="text-sm text-slate-600">08:30 · Consulta</p>
-        </div>
-        <div className="mt-3 flex items-center gap-3 rounded-[14px] border border-red-100 bg-red-50/80 px-3 py-3">
-          <Surfaces caries className="h-14 w-14 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm text-slate-500">En su ficha</p>
-            <p className="text-base font-semibold text-slate-900">Pieza 26</p>
-            <p className="text-sm font-medium text-red-600">Caries en la cara oclusal</p>
-          </div>
+        <div className="mt-3 divide-y divide-slate-200 overflow-hidden rounded-[14px] border border-slate-200">
+          {AGENDA.map(row => (
+            <div key={row.time} className={`grid grid-cols-[3.25rem_1fr_auto] items-center gap-3 px-4 py-3 ${row.now ? 'bg-blue-50' : ''}`}>
+              <span className={`text-sm tabular-nums ${row.now ? 'font-semibold text-blue-700' : 'text-slate-600'}`}>{row.time}</span>
+              <span className={`min-w-0 truncate text-sm ${row.name === 'Horario libre' ? 'text-slate-500' : 'font-medium text-slate-900'}`}>{row.name}</span>
+              <span className={`text-xs ${row.now ? 'font-medium text-blue-700' : 'text-slate-500'}`}>{row.note}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -254,12 +262,6 @@ const TrialActions: React.FC<{ signedIn: boolean; onTry: () => void; onDemo: () 
     </p>
   </>
 );
-
-const AGENDA = [
-  { time: '08:30', name: 'María Fernández', note: 'Consulta', now: true },
-  { time: '09:30', name: 'Ana López', note: 'Limpieza', now: false },
-  { time: '11:00', name: 'Horario libre', note: 'Disponible', now: false },
-] as const;
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -329,47 +331,39 @@ const LandingPage: React.FC = () => {
             <span className="truncate text-lg font-semibold tracking-tight text-slate-900">DienteLink</span>
           </a>
           <div className="flex shrink-0 items-center gap-2 sm:gap-4 lg:gap-5">
-            <a href="#agenda" className={`hidden text-sm text-slate-600 hover:text-slate-900 lg:block ${RING}`}>Agenda</a>
-            <a href="#odontograma" className={`hidden text-sm text-slate-600 hover:text-slate-900 lg:block ${RING}`}>Odontograma</a>
-            <a href="#precio" className={`text-sm text-slate-600 hover:text-slate-900 ${RING}`}>Precio</a>
-            <button type="button" onClick={handleDemo} className={`hidden text-sm text-slate-600 hover:text-slate-900 md:inline ${RING}`}>
+            <a href="#agenda" className={`hidden h-11 items-center text-sm text-slate-600 hover:text-slate-900 lg:inline-flex ${RING}`}>Agenda</a>
+            <a href="#odontograma" className={`hidden h-11 items-center text-sm text-slate-600 hover:text-slate-900 lg:inline-flex ${RING}`}>Odontograma</a>
+            <a href="#precio" className={`inline-flex h-11 items-center text-sm text-slate-600 hover:text-slate-900 ${RING}`}>Precio</a>
+            <button type="button" onClick={handleDemo} className={`hidden h-11 items-center text-sm text-slate-600 hover:text-slate-900 md:inline-flex ${RING}`}>
               Ver ejemplo
             </button>
-            <a href="/login" className={`text-sm text-slate-600 hover:text-slate-900 ${RING}`}>
+            <a href="/login" className={`inline-flex h-11 items-center text-sm text-slate-600 hover:text-slate-900 ${RING}`}>
               <span className="sm:hidden">Entrar</span>
               <span className="hidden sm:inline">{user ? 'Ir a mi clínica' : 'Iniciar sesión'}</span>
             </a>
-            <button type="button" onClick={handleCTA} className={`${BTN} whitespace-nowrap px-3 sm:px-4`}>
-              {user ? 'Mi clínica' : (
-                <>
-                  <span className="sm:hidden">14 días</span>
-                  <span className="hidden sm:inline">Probar {BILLING.trialDays} días</span>
-                </>
-              )}
+            <button type="button" onClick={handleCTA} className={`${BTN} h-11 whitespace-nowrap px-3 sm:px-4`}>
+              {user ? 'Mi clínica' : `Probar ${BILLING.trialDays} días`}
             </button>
           </div>
         </div>
       </nav>
 
       <header id="inicio" className="scroll-mt-20 bg-blue-50">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:py-20">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:gap-10 lg:py-16">
           <div>
-            <p className="mb-4 text-sm font-medium text-blue-700">Programa para consultorios dentales</p>
-            <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl sm:leading-[1.05]">
-              Agenda, expediente y odontograma en un solo lugar.
+            <p className="mb-3 text-sm font-medium text-blue-700">Software de gestión clínica para consultorios dentales</p>
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-900 lg:text-6xl lg:leading-[1.05]">
+              Por la mañana ves quién sigue.
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
-              Por la mañana ves quién sigue. En la ficha ves la pieza y lo que cuesta el tratamiento.
+            <p className="mt-4 max-w-xl text-lg leading-relaxed text-slate-600">
+              Agenda, expediente y odontograma en un solo lugar.
             </p>
-            <div className="mt-8 hidden lg:block">
+            <div className="mt-6 lg:mt-8">
               <TrialActions signedIn={!!user} onTry={handleCTA} onDemo={handleDemo} />
             </div>
           </div>
           <div className="landing-rise-now">
             <ProductPreview />
-          </div>
-          <div className="lg:hidden">
-            <TrialActions signedIn={!!user} onTry={handleCTA} onDemo={handleDemo} />
           </div>
         </div>
       </header>

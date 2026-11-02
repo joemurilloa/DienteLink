@@ -104,7 +104,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 safe-bottom z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 safe-bottom z-50">
         <div className="flex items-center justify-around px-2" style={{ height: '64px' }}>
           {coreItems.slice(0, 2).map((item) => {
             const isActive = activePath === item.id;

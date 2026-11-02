@@ -67,7 +67,7 @@ export const ClinicalSummaryPanel: React.FC<ClinicalSummaryPanelProps> = React.m
   const condEntries = Object.entries(stats.condCounts) as [string, { surfaces: number; teeth: Set<number> }][];
 
   return (
-    <div className="glass-panel rounded-3xl border border-white/60 overflow-hidden">
+    <div className="glass-panel rounded-3xl overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors"

@@ -166,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
         {isDropdownOpen && (
             <div
               className={cn(
-                "absolute bottom-full mb-2 bg-white/90 backdrop-blur-md border border-slate-300/50 rounded-2xl p-1 z-50 flex flex-col gap-0.5 min-w-[190px]",
+                "absolute bottom-full mb-2 bg-white border border-slate-300 rounded-2xl p-1 z-50 flex flex-col gap-0.5 min-w-[190px]",
                 "shadow-[0_12px_36px_-6px_rgba(0,0,0,0.08),_0_4px_12px_-2px_rgba(0,0,0,0.03)]",
                 "animate-in slide-in-from-bottom-2 fade-in duration-200",
                 isCollapsed ? "left-0" : "left-3 right-3"

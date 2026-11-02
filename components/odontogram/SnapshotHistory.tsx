@@ -46,7 +46,7 @@ export const SnapshotHistory: React.FC<SnapshotHistoryProps> = React.memo(({
   }, [currentTeeth, snapshots]);
 
   return (
-    <div className="glass-panel rounded-3xl border border-white/60 overflow-hidden">
+    <div className="glass-panel rounded-3xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-5 flex-wrap gap-3">
         <div className="flex items-center gap-3">

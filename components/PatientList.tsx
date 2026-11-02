@@ -91,7 +91,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = fal
 
                 <button
                     onClick={onAdd}
-                    className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold text-base shadow-[0_8px_24px_rgba(37,99,235,0.25)] hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex items-center gap-3 active:scale-95"
+                    className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold text-base shadow-[0_8px_24px_rgba(37,99,235,0.25)] hover:bg-blue-700 flex items-center gap-3"
                 >
                     <Plus size={20} /> Agregar mi primer paciente
                 </button>
@@ -144,12 +144,12 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = fal
                         onClick={() => onSelect(patient)}
                         aria-label={`Abrir expediente de ${patient.identification.fullName}`}
                         className={cn(
-                            "bg-white p-5 rounded-[24px] border border-slate-300 cursor-pointer group hover:border-slate-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-300 animate-in-up text-left w-full",
+                            "bg-white p-5 rounded-[24px] border border-slate-300 cursor-pointer group hover:border-blue-200 text-left w-full",
                             index === 0 ? "stagger-1" : index === 1 ? "stagger-2" : "stagger-3"
                         )}
                     >
                         <div className="flex items-center gap-4 mb-5">
-                            <div className="w-12 h-12 bg-slate-50 rounded-[14px] flex items-center justify-center text-slate-500 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                            <div className="w-12 h-12 bg-slate-50 rounded-[14px] flex items-center justify-center text-slate-500 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-150 flex-shrink-0">
                                 <User size={20} strokeWidth={2.5} />
                             </div>
                             <div className="overflow-hidden">
