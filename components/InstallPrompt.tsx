@@ -157,7 +157,7 @@ const InstallPrompt: React.FC = () => {
       {/* Top banner */}
       {showBanner && (
           <div className="overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium">
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-blue-700 to-blue-900 text-white text-sm font-medium">
               {/* App icon */}
               <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
                 🦷

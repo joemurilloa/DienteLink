@@ -64,7 +64,7 @@ button,
 [role="button"],
 .clickable,
 .card-premium {
-  -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
+  -webkit-tap-highlight-color: rgba(27, 56, 48, 0.1);
   touch-action: manipulation;
 }
 
@@ -127,7 +127,7 @@ button:disabled,
 
 /* Focus indicators */
 .focus-visible {
-  outline: 2px solid #3b82f6 !important;
+  outline: 2px solid #3f6b59 !important;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -135,18 +135,18 @@ button:disabled,
 /* High contrast focus for critical actions */
 button:focus-visible,
 [role="button"]:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #3f6b59;
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+  box-shadow: 0 0 0 4px rgba(27, 56, 48, 0.18);
 }
 
 /* Enhanced focus for form elements */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #3f6b59;
   outline-offset: 1px;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(27, 56, 48, 0.15);
 }
 
 /* Skip link for screen readers */
@@ -154,7 +154,7 @@ select:focus-visible {
   position: absolute;
   top: -40px;
   left: 6px;
-  background: #3b82f6;
+  background: #3f6b59;
   color: white;
   padding: 8px;
   text-decoration: none;
@@ -409,18 +409,18 @@ select:focus-visible {
 }
 
 :root {
-  /* Default Blue Theme */
-  --theme-50: #eff6ff;
-  --theme-100: #dbeafe;
-  --theme-200: #bfdbfe;
-  --theme-300: #93c5fd;
-  --theme-400: #60a5fa;
-  --theme-500: #3b82f6;
-  --theme-600: #2563eb;
-  --theme-700: #1d4ed8;
-  --theme-800: #1e40af;
-  --theme-900: #1e3a8a;
-  --theme-950: #172554;
+  /* Verde musgo, el mismo de la landing */
+  --theme-50: #f3f6f4;
+  --theme-100: #e4eee8;
+  --theme-200: #c5d9ce;
+  --theme-300: #9bb8aa;
+  --theme-400: #6d9484;
+  --theme-500: #3f6b59;
+  --theme-600: #1b3830;
+  --theme-700: #14241c;
+  --theme-800: #10201a;
+  --theme-900: #0c1814;
+  --theme-950: #08110e;
   
   --background: #F8FAFC;
   --bg-primary: #F8FAFC;
@@ -434,12 +434,12 @@ select:focus-visible {
   --text-muted: #94a3b8;
   --border-primary: #f1f5f9;
   --border-subtle: #f8fafc;
-  --primary: #2563eb;
-  --primary-light: #3b82f6;
-  --primary-dark: #1d4ed8;
-  --primary-glow: rgba(37, 99, 235, 0.3);
-  --secondary: #6366f1;
-  --accent: #2563eb;
+  --primary: #1b3830;
+  --primary-light: #3f6b59;
+  --primary-dark: #14241c;
+  --primary-glow: rgba(27, 56, 48, 0.28);
+  --secondary: #1b3830;
+  --accent: #1b3830;
   --sidebar-bg: #0f172a;
   --sidebar-hover: #1e293b;
   --sidebar-w: 280px;
@@ -648,11 +648,11 @@ button {
 
 /* ===== Gradients ===== */
 .gradient-blue {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #1b3830 0%, #14241c 100%);
 }
 
 .gradient-blue-light {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #6d9484 0%, #3f6b59 100%);
 }
 
 .gradient-indigo {
@@ -666,11 +666,11 @@ button {
 
 /* ===== KPI Card Accent Borders ===== */
 .kpi-accent-blue {
-  border-top: 3px solid #2563eb;
+  border-top: 3px solid #1b3830;
 }
 
 .kpi-accent-blue-light {
-  border-top: 3px solid #60a5fa;
+  border-top: 3px solid #6d9484;
 }
 
 .kpi-accent-indigo {
@@ -995,9 +995,9 @@ body {
 }
 
 .trial-banner--normal {
-  background: #eff6ff;
-  color: #1e40af;
-  border-bottom-color: #dbeafe;
+  background: #f3f6f4;
+  color: #10201a;
+  border-bottom-color: #e4eee8;
 }
 
 .trial-banner--urgent {
@@ -1067,9 +1067,9 @@ body {
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  background: #eff6ff;
-  color: #1e3a8a;
-  border-bottom: 1px solid #bfdbfe;
+  background: #f3f6f4;
+  color: #0c1814;
+  border-bottom: 1px solid #c5d9ce;
   flex-shrink: 0;
   z-index: 40;
 }
@@ -1088,7 +1088,7 @@ body {
   padding: 6px 12px;
   border: none;
   border-radius: var(--radius-md);
-  background: #2563eb;
+  background: #1b3830;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -1096,7 +1096,7 @@ body {
   white-space: nowrap;
 }
 
-.demo-banner__action:hover { background: #1d4ed8; }
+.demo-banner__action:hover { background: #14241c; }
 
 /* ================================
    SUBSCRIPTION GATE (pantalla de pago)
@@ -1105,7 +1105,7 @@ body {
 .subscription-gate-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1b3830 50%, #0f172a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1133,7 +1133,7 @@ body {
 
 /* Header del gate */
 .sg-header {
-  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  background: linear-gradient(135deg, #10201a, #3f6b59);
   padding: 20px 24px;
   display: flex;
   align-items: center;
@@ -1202,8 +1202,8 @@ body {
 
 /* Precio */
 .sg-price-card {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  border: 1px solid #bfdbfe;
+  background: linear-gradient(135deg, #f3f6f4, #e4eee8);
+  border: 1px solid #c5d9ce;
   border-radius: 12px;
   padding: 16px 20px;
   margin: 16px 24px 0;
@@ -1215,13 +1215,13 @@ body {
 .sg-price-amount {
   font-size: 32px;
   font-weight: 900;
-  color: #1d4ed8;
+  color: #14241c;
   letter-spacing: -1px;
 }
 
 .sg-price-label {
   font-size: 13px;
-  color: #3b82f6;
+  color: #3f6b59;
   font-weight: 500;
 }
 
@@ -1263,7 +1263,7 @@ body {
 .sg-step-num {
   width: 22px;
   height: 22px;
-  background: #1d4ed8;
+  background: #14241c;
   color: white;
   border-radius: 50%;
   display: flex;
@@ -1350,7 +1350,7 @@ body {
   width: calc(100% - 48px);
   margin: 16px 24px;
   padding: 14px 20px;
-  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  background: linear-gradient(135deg, #14241c, #3f6b59);
   color: white;
   border: none;
   border-radius: 12px;
@@ -1358,12 +1358,12 @@ body {
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 14px rgba(27, 56, 48, 0.4);
 }
 
 .sg-primary-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 6px 18px rgba(27, 56, 48, 0.5);
 }
 
 .sg-primary-btn:active:not(:disabled) {
@@ -1380,7 +1380,7 @@ body {
 .sg-back-btn {
   background: none;
   border: none;
-  color: #3b82f6;
+  color: #3f6b59;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1407,7 +1407,7 @@ body {
 }
 
 .sg-upload-area:hover {
-  border-color: #3b82f6;
+  border-color: #3f6b59;
   background: #f0f7ff;
 }
 
@@ -1461,7 +1461,7 @@ body {
 
 .sg-notes-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #3f6b59;
   background: white;
 }
 
@@ -1655,7 +1655,7 @@ body {
 }
 
 .payment-modal-price {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  background: linear-gradient(135deg, #f3f6f4, #e4eee8);
   padding: 16px 24px;
   display: flex;
   align-items: baseline;
@@ -1665,12 +1665,12 @@ body {
 .payment-modal-amount {
   font-size: 28px;
   font-weight: 900;
-  color: #1d4ed8;
+  color: #14241c;
 }
 
 .payment-modal-period {
   font-size: 14px;
-  color: #3b82f6;
+  color: #3f6b59;
   font-weight: 500;
 }
 
@@ -1782,7 +1782,7 @@ body {
   width: calc(100% - 48px);
   margin: 16px 24px 24px;
   padding: 14px;
-  background: #1d4ed8;
+  background: #14241c;
   color: white;
   border: none;
   border-radius: 12px;
@@ -1793,7 +1793,7 @@ body {
 }
 
 .payment-modal-btn:hover {
-  background: #1e40af;
+  background: #10201a;
 }
 
 /* ================================
@@ -1831,7 +1831,7 @@ body {
   display: block;
   transition: color 0.15s;
 }
-.sub-back:hover { color: #1d4ed8; }
+.sub-back:hover { color: #14241c; }
 
 /* ── Header ── */
 .sub-header-glass {
@@ -1889,7 +1889,7 @@ body {
 
 /* ── Left Plan Card ── */
 .sub-plan-card {
-  background: linear-gradient(145deg, #1e3a8a, #3b82f6);
+  background: linear-gradient(145deg, #0c1814, #3f6b59);
   border-radius: 20px;
   padding: 32px 28px;
   color: white;
@@ -1902,13 +1902,13 @@ body {
   border-bottom: 1px solid rgba(255,255,255,0.15);
   padding-bottom: 24px;
 }
-.sub-plan-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #93c5fd; margin-bottom: 12px; }
+.sub-plan-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9bb8aa; margin-bottom: 12px; }
 .sub-plan-price { font-size: 48px; font-weight: 900; line-height: 1; letter-spacing: -2px; }
 .sub-plan-currency { font-size: 14px; color: rgba(255,255,255,0.8); margin-top: 4px; }
 
 .sub-features-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
 .sub-features-list li { font-size: 14px; display: flex; align-items: flex-start; gap: 10px; color: rgba(255,255,255,0.95); line-height: 1.4; }
-.feat-check { color: #60a5fa; font-weight: bold; }
+.feat-check { color: #6d9484; font-weight: bold; }
 
 .sub-guarantee { margin-top: 28px; font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.5; background: rgba(0,0,0,0.15); padding: 12px; border-radius: 10px; display: flex; gap: 8px; }
 
@@ -1975,7 +1975,7 @@ body {
   margin-bottom: 16px;
   touch-action: pan-y;
 }
-.sub-upload-modern:hover { border-color: #3b82f6; background: #eff6ff; }
+.sub-upload-modern:hover { border-color: #3f6b59; background: #f3f6f4; }
 .sub-upload-modern.has-file { border-color: #22c55e; border-style: solid; background: white; padding: 12px; }
 
 .sub-upload-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -1999,7 +1999,7 @@ body {
   transition: all 0.2s;
   margin-bottom: 24px;
 }
-.sub-input-modern:focus { outline: none; border-color: #3b82f6; background: white; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.sub-input-modern:focus { outline: none; border-color: #3f6b59; background: white; box-shadow: 0 0 0 3px rgba(27,56,48,0.1); }
 
 .sub-btn-submit {
   width: 100%;
@@ -2107,11 +2107,10 @@ body {
   }
 }
 
-/* Landing: un solo desplazamiento corto. Quieto si el sistema pide menos movimiento. */
-@keyframes landing-rise {
+@keyframes landing-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -2120,18 +2119,32 @@ body {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .landing-rise,
-  .landing-rise-now {
-    animation: none;
+  .landing-in {
+    animation: landing-in 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+}
 
-  .landing-delay {
-    animation-delay: 40ms;
-  }
+.landing-serif {
+  font-family: Fraunces, "Iowan Old Style", Palatino, serif;
+  font-optical-sizing: auto;
+}
 
-  .landing-chart .landing-occlusal {
-    transition: fill 180ms ease-out, stroke 180ms ease-out;
-  }
+.landing-scroll {
+  scrollbar-color: #d6d3d1 transparent;
+}
+
+.landing-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.landing-scroll::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 999px;
+}
+
+.landing-scroll ::selection {
+  background: #d7e4dc;
+  color: #1c1917;
 }
 
 /* One press across the app. Component utilities were stretching it and animating shadows. */

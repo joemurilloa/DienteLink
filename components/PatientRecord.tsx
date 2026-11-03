@@ -42,7 +42,7 @@ type TabId = 'id' | 'odontogram' | 'periodontogram' | 'history' | 'documents' | 
 
 // ─── Wow Banner (shows on first open after patient creation) ──────────────────
 const WowBanner: React.FC<{ onNavigate: (tab: TabId) => void; onDismiss: () => void; canViewFinancial: boolean }> = ({ onNavigate, onDismiss, canViewFinancial }) => (
-    <div className="mb-6 p-4 sm:p-5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-lg shadow-blue-500/20 animate-in slide-in-from-top-4 duration-500">
+    <div className="mb-6 p-4 sm:p-5 bg-gradient-to-br from-blue-700 to-blue-900 rounded-2xl text-white shadow-lg shadow-blue-500/20 animate-in slide-in-from-top-4 duration-500">
         <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">

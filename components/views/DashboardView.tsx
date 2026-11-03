@@ -365,12 +365,15 @@ const Dashboard: React.FC = () => {
               type="button"
               onClick={() => navigate('/settings')}
               style={{ order: 5 }}
-              className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-left hover:border-amber-300 transition-all cursor-pointer"
+              className="group flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-left hover:border-slate-300 transition-all cursor-pointer"
             >
               <p className="text-[13px] text-slate-600">
                 {days === null ? 'Aún no has descargado un respaldo de tus pacientes.' : `Tu último respaldo fue hace ${days} días.`}
               </p>
-              <span className="text-xs font-bold text-amber-700 whitespace-nowrap">Respaldar →</span>
+              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 whitespace-nowrap">
+                Respaldar
+                <ArrowRight size={13} className="transition-transform duration-150 group-hover:translate-x-0.5" />
+              </span>
             </button>
           );
         })()}

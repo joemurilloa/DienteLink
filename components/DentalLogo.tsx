@@ -26,19 +26,19 @@ export const DentalLogo: React.FC<DentalLogoProps> = ({
     >
       <defs>
         <linearGradient id="dl-gradient-blue" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#2563EB" />
-          <stop offset="1" stopColor="#1D4ED8" />
+          <stop stopColor="#1B3830" />
+          <stop offset="1" stopColor="#14241C" />
         </linearGradient>
         <linearGradient id="dl-gradient-sparkle" x1="28" y1="6" x2="42" y2="20" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#60A5FA" />
-          <stop offset="1" stopColor="#93C5FD" />
+          <stop stopColor="#D7E4DC" />
+          <stop offset="1" stopColor="#8AAB9C" />
         </linearGradient>
       </defs>
 
       {/* Main Tooth Silhouette */}
       <path
         d="M24 6C16.8 6 11 11.2 11 17.5C11 22.8 13.5 27.2 15.8 33.2C17.4 37.4 19.5 42 21.2 42C22.6 42 23.3 39.8 23.8 36.5C24 35.2 24 33.8 24 32.5C24 33.8 24 35.2 24.2 36.5C24.7 39.8 25.4 42 26.8 42C28.5 42 30.6 37.4 32.2 33.2C34.5 27.2 37 22.8 37 17.5C37 11.2 31.2 6 24 6Z"
-        fill={isWhite ? 'currentColor' : isDark ? '#0F172A' : 'url(#dl-gradient-blue)'}
+        fill={isWhite ? 'currentColor' : isDark ? '#14241C' : 'url(#dl-gradient-blue)'}
       />
 
       {/* Inner Anatomical Curve / Dental Shine */}

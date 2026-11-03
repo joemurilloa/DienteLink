@@ -10,6 +10,7 @@ import BackupSettings from './Settings/BackupSettings';
 import ClinicHoursSettings from './Settings/ClinicHoursSettings';
 import { openProblemReport } from '../../lib/support';
 import { roleLabel } from '../../lib/roles';
+import { AlertCircle, Check, Clock, Loader2 } from 'lucide-react';
 
 const CURRENCY_OPTIONS = [
   { code: 'HNL', locale: 'es-HN', label: 'Lempira', flag: '🇭🇳' },
@@ -123,7 +124,7 @@ const SettingsView: React.FC = () => {
               <div className="flex gap-2">
                 <button onClick={() => { setIsEditing(false); if (profile) setForm({ full_name: profile.full_name, clinic_name: profile.clinic_name || '', phone: profile.phone || '', currency: profile.currency || 'HNL', locale: profile.locale || 'es-HN' }); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all">Cancelar</button>
                 <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center gap-1.5">
-                  {saving && <span className="animate-spin">⏳</span>}
+                  {saving && <Loader2 size={14} className="animate-spin" />}
                   Guardar
                 </button>
               </div>
@@ -209,7 +210,7 @@ const SettingsView: React.FC = () => {
           </div>
           <button
             onClick={() => openProblemReport({ doctorName: profile?.full_name, clinicName: profile?.clinic_name, email: user?.email })}
-            className="px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-sm font-semibold whitespace-nowrap cursor-pointer"
+            className="px-4 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100 rounded-xl text-sm font-semibold whitespace-nowrap cursor-pointer"
           >
             Reportar problema
           </button>
@@ -232,24 +233,25 @@ const SettingsView: React.FC = () => {
                     : 'Suscripción requerida para continuar'}
                 </p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                 subscription.isActive
                   ? subscription.isTrial
                     ? 'bg-blue-100 text-blue-700'
                     : 'bg-green-100 text-green-700'
                   : 'bg-red-100 text-red-700'
               }`}>
-                {subscription.isTrial ? '🎁 Trial' : subscription.isActive ? '✅ Activa' : '⛔ Expirada'}
+                {subscription.isTrial ? <Clock size={12} /> : subscription.isActive ? <Check size={12} /> : <AlertCircle size={12} />}
+                {subscription.isTrial ? 'Prueba' : subscription.isActive ? 'Activa' : 'Vencida'}
               </span>
             </div>
             <button
               onClick={() => navigate('/subscription')}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all"
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all"
             >
-              💳 Activar / Ver instrucciones de pago →
+              {subscription.isActive ? 'Ver instrucciones de pago' : 'Activar plan'}
             </button>
             <p className="text-xs text-slate-400 text-center mt-3">
-              🔒 Tus datos se conservan siempre, sin importar el estado de tu suscripción.
+              Tus datos se conservan siempre, sin importar el estado de tu suscripción.
             </p>
           </div>
         )}

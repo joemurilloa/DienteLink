@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DatabaseBackup, Download, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, DatabaseBackup, Download } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useAuth } from '../../../services/authService';
 import { createFullBackup, getLastBackupDate } from '../../../lib/backup';
@@ -47,8 +47,8 @@ const BackupSettings: React.FC = () => {
   return (
     <div className="card-premium p-6">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center">
-          <DatabaseBackup size={18} className="text-indigo-600" />
+        <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center">
+          <DatabaseBackup size={18} className="text-blue-600" />
         </div>
         <div>
           <h3 className="text-base font-bold text-slate-900">Respaldo de tu información</h3>
@@ -61,22 +61,22 @@ const BackupSettings: React.FC = () => {
         y un PDF por paciente. Sirve para guardar tu historial o para llevártelo a otro sistema.
       </p>
 
-      <div className={`flex items-center gap-2 text-xs font-semibold mb-4 ${daysAgo === null || daysAgo > 30 ? 'text-amber-600' : 'text-emerald-600'}`}>
-        <CheckCircle2 size={14} />
+      <div className={`flex items-center gap-2 text-sm mb-4 ${daysAgo === null || daysAgo > 30 ? 'text-amber-800' : 'text-emerald-700'}`}>
+        {daysAgo === null || daysAgo > 30 ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
         {lastBackup
           ? `Último respaldo: ${lastBackup.toLocaleDateString('es-HN')} (hace ${daysAgo} día${daysAgo === 1 ? '' : 's'})`
           : 'Aún no has descargado un respaldo'}
       </div>
 
       <label className="flex items-center gap-2 text-sm text-slate-600 mb-4 cursor-pointer">
-        <input type="checkbox" checked={includePDFs} onChange={e => setIncludePDFs(e.target.checked)} disabled={running} />
+        <input type="checkbox" className="accent-blue-600" checked={includePDFs} onChange={e => setIncludePDFs(e.target.checked)} disabled={running} />
         Incluir un PDF por cada expediente (tarda más si tienes muchos pacientes)
       </label>
 
       {running && (
         <div className="mb-4">
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+            <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${percent}%` }} />
           </div>
           <p className="text-xs text-slate-500 mt-1.5">{message}</p>
         </div>
@@ -85,7 +85,7 @@ const BackupSettings: React.FC = () => {
       <button
         onClick={handleBackup}
         disabled={running}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 disabled:opacity-60 transition-all cursor-pointer"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 disabled:opacity-60 transition-all cursor-pointer"
       >
         <Download size={16} />
         {running ? 'Preparando respaldo…' : 'Descargar respaldo completo'}

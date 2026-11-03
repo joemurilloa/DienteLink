@@ -60,7 +60,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = fal
     if (!loading && patients.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4 animate-in fade-in zoom-in-95 duration-700">
-                <div className="w-20 h-20 mb-6 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-[2rem] flex items-center justify-center rotate-3 shadow-xl shadow-blue-500/25">
+                <div className="w-20 h-20 mb-6 bg-gradient-to-br from-blue-700 to-blue-900 text-white rounded-[2rem] flex items-center justify-center rotate-3 shadow-xl shadow-blue-500/25">
                     <DentalLogo size={42} variant="white" className="-rotate-3" />
                 </div>
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">Tu clínica digital te espera</h2>
@@ -91,7 +91,7 @@ const PatientList: React.FC<Props> = ({ patients, onSelect, onAdd, loading = fal
 
                 <button
                     onClick={onAdd}
-                    className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold text-base shadow-[0_8px_24px_rgba(37,99,235,0.25)] hover:bg-blue-700 flex items-center gap-3"
+                    className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold text-base shadow-[0_8px_24px_rgba(27,56,48,0.25)] hover:bg-blue-700 flex items-center gap-3"
                 >
                     <Plus size={20} /> Agregar mi primer paciente
                 </button>

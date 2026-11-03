@@ -328,7 +328,7 @@ const PublicBookingPage: React.FC = () => {
             {/* ===== STEP 0: WELCOME ===== */}
             {step === 'welcome' && (
               <motion.div key="welcome" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="text-center py-6 sm:py-12">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[28px] mx-auto mb-8 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-600 to-blue-800 rounded-[28px] mx-auto mb-8 flex items-center justify-center shadow-lg shadow-blue-500/30">
                   <CalendarIcon size={40} className="text-white" strokeWidth={1.5} />
                 </div>
                 

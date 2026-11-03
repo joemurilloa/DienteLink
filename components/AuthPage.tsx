@@ -46,7 +46,7 @@ const AuthPage: React.FC = () => {
     <div className="h-full overflow-y-auto overscroll-contain bg-gradient-to-br from-slate-50 to-blue-50 flex items-start justify-center p-6 py-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-700 to-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
             <DentalLogo size={36} variant="white" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">DienteLink</h1>

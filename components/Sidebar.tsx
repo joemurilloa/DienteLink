@@ -90,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
           )}
           onClick={() => navigate('/')}
         >
-          <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[12px] flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300 flex-shrink-0">
+          <div className="w-11 h-11 bg-gradient-to-br from-blue-700 to-blue-900 rounded-[12px] flex items-center justify-center text-white shadow-sm shadow-blue-900/20 group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300 flex-shrink-0">
             <DentalLogo size={24} variant="white" />
           </div>
           <div className={cn("overflow-hidden transition-all duration-300 whitespace-nowrap", isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
@@ -125,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
                   ? "shadow-sm shadow-blue-500/25 text-white"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
               )}
-              style={isActive ? { backgroundColor: '#2563eb', color: 'white' } : {}}
+              style={isActive ? { backgroundColor: '#1b3830', color: 'white' } : {}}
             >
               <item.icon
                 size={18}
@@ -212,7 +212,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activePath, pendingRequest
           onClick={() => setIsDropdownOpen(prev => !prev)}
         >
           <div className="relative flex-shrink-0">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
               <span className="text-white font-semibold text-xs">{doctorInitials}</span>
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />

@@ -619,7 +619,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                <button
                   onClick={handleSaveConfig}
                   disabled={saving || !hasChanges}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-[12px] text-sm font-bold shadow-[0_4px_12px_rgba(37,99,235,0.2)] disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-[12px] text-sm font-bold shadow-[0_4px_12px_rgba(27,56,48,0.2)] disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all"
                 >
                   {saving ? 'Guardando...' : 'Guardar'}
                 </button>

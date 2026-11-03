@@ -26,7 +26,7 @@ export default defineConfig({
         name: 'DienteLink',
         short_name: 'DienteLink',
         description: 'Gestión Dental Profesional',
-        theme_color: '#3b82f6',
+        theme_color: '#1b3830',
         background_color: '#F8FAFC',
         display: 'standalone',
         icons: [
