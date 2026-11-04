@@ -81,6 +81,59 @@ export function nextPeriodEnd(currentEnd: Date | null | undefined, days: number,
   return new Date(base.getTime() + days * DAY_MS);
 }
 
+export function subscriptionStatusCopy(opts: {
+  isTrial: boolean;
+  isActive: boolean;
+  isProvisional: boolean;
+  daysLeft: number;
+  expiresAt: Date | null;
+  provisionalUntil: Date | null;
+}): { badge: string; detail: string; tone: 'trial' | 'ok' | 'soon' | 'expired' } {
+  const day = (date: Date | null) => date ? date.toLocaleDateString('es-HN') : '';
+  if (opts.isProvisional) {
+    return {
+      badge: 'En revisión',
+      detail: `Sigues dentro mientras revisamos el pago, hasta el ${day(opts.provisionalUntil)}.`,
+      tone: 'trial',
+    };
+  }
+  if (!opts.isActive || opts.daysLeft <= 0) {
+    return {
+      badge: 'Vencida',
+      detail: 'El acceso está cerrado. Los expedientes siguen guardados.',
+      tone: 'expired',
+    };
+  }
+  if (opts.daysLeft === 1) {
+    return {
+      badge: 'Vence mañana',
+      detail: opts.isTrial
+        ? `La prueba sigue abierta hasta el ${day(opts.expiresAt)}.`
+        : `El acceso sigue abierto hasta el ${day(opts.expiresAt)}. Mañana se corta si no activas el plan.`,
+      tone: 'soon',
+    };
+  }
+  if (opts.isTrial) {
+    return {
+      badge: 'Prueba',
+      detail: `Período de prueba — ${opts.daysLeft} días restantes.`,
+      tone: 'trial',
+    };
+  }
+  if (opts.daysLeft <= 4) {
+    return {
+      badge: 'Por vencer',
+      detail: `Quedan ${opts.daysLeft} días. El acceso sigue abierto hasta el ${day(opts.expiresAt)}.`,
+      tone: 'soon',
+    };
+  }
+  return {
+    badge: 'Activa',
+    detail: `Plan activo — vence el ${day(opts.expiresAt)}.`,
+    tone: 'ok',
+  };
+}
+
 export function subscriptionBannerCopy(daysLeft: number, isTrial: boolean): {
   message: string;
   action: string;
@@ -95,7 +148,11 @@ export function subscriptionBannerCopy(daysLeft: number, isTrial: boolean): {
     };
   }
   if (daysLeft === 1) {
-    return { message: 'Queda 1 día restante', action, urgent: true };
+    return {
+      message: isTrial ? 'La prueba vence mañana' : 'El acceso vence mañana',
+      action,
+      urgent: true,
+    };
   }
   const prefix = isTrial ? 'Prueba gratis · ' : '';
   return { message: `${prefix}Quedan ${daysLeft} días`, action, urgent: false };

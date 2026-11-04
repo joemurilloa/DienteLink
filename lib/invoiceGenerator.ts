@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { PatientRecord, Payment, Prescription } from '../types';
 import { sileo } from 'sileo';
 import { formatCurrency, getLocalISODate } from './utils';
+import { fdiLabel } from './toothNumber';
 
 export const generatePaymentReceiptPDF = async (
     patient: PatientRecord,
@@ -245,9 +246,9 @@ export const generateAccountStatementPDF = async (
         const budgetRows = (patient.budget || []).map(b => [
             b.createdAt.split('T')[0] || '-',
             b.treatment,
-            b.toothId ? `#${b.toothId}` : 'N/A',
+            fdiLabel(b.toothId) ?? 'N/A',
             `${b.quantity}x ${formatCurrency(b.unitCost)}`,
-            b.status === 'completed' ? 'Completado' : b.status === 'in_progress' ? 'En curso' : 'Pendiente',
+            b.status === 'completed' ? 'Hecho' : b.status === 'in_progress' ? 'En curso' : 'Por hacer',
             formatCurrency(b.unitCost * b.quantity)
         ]);
 
@@ -396,7 +397,7 @@ export const generateBudgetPDF = async (
         const rows = items.map((item, index) => [
             String(index + 1),
             item.treatment,
-            item.toothId ? `#${item.toothId}` : '-',
+            fdiLabel(item.toothId) ?? '-',
             String(item.quantity),
             formatCurrency(item.unitCost),
             formatCurrency(item.unitCost * item.quantity)

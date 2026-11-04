@@ -13,10 +13,11 @@ import {
   MicOff,
   X
 } from 'lucide-react';
-import { PatientRecord as PatientRecordType, Appointment, ClinicalEvent, EvolutionNote } from '../../types';
+import { PatientRecord as PatientRecordType, Appointment, BudgetItem, ClinicalEvent, EvolutionNote } from '../../types';
 import { useAppointments } from '../../hooks/useAppointments';
 import NewAppointmentModal from '../NewAppointmentModal';
 import { cn, getLocalISODate, generateId } from '../../lib/utils';
+import { FDI_INPUT_ERROR, FDI_INPUT_HINT, fdiLabel, parseFdiInput } from '../../lib/toothNumber';
 import { sileo } from 'sileo';
 
 interface Props {
@@ -36,7 +37,18 @@ interface TimelineItem {
   content?: string;
   badge?: string;
   badgeColor?: string;
-  raw: Appointment | ClinicalEvent | EvolutionNote;
+  raw: Appointment | ClinicalEvent | EvolutionNote | BudgetItem;
+}
+
+function budgetDay(raw: string | undefined, fallback: string): string {
+  const day = (raw || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : fallback;
+}
+
+function workStatusLabel(status: BudgetItem['status']): string {
+  if (status === 'completed') return 'Hecho';
+  if (status === 'in_progress') return 'En curso';
+  return 'Por hacer';
 }
 
 const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
@@ -133,12 +145,18 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
       return;
     }
 
+    const parsedTooth = parseFdiInput(newTreatment.toothId);
+    if (!parsedTooth.ok) {
+      sileo.error({ title: 'Pieza no válida', description: FDI_INPUT_ERROR });
+      return;
+    }
+
     const event: ClinicalEvent = {
       id: generateId(),
       date: newTreatment.date || todayStr,
       type: newTreatment.type,
       description: newTreatment.description.trim(),
-      toothId: newTreatment.toothId ? parseInt(newTreatment.toothId, 10) : undefined
+      toothId: parsedTooth.id
     };
 
     onUpdate({
@@ -224,7 +242,7 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
         date: evt.date,
         kind: 'treatment',
         title: evt.description,
-        subtitle: evt.toothId ? `Pieza dental #${evt.toothId}` : undefined,
+        subtitle: evt.toothId ? `Pieza ${fdiLabel(evt.toothId) ?? '—'}` : undefined,
         badge: typeLabels[evt.type] || 'Procedimiento',
         badgeColor:
           evt.type === 'treatment'
@@ -238,7 +256,28 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
       });
     });
 
-    // 3. Evolution Notes
+    // 3. Tratamientos del presupuesto (Pagos). El historial clínico no los crea solo.
+    (patient.budget || []).forEach(item => {
+      const piece = fdiLabel(item.toothId);
+      const work = workStatusLabel(item.status);
+      items.push({
+        id: `budget-${item.id}`,
+        date: budgetDay(item.createdAt, todayStr),
+        kind: 'treatment',
+        title: item.treatment,
+        subtitle: piece ? `Pieza ${piece} · ${work}` : work,
+        badge: work,
+        badgeColor:
+          item.status === 'completed'
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : item.status === 'in_progress'
+            ? 'bg-amber-50 text-amber-700 border-amber-200'
+            : 'bg-slate-50 text-slate-600 border-slate-200',
+        raw: item,
+      });
+    });
+
+    // 4. Evolution Notes
     (patient.evolutionNotes || []).forEach(note => {
       items.push({
         id: `note-${note.id}`,
@@ -259,7 +298,9 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
       }
       return (b.time || '').localeCompare(a.time || '');
     });
-  }, [patientAppointments, patient.history, patient.evolutionNotes]);
+  }, [patientAppointments, patient.history, patient.evolutionNotes, patient.budget, todayStr]);
+
+  const treatmentCount = allTimelineItems.filter(item => item.kind === 'treatment').length;
 
   // Available years for dropdown
   const availableYears = useMemo(() => {
@@ -394,7 +435,7 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
           <div>
             <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Tratam.</p>
             <p className="text-xl sm:text-2xl font-bold text-slate-900 tabular-nums leading-tight">
-              {(patient.history || []).length}
+              {treatmentCount}
             </p>
           </div>
         </div>
@@ -496,7 +537,7 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
             )}
           >
             <Activity size={13} />
-            Tratamientos ({ (patient.history || []).length })
+            Tratamientos ({treatmentCount})
           </button>
 
           <button
@@ -906,11 +947,13 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
 
                     <div>
                       <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">
-                        Pieza Dental (Opcional)
+                        Pieza (FDI)
                       </label>
                       <input
-                        type="number"
-                        placeholder="Ej. 14, 21, 36..."
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={2}
+                        placeholder={FDI_INPUT_HINT}
                         value={newTreatment.toothId}
                         onChange={e =>
                           setNewTreatment(p => ({ ...p, toothId: e.target.value }))

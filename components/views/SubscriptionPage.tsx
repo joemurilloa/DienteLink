@@ -4,7 +4,7 @@ import { useAuth } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../hooks/useSubscription';
 
-import { BILLING } from '../../lib/billing';
+import { BILLING, subscriptionStatusCopy } from '../../lib/billing';
 import { prepareReceiptFile, MAX_RECEIPT_BYTES } from '../../lib/receiptFile';
 
 const BANK_INFO = {
@@ -90,18 +90,21 @@ const SubscriptionPage: React.FC = () => {
   };
 
   // ─── STATUS BADGE ───────────────────────────────────────────
-  const statusLabel = subscription.isProvisional
-    ? `⏳ En revisión — acceso hasta ${subscription.provisionalUntil?.toLocaleDateString('es-HN')}`
-    : subscription.isTrial
-    ? `🎁 Trial — ${subscription.daysLeft} días restantes`
-    : subscription.isActive
-    ? `✅ Activa — vence ${subscription.expiresAt?.toLocaleDateString('es-HN')}`
-    : '⛔ Expirada';
-
-  const statusColor = subscription.isProvisional
+  const plan = subscription.loading
+    ? null
+    : subscriptionStatusCopy({
+        isTrial: subscription.isTrial,
+        isActive: subscription.isActive,
+        isProvisional: subscription.isProvisional,
+        daysLeft: subscription.daysLeft,
+        expiresAt: subscription.expiresAt,
+        provisionalUntil: subscription.provisionalUntil,
+      });
+  const statusLabel = plan ? plan.badge : 'Revisando el plan';
+  const statusColor = !plan || plan.tone === 'trial' || plan.tone === 'soon'
     ? 'sub-badge--trial'
-    : subscription.isActive
-    ? subscription.isTrial ? 'sub-badge--trial' : 'sub-badge--active'
+    : plan.tone === 'ok'
+    ? 'sub-badge--active'
     : 'sub-badge--expired';
 
   if (step === 'done') {
@@ -155,7 +158,11 @@ const SubscriptionPage: React.FC = () => {
       <div className="sub-body fade-in-up">
         <div className="sub-hero-minimal">
           <h1 className="sub-hero-title">Suscripción DienteLink</h1>
-          <p className="sub-hero-subtitle">Completa tu pago para mantener acceso ininterrumpido a todas las herramientas.</p>
+          <p className="sub-hero-subtitle">
+            {plan?.tone === 'soon' || plan?.tone === 'expired'
+              ? plan.detail
+              : 'Completa tu pago para mantener acceso ininterrumpido a todas las herramientas.'}
+          </p>
         </div>
 
         {subscription.error && !subscription.isActive && (

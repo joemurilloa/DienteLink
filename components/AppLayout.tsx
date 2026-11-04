@@ -72,7 +72,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ subscription }) => {
       bookingService.init('demo').then(() => {
         if (cancelled) return;
         setServicesReady(true);
-        setPendingCount(0);
+        setPendingCount(bookingService.getPendingRequests().length);
       }).catch((error) => {
         console.error(error);
         if (cancelled) return;
@@ -163,7 +163,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ subscription }) => {
           <Sidebar activePath={getActivePath()} pendingRequestsCount={pendingCount} />
           <main
             id="main-content"
-            className="flex-1 flex flex-col relative overflow-hidden"
+            className="flex-1 min-w-0 flex flex-col relative overflow-hidden"
             role="main"
             aria-label="Contenido principal"
           >

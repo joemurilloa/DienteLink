@@ -37,12 +37,16 @@ export function useContextualTip(
     const shown = getShownTips();
     if (shown.has(tipId)) return;
 
-    const timeout = setTimeout(() => {
-      sileo.info({ title, description });
+    let toastId: string | undefined;
+    const timeout = window.setTimeout(() => {
+      toastId = sileo.info({ title, description, duration: 5000 });
       markTipShown(tipId);
     }, delayMs);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+      if (toastId) sileo.dismiss(toastId);
+    };
   }, [tipId, title, description, delayMs]);
 }
 

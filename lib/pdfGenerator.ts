@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { PatientRecord } from '../types';
 import { sileo } from 'sileo';
 import { formatCurrency, getLocalISODate } from './utils';
+import { fdiLabel } from './toothNumber';
 
 export const generatePatientPDF = async (
     patient: PatientRecord,
@@ -154,7 +155,7 @@ export const generatePatientPDF = async (
         if (teethWithConditions.length > 0) {
             drawSectionHeader('Odontograma Inicial');
             const odontoData = teethWithConditions.map(t => [
-                `Pieza #${t.id}`,
+                `Pieza ${fdiLabel(t.id) ?? '—'}`,
                 t.surfaces.map(s => `${s.surface}: ${s.condition}`).join(', ')
             ]);
             drawClinicalTable([['Pieza', 'Hallazgos / Condiciones']], odontoData, { 0: { cellWidth: 30 } });
@@ -172,7 +173,7 @@ export const generatePatientPDF = async (
                 const lingualDepths = t.lingual.map(s => s.depth).join('/');
                 const bleeding = [...t.buccal, ...t.lingual].filter(s => s.bleeding).length;
                 return [
-                    `#${t.toothId}`,
+                    fdiLabel(t.toothId) ?? '—',
                     `${buccalDepths}`,
                     `${lingualDepths}`,
                     bleeding > 0 ? `${bleeding}/6` : '-',
@@ -203,7 +204,7 @@ export const generatePatientPDF = async (
                 totalB += rowTotal;
                 return [
                     b.treatment,
-                    b.toothId ? `#${b.toothId}` : 'Gral',
+                    fdiLabel(b.toothId) ?? 'Gral',
                     formatCurrency(b.unitCost),
                     b.quantity.toString(),
                     formatCurrency(rowTotal),

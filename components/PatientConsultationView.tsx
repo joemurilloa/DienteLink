@@ -173,7 +173,23 @@ const PatientConsultationView: React.FC = () => {
     }
   };
 
-  if (!patientId || isLoadingPatient) {
+  if (!patientId) {
+    return (
+      <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 gap-3 px-6 text-center">
+        <p className="text-sm font-semibold text-slate-800">Elige un paciente para iniciar la consulta</p>
+        <p className="text-sm text-slate-500 max-w-sm">Ábrela desde la cita del día o desde el expediente. Aquí no se guarda nada hasta que elijas a alguien.</p>
+        <button
+          type="button"
+          onClick={() => navigate('/calendar')}
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl"
+        >
+          Ir a la agenda
+        </button>
+      </div>
+    );
+  }
+
+  if (isLoadingPatient) {
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-slate-50">
         <Loader2 size={32} className="animate-spin text-blue-600" />

@@ -4,6 +4,7 @@ import { useAuth } from '../services/authService';
 import { Check, ChevronDown } from 'lucide-react';
 import DentalLogo from './DentalLogo';
 import { BILLING } from '../lib/billing';
+import { fdiToId, idToFdi } from '../lib/toothNumber';
 import { SUPPORT_WHATSAPP } from '../lib/support';
 
 const NOW = new Date();
@@ -44,10 +45,8 @@ function weekOf(now: Date) {
 
 const WEEK_DAYS = weekOf(NOW);
 
-/** Universal 1–32 → FDI, el mismo orden que el odontograma de la app. */
-const FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28, 38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
-const CARIES_TOOTH = 14;
-const fdiOf = (id: number) => FDI[id - 1];
+const CARIES_TOOTH = fdiToId(26)!;
+const fdiOf = (id: number) => idToFdi(id)!;
 const UPPER = Array.from({ length: 16 }, (_, index) => index + 1);
 const LOWER = [32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17];
 

@@ -63,7 +63,7 @@ const ReceiptRow: React.FC<{ receipt: AdminReceipt }> = ({ receipt }) => {
 
 const AdminBillingView: React.FC = () => {
   const navigate = useNavigate();
-  const { isPlatformAdmin: allowed } = useAuth();
+  const { isPlatformAdmin: allowed, user } = useAuth();
   const { clinics, loading, error, refresh, extend, rejectPending, extendingId, now } = useAdminBilling(allowed);
   const [query, setQuery] = useState('');
   const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({});

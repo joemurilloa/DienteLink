@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { PeriodontogramData, PerioToothData, PerioSite } from '../types';
 import { cn, createDefaultPeriodontogramData } from '../lib/utils';
 import { RotateCcw, Droplets, AlertTriangle, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
+import { fdiLabel } from '../lib/toothNumber';
 
 /* ================================================================
    TOOTH INFO
@@ -342,7 +343,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ tooth, data, onUpdate, onPrev
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900">{info?.name}</p>
-              <p className="text-xs text-slate-500">Pieza {tooth.toothId} | {getDepthLabel(tooth.buccal[1].depth)}</p>
+              <p className="text-xs text-slate-500">Pieza {fdiLabel(tooth.toothId) ?? '—'} | {getDepthLabel(tooth.buccal[1].depth)}</p>
             </div>
           </div>
         </div>

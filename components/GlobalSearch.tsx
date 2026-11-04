@@ -18,8 +18,10 @@ const EMPTY_ARRAY: PatientRecord[] = [];
 const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
     const { data: allPatients = EMPTY_ARRAY, isError: patientsError } = usePatients();
     const [query, setQuery] = useState('');
+    const [settledQuery, setSettledQuery] = useState('');
     const [results, setResults] = useState<PatientRecord[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(-1);
+    const pending = query.length >= 2 && query !== settledQuery;
     const inputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
@@ -33,6 +35,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
     useEffect(() => {
         if (query.length < 2) {
             setResults(prev => prev.length === 0 ? prev : []);
+            setSettledQuery(query);
             setSelectedIndex(prev => prev === -1 ? prev : -1);
             return;
         }
@@ -44,7 +47,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                 p.id.includes(query)
             );
             setResults(filtered.slice(0, 5));
-            // Results are shown in the dropdown, no need for toast noise during typing
+            setSettledQuery(query);
             setSelectedIndex(filtered.length > 0 ? 0 : -1);
         }, 300);
 
@@ -148,7 +151,13 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                     </div>
                 )}
 
-                {!patientsError && query.length >= 2 && results.length === 0 && (
+                {!patientsError && pending && results.length === 0 && (
+                    <div className="p-8 text-center">
+                        <p className="text-slate-500 font-medium">Buscando…</p>
+                    </div>
+                )}
+
+                {!patientsError && !pending && query.length >= 2 && results.length === 0 && (
                     <div className="p-8 text-center">
                         <p className="text-slate-500 font-medium">No se encontraron pacientes</p>
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">

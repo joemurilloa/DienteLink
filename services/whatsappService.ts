@@ -1,4 +1,5 @@
 import { Appointment, BudgetItem } from '../types';
+import { fdiLabel } from '../lib/toothNumber';
 
 export const COUNTRY_DIAL_CODES: Record<string, string> = {
   HNL: '504',
@@ -232,7 +233,8 @@ class WhatsAppService {
 
     const itemsText = items.map((item, index) => {
       const qtyStr = item.quantity > 1 ? `${item.quantity} × ` : '';
-      const toothStr = item.toothId ? ` (pieza ${item.toothId})` : '';
+      const pieza = fdiLabel(item.toothId);
+      const toothStr = pieza ? ` (pieza ${pieza})` : '';
       return `${index + 1}. ${qtyStr}${item.treatment}${toothStr} — ${money(item.unitCost * item.quantity)}`;
     }).join('\n');
 

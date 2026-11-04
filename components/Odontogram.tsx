@@ -13,17 +13,18 @@
  * Previously: 1,503 lines. Now: ~200 lines.
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
 import { ToothData, ToothSurface, ClinicalCondition, OdontogramSnapshot } from '../types';
 import { cn, ensureOdontogram } from '../lib/utils';
 import { sileo } from 'sileo';
 import 'sileo/styles.css';
 import {
-  Clock, Info,
+  Clock, Info, Maximize2,
   Eye, Loader2, CheckCircle2, AlertCircle,
 } from 'lucide-react';
 import ToothDetailModal from './ToothDetailModal';
 import { usePriceCatalog, suggestBudgetItem } from '../lib/priceCatalog';
+import { idToFdi } from '../lib/toothNumber';
 
 // Sub-components
 import { ToothDiagram }          from './odontogram/ToothDiagram';
@@ -39,30 +40,36 @@ import {
   getSurfaceDisplayName,
 } from './odontogram/odontogramData';
 
-// ArchFit: scales the dental arch to the available container width
-const ARCH_NATURAL_WIDTH = 1180;
-const ARCH_MOBILE_WIDTH  = 505;
+// Encoge la arcada completa al ancho disponible. No parte la fila de piezas.
 const ArchFit: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const mobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+  useLayoutEffect(() => {
+    const outer = ref.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
     const calc = () => {
-      if (window.innerWidth < 768) return setScale(Math.min(1, Math.max(0.3, (window.innerWidth - 80) / ARCH_MOBILE_WIDTH)));
-      setScale(Math.min(1, Math.max(0.5, el.clientWidth / ARCH_NATURAL_WIDTH)));
+      const available = outer.clientWidth;
+      if (available <= 0) return;
+      const previous = inner.style.zoom;
+      inner.style.zoom = '1';
+      const natural = inner.scrollWidth;
+      inner.style.zoom = previous;
+      if (natural <= 0) return;
+      const next = Math.min(1, (available - 2) / natural);
+      setScale(prev => (Math.abs(prev - next) < 0.005 ? prev : next));
     };
     calc();
     const ro = new ResizeObserver(calc);
-    ro.observe(el);
+    ro.observe(outer);
     return () => ro.disconnect();
   }, []);
 
   return (
-    <div ref={ref} className="overflow-x-auto custom-scrollbar pb-8 min-w-0 max-w-full -mx-6 px-6 lg:mx-0 lg:px-0">
-      <div className="mx-auto" style={{ minWidth: scale < 1 ? undefined : 850, width: mobile ? ARCH_MOBILE_WIDTH : undefined, zoom: scale }}>
+    <div ref={ref} className="w-full min-w-0 max-w-full overflow-hidden pb-4">
+      <div ref={innerRef} className="w-max" style={{ zoom: scale }}>
         {children}
       </div>
     </div>
@@ -81,6 +88,7 @@ interface OdontogramProps {
   onSaveSnapshot?: () => void | Promise<void>;
   readOnly?: boolean;
   onAddToBudget?: (toothId: number, suggestion: { treatment: string; cost: string }) => void;
+  onExpand?: () => void;
 }
 
 // ============================================================================
@@ -88,7 +96,7 @@ interface OdontogramProps {
 // ============================================================================
 
 const Odontogram: React.FC<OdontogramProps> = ({
-  patientId, teeth: teethProp, onUpdate, snapshots = [], onSaveSnapshot, onAddToBudget, readOnly = false,
+  patientId, teeth: teethProp, onUpdate, snapshots = [], onSaveSnapshot, onAddToBudget, onExpand, readOnly = false,
 }) => {
   const teeth = ensureOdontogram(teethProp);
   const { catalog } = usePriceCatalog();
@@ -198,7 +206,7 @@ const Odontogram: React.FC<OdontogramProps> = ({
       if (wholeCond) return { ...t, surfaces: [] };
       return { ...t, surfaces: t.surfaces.filter(s => s.surface !== surface) };
     });
-    commitTeeth(updatedTeeth, teeth, `Superficie limpiada · FDI ${TOOTH_INFO[toothId]?.fdi || toothId}`);
+    commitTeeth(updatedTeeth, teeth, `Superficie limpiada · FDI ${idToFdi(toothId) ?? ''}`);
   }, [teeth, commitTeeth]);
 
   const handleClearWholeTooth = useCallback((toothId: number) => {
@@ -210,7 +218,7 @@ const Odontogram: React.FC<OdontogramProps> = ({
     const updated = teeth.map(t =>
       t.id !== toothId ? t : { ...t, surfaces: [{ surface: 'oclusal' as ToothSurface, condition }] },
     );
-    commitTeeth(updated, teeth, `${conditionThemes[condition]?.label || condition} · FDI ${TOOTH_INFO[toothId]?.fdi || toothId}`);
+    commitTeeth(updated, teeth, `${conditionThemes[condition]?.label || condition} · FDI ${idToFdi(toothId) ?? ''}`);
   }, [teeth, commitTeeth]);
 
   const handleToggleCompare = useCallback(() => {
@@ -240,16 +248,16 @@ const Odontogram: React.FC<OdontogramProps> = ({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="bg-white p-4 lg:p-6 rounded-2xl select-none border border-slate-300 shadow-sm transition-all duration-500">
+    <div className="bg-white p-4 lg:p-6 rounded-2xl select-none border border-slate-300 shadow-sm transition-all duration-500 min-w-0 max-w-full overflow-hidden">
       {/* Header */}
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight leading-tight mb-1">Odontograma</h3>
           <p className="text-slate-500 text-sm max-w-md leading-relaxed">
             Selecciona una pieza para registrar hallazgos. Solo se pedirá una superficie cuando sea necesaria.
           </p>
         </div>
-        <div className="mr-14 lg:mr-16 flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:mr-14 lg:mr-16">
           {onSaveSnapshot && !isReadOnly && (
             <button type="button" onClick={() => void handleSaveSnapshot()}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -267,6 +275,11 @@ const Odontogram: React.FC<OdontogramProps> = ({
             {isReadOnly ? <Eye size={12} /> : saveStatus === 'saving' ? <Loader2 size={12} className="animate-spin" /> : saveStatus === 'error' ? <AlertCircle size={12} /> : <CheckCircle2 size={12} />}
             {isReadOnly ? 'Solo lectura' : saveStatus === 'saving' ? 'Guardando…' : saveStatus === 'error' ? 'Error al guardar' : saveStatus === 'saved' ? 'Guardado' : 'Autoguardado activo'}
           </div>
+          {onExpand && (
+            <button type="button" onClick={onExpand} className="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 bg-white text-slate-700" aria-label="Ver en pantalla completa">
+              <Maximize2 size={12} /> Ampliar
+            </button>
+          )}
         </div>
       </div>
 
@@ -294,7 +307,7 @@ const Odontogram: React.FC<OdontogramProps> = ({
       )}
 
       {/* Main layout */}
-      <div className="flex gap-6">
+      <div className="flex gap-6 min-w-0">
         {!isReadOnly && (
           <ConditionPanel
             selected={selectedCondition}
@@ -304,7 +317,7 @@ const Odontogram: React.FC<OdontogramProps> = ({
           />
         )}
 
-        <div className={cn('flex-1 space-y-2 relative pb-20 xl:pb-0')}>
+        <div className={cn('flex-1 min-w-0 space-y-2 relative pb-20 xl:pb-0 overflow-hidden')}>
           <ArchFit>
             <div className="relative">
               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300 z-0 hidden md:block" />
@@ -324,7 +337,7 @@ const Odontogram: React.FC<OdontogramProps> = ({
                   <span className="text-xs font-black uppercase text-slate-500 tracking-[3px]">Arcada Superior</span>
                   <div className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200" />
                 </div>
-                <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
+                <div className="flex flex-nowrap justify-center gap-x-1 md:gap-x-3">
                   {upper.map(tooth => (
                     <ToothDiagram key={tooth.id} tooth={tooth} selectedCondition={selectedCondition}
                       onSurfaceClick={interactionMode === 'guided' ? handleOpenToothDetail : handleSurfaceClick}
@@ -342,7 +355,7 @@ const Odontogram: React.FC<OdontogramProps> = ({
 
               {/* Lower arch */}
               <div className="flex flex-col items-center relative z-10">
-                <div className="flex flex-wrap justify-center gap-x-1 md:gap-x-3 gap-y-6">
+                <div className="flex flex-nowrap justify-center gap-x-1 md:gap-x-3">
                   {[32, 31, 30, 29, 28, 27, 26, 25].map(id => {
                     const tooth = lower.find(t => t.id === id);
                     if (!tooth) return null;

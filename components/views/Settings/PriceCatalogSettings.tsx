@@ -1,24 +1,53 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, RotateCcw, Tag } from 'lucide-react';
-import { usePriceCatalog } from '../../../lib/priceCatalog';
+import { usePriceCatalog, type CatalogItem } from '../../../lib/priceCatalog';
+import ConfirmModal from '../../ConfirmModal';
+
+function sameCatalog(a: CatalogItem[], b: CatalogItem[]) {
+  return a.length === b.length && a.every((item, i) => item.id === b[i].id && item.name === b[i].name && item.cost === b[i].cost);
+}
+
+function readyToSave(items: CatalogItem[]) {
+  return items.every(item => item.name.trim().length > 0 && item.cost > 0);
+}
 
 const PriceCatalogSettings: React.FC = () => {
   const { catalog, setCatalog, reset, isSaving, canEdit } = usePriceCatalog();
+  const [items, setItems] = useState<CatalogItem[]>(catalog);
   const [name, setName] = useState('');
   const [cost, setCost] = useState('');
+  const [confirmReset, setConfirmReset] = useState(false);
+  const seenCatalog = useRef(catalog);
+
+  useEffect(() => {
+    const previous = seenCatalog.current;
+    seenCatalog.current = catalog;
+    setItems(current => {
+      if (sameCatalog(current, catalog) || sameCatalog(current, previous)) {
+        return sameCatalog(current, catalog) ? current : catalog;
+      }
+      return current;
+    });
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!canEdit || sameCatalog(items, catalog) || !readyToSave(items)) return;
+    const timer = window.setTimeout(() => setCatalog(items), 800);
+    return () => window.clearTimeout(timer);
+  }, [items, catalog, canEdit, setCatalog]);
 
   const handleAdd = () => {
     if (!canEdit) return;
     const price = parseFloat(cost);
     if (!name.trim() || isNaN(price) || price <= 0) return;
-    setCatalog([...catalog, { id: crypto.randomUUID(), name: name.trim(), cost: price }]);
+    setItems([...items, { id: crypto.randomUUID(), name: name.trim(), cost: price }]);
     setName('');
     setCost('');
   };
 
   const update = (id: string, patch: Partial<{ name: string; cost: number }>) => {
     if (!canEdit) return;
-    setCatalog(catalog.map(c => (c.id === id ? { ...c, ...patch } : c)));
+    setItems(items.map(c => (c.id === id ? { ...c, ...patch } : c)));
   };
 
   const inputCls =
@@ -45,7 +74,7 @@ const PriceCatalogSettings: React.FC = () => {
         </div>
         {canEdit && (
           <button
-            onClick={reset}
+            onClick={() => setConfirmReset(true)}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
             title="Volver a la lista inicial"
           >
@@ -55,7 +84,7 @@ const PriceCatalogSettings: React.FC = () => {
       </div>
 
       <ul className="mt-4 space-y-2">
-        {catalog.map(item => (
+        {items.map(item => (
           <li key={item.id} className="flex items-center gap-2">
             <input
               disabled={!canEdit}
@@ -70,11 +99,17 @@ const PriceCatalogSettings: React.FC = () => {
               step="0.01"
               className={`${inputCls} w-28`}
               value={item.cost}
-              onChange={e => update(item.id, { cost: parseFloat(e.target.value) || 0 })}
+              onChange={e => {
+                const raw = e.target.value;
+                if (raw.trim() === '') return;
+                const price = parseFloat(raw);
+                if (Number.isNaN(price)) return;
+                update(item.id, { cost: price });
+              }}
             />
             {canEdit && (
               <button
-                onClick={() => setCatalog(catalog.filter(c => c.id !== item.id))}
+                onClick={() => setItems(items.filter(c => c.id !== item.id))}
                 className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 cursor-pointer"
                 title="Eliminar"
               >
@@ -115,8 +150,20 @@ const PriceCatalogSettings: React.FC = () => {
         </p>
       )}
       <p className="text-xs text-slate-400 mt-3">
-        Sincronizado en la nube para todos los miembros del equipo de la clínica.
+        El cambio se guarda un momento después de escribir. Restablecer pide confirmación.
       </p>
+      <ConfirmModal
+        isOpen={confirmReset}
+        onClose={() => setConfirmReset(false)}
+        onConfirm={() => {
+          setConfirmReset(false);
+          reset();
+        }}
+        title="Volver a la lista inicial"
+        description="Se reemplazan los precios de la clínica por la lista inicial. Los presupuestos ya creados no cambian."
+        confirmLabel="Restablecer"
+        variant="warning"
+      />
     </div>
   );
 };

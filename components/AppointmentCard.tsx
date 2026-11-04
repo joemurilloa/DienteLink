@@ -8,12 +8,17 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, X, User, Phone, Calendar, Tag, Play, Ban } from 'lucide-react';
 import { whatsappService } from '../services/whatsappService';
 import WhatsAppAction from './WhatsAppAction';
+import ConfirmModal from './ConfirmModal';
 
 interface AppointmentCardProps {
   appointment: Appointment;
   onReminderSent?: (id: string, status: ReminderStatus) => void;
   onNavigateToPatient?: (appointment: Appointment) => void;
   showDate?: boolean;
+  /** Solo el detalle, sin la tarjeta del inicio. Lo abre la agenda. */
+  headless?: boolean;
+  detailOpen?: boolean;
+  onDetailClose?: () => void;
 }
 
 const typeColors: Record<string, { bg: string; text: string; accent: string }> = {
@@ -30,8 +35,14 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   Eliminada: { label: 'Eliminada', color: 'bg-red-100 text-red-700' },
 };
 
-const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient, showDate }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointment, onReminderSent, onNavigateToPatient, showDate, headless, detailOpen, onDetailClose }) => {
   const [showDetail, setShowDetail] = useState(false);
+  const detailVisible = headless ? !!detailOpen : showDetail;
+  const closeDetail = () => {
+    if (!headless) setShowDetail(false);
+    onDetailClose?.();
+  };
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const { deleteAppointment } = useAppointmentMutations();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -66,6 +77,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
   return (
     <>
+      {!headless && (
       <article className="card-premium p-3.5 flex items-center gap-3.5 group hover:border-blue-300">
       <button
         type="button"
@@ -130,12 +142,13 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
           />
         ) : null}
       </article>
+      )}
 
       {/* Appointment Detail Modal */}
-      {showDetail && createPortal(
+      {detailVisible && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm"
-          onClick={() => setShowDetail(false)}
+          onClick={closeDetail}
         >
           <div
             className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300"
@@ -148,7 +161,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                 <div className="w-10 h-1 bg-slate-200 rounded-full sm:hidden" />
                 <button
                   type="button"
-                  onClick={() => setShowDetail(false)}
+                  onClick={closeDetail}
                   aria-label="Cerrar detalle de la cita"
                   className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-600 transition-colors"
                 >
@@ -166,7 +179,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
                     <button
                       type="button"
                       onClick={() => {
-                        setShowDetail(false);
+                        closeDetail();
                         onNavigateToPatient(appointment);
                       }}
                       className="text-base font-bold text-slate-900 leading-tight truncate text-left hover:text-blue-600 transition-colors"
@@ -258,10 +271,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
               <div className="flex gap-2.5 mt-2 pt-2 border-t border-slate-300">
                 {appointment.status === 'Programada' && (
                   <button
-                    onClick={() => { 
-                      deleteAppointment.mutate(appointment.id);
-                      setShowDetail(false); 
-                    }}
+                    onClick={() => setConfirmCancel(true)}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-100"
                     title="Cancelar esta cita"
                   >
@@ -271,8 +281,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
                 {onNavigateToPatient && appointment.patientId && appointment.status === 'Programada' && (
                   <button
-                    onClick={() => { 
-                      setShowDetail(false);
+                    onClick={() => {
+                      closeDetail();
                       navigate(`/consultation?patientId=${appointment.patientId}&appointmentId=${appointment.id}`);
                     }}
                     className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all"
@@ -283,7 +293,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
 
                 {onNavigateToPatient && appointment.patientId && appointment.status !== 'Programada' && (
                   <button
-                    onClick={() => { setShowDetail(false); onNavigateToPatient(appointment); }}
+                    onClick={() => { closeDetail(); onNavigateToPatient(appointment); }}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-md"
                   >
                     <User size={16} /> Historia clínica
@@ -295,6 +305,20 @@ const AppointmentCard: React.FC<AppointmentCardProps> = React.memo(({ appointmen
         </div>,
         document.body
       )}
+
+      <ConfirmModal
+        isOpen={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        onConfirm={() => {
+          deleteAppointment.mutate(appointment.id);
+          setConfirmCancel(false);
+          closeDetail();
+        }}
+        title="Cancelar cita"
+        description="Esta cita se enviará a la lista de citas borradas. ¿Estás seguro?"
+        confirmLabel="Eliminar cita"
+        variant="danger"
+      />
     </>
   );
 });

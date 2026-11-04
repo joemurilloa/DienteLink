@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { generateAvailableSlots } from '../services/bookingUtils';
+import { generateAvailableSlots, scheduledSlotTimes } from '../services/bookingUtils';
 
 describe('generateAvailableSlots', () => {
   afterEach(() => {
@@ -56,5 +56,30 @@ describe('generateAvailableSlots', () => {
     const slots = generateAvailableSlots(date, availability);
     expect(slots[0]).toBe('09:30');
     expect(slots).toContain('10:00');
+  });
+});
+
+describe('scheduledSlotTimes', () => {
+  const weeklySchedule = [
+    { dayOfWeek: 0, enabled: false, timeSlots: [] },
+    ...Array.from({ length: 5 }, (_, i) => ({
+      dayOfWeek: i + 1,
+      enabled: true,
+      timeSlots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '17:00' }],
+    })),
+    { dayOfWeek: 6, enabled: true, timeSlots: [{ start: '09:00', end: '12:00' }, { start: '14:00', end: '17:00' }] },
+  ];
+  const availability = { weeklySchedule, slotDuration: 60 };
+
+  it('returns the saved hours for a weekday, including ones that already passed', () => {
+    expect(scheduledSlotTimes(availability, 4)).toEqual(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']);
+  });
+
+  it('returns nothing on a closed day', () => {
+    expect(scheduledSlotTimes(availability, 0)).toEqual([]);
+  });
+
+  it('unions the week without duplicating shared hours', () => {
+    expect(scheduledSlotTimes(availability)).toEqual(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']);
   });
 });

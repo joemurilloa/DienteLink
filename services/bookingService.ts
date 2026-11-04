@@ -8,6 +8,7 @@ import { generateAvailableSlots } from './bookingUtils';
 import * as persistence from './bookingPersistence';
 import { createAppointmentRequestsChannel } from './bookingRealtime';
 import { publicBookingUrl } from '../lib/legacyHash';
+import { createDemoBookingRequests } from '../lib/demoData';
 
 function notifyRejectedRequest(requestId: string) {
   supabase.functions
@@ -30,19 +31,23 @@ export class BookingService {
   private _ready = false;
   /** True solo tras una lectura exitosa. Un fallo no autoriza a guardar el horario default. */
   private availabilityLoaded = false;
+  /** Hay una fila guardada en la cuenta, no solo el horario por defecto de este navegador. */
+  private availabilitySaved = false;
   private realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   // --- Initialization ---
   async init(userId: string): Promise<void> {
     this.userId = userId;
     this.availabilityLoaded = false;
+    this.availabilitySaved = false;
     this._ready = false;
     this.availability = null;
     const { availabilityRow, settingsRow, requestRows } = await persistence.fetchDoctorInitData(userId);
 
+    this.availabilitySaved = !!availabilityRow;
     this.availability = availabilityRow ? dbToAvailability(availabilityRow) : this.getDefaultAvailability(userId);
     this.settings = settingsRow ? dbToSettings(settingsRow) : null;
-    this.requests = (requestRows || []).map(dbToRequest);
+    this.requests = userId === 'demo' ? createDemoBookingRequests() : (requestRows || []).map(dbToRequest);
     this.availabilityLoaded = true;
     this._ready = true;
 
@@ -90,6 +95,7 @@ export class BookingService {
     this.requests = [];
     this._ready = false;
     this.availabilityLoaded = false;
+    this.availabilitySaved = false;
   }
 
   private uid(): string {
@@ -135,6 +141,10 @@ export class BookingService {
     return this.availability || this.getDefaultAvailability();
   }
 
+  hasSavedHours(): boolean {
+    return this.availabilitySaved;
+  }
+
   async saveDoctorAvailability(availability: DoctorAvailability): Promise<void> {
     if (!this.availabilityLoaded) {
       throw new Error('El horario no se cargó. Recarga la página antes de guardar.');
@@ -153,6 +163,7 @@ export class BookingService {
       updated_at: next.lastUpdated,
     });
     this.availability = next;
+    this.availabilitySaved = true;
     window.dispatchEvent(new CustomEvent('availabilityUpdated', { detail: next }));
   }
 
@@ -211,6 +222,10 @@ export class BookingService {
   /** Re-fetch requests from Supabase to pick up requests created by the public page */
   async refreshRequests(): Promise<void> {
     const userId = this.uid();
+    if (userId === 'demo') {
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      return;
+    }
     try {
       const data = await persistence.fetchAppointmentRequests(userId);
       this.requests = (data || []).map(dbToRequest);
@@ -251,6 +266,20 @@ export class BookingService {
     requestId: string,
     forceOverlap = false,
   ): Promise<persistence.ApproveAppointmentResult> {
+    if (this.uid() === 'demo') {
+      const local = this.requests.find(r => r.id === requestId);
+      if (!local) throw new Error('Solicitud no encontrada');
+      local.status = 'approved';
+      local.respondedAt = new Date().toISOString();
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      return {
+        request_id: requestId,
+        status: 'approved',
+        patient_id: null,
+        appointment_id: null,
+        possible_duplicates: false,
+      };
+    }
     const result = await persistence.approveAppointmentRequestAtomic(requestId, forceOverlap);
     const local = this.requests.find(r => r.id === requestId);
     if (local) {
@@ -279,6 +308,11 @@ export class BookingService {
     request.status = 'rejected';
     request.respondedAt = new Date().toISOString();
 
+    if (this.uid() === 'demo') {
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      return request;
+    }
+
     try {
       await persistence.updateAppointmentRequestStatus(requestId, 'rejected', request.respondedAt);
       window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
@@ -299,6 +333,11 @@ export class BookingService {
     request.status = newStatus;
     request.respondedAt = newStatus === 'pending' ? undefined : new Date().toISOString();
 
+    if (this.uid() === 'demo') {
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      return request;
+    }
+
     try {
       await persistence.updateAppointmentRequestStatus(requestId, newStatus, request.respondedAt || null);
       window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
@@ -313,6 +352,11 @@ export class BookingService {
   /** Delete a request permanently */
   async deleteRequest(requestId: string): Promise<void> {
     this.requests = this.requests.filter(r => r.id !== requestId);
+
+    if (this.uid() === 'demo') {
+      window.dispatchEvent(new CustomEvent('bookingRequestsUpdated'));
+      return;
+    }
 
     try {
       await persistence.deleteAppointmentRequest(requestId);

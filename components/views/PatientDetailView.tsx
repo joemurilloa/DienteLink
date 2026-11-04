@@ -4,12 +4,9 @@ import { usePatient, usePatientMutations } from '../../hooks/usePatients';
 import { PatientRecord as PatientRecordType } from '../../types';
 import { ArrowLeft } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { idToFdi } from '../../lib/toothNumber';
 
 const PatientRecord = React.lazy(() => import('../PatientRecord'));
-
-/** Universal 1–32 → FDI (mismo orden que el odontograma). */
-const FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28, 38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
-const fdiOf = (id: number) => FDI[id - 1] ?? id;
 
 const PatientDetailView: React.FC = () => {
   const { id } = useParams();
@@ -29,7 +26,8 @@ const PatientDetailView: React.FC = () => {
     const motive = currentPatient.clinicalHistory?.motiveOfConsult?.trim() || 'Sin motivo registrado';
     const affected = (currentPatient.odontogram || [])
       .filter(t => t.surfaces && t.surfaces.length > 0)
-      .map(t => fdiOf(t.id));
+      .map(t => idToFdi(t.id))
+      .filter((fdi): fdi is number => fdi != null);
     const pieceLabel = affected.length
       ? affected.length === 1
         ? `Pieza ${affected[0]}`

@@ -390,9 +390,12 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                     </p>
                   )}
                   {slotTimes.map((timeStr) => {
-                    const isTaken = appointments.some(
+                    const takenByAppointment = appointments.some(
                       a => a.date === newApt.date && a.time === timeStr && a.status !== 'Eliminada'
-                    ) || isPastSlot(newApt.date, timeStr);
+                    );
+                    const past = isPastSlot(newApt.date, timeStr);
+                    const isTaken = takenByAppointment || past;
+                    const takenLabel = takenByAppointment ? 'Ocupada' : 'Pasada';
 
                     return (
                       <button
@@ -400,16 +403,21 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                         type="button"
                         onClick={() => !isTaken && setNewApt(p => ({ ...p, time: timeStr }))}
                         disabled={isTaken}
+                        aria-label={isTaken ? `${timeStr}, ${takenByAppointment ? 'ya hay una cita' : 'esa hora ya pasó'}` : `Elegir ${timeStr}`}
+                        title={isTaken ? (takenByAppointment ? 'Ya hay una cita a esta hora' : 'Esa hora ya pasó') : undefined}
                         className={cn(
-                          'py-2 rounded-xl text-xs font-bold transition-all border',
+                          'py-1.5 rounded-xl text-xs font-bold transition-all border',
                           isTaken
-                            ? 'bg-slate-50 text-slate-300 border-slate-200 line-through cursor-not-allowed'
+                            ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
                             : newApt.time === timeStr
                             ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/30'
                             : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                         )}
                       >
-                        {timeStr}
+                        <span className={cn(isTaken && 'line-through')}>{timeStr}</span>
+                        {isTaken && (
+                          <span className="block text-[9px] font-semibold normal-case tracking-normal text-slate-400">{takenLabel}</span>
+                        )}
                       </button>
                     );
                   })}

@@ -407,7 +407,7 @@ const PublicBookingPage: React.FC = () => {
                   })}
                 </div>
 
-                <p className="text-sm text-slate-500 text-center mt-3">Los días resaltados tienen disponibilidad</p>
+                <p className="text-sm text-slate-500 text-center mt-3">Los días tachados ya no se pueden reservar.</p>
               </motion.div>
             )}
 

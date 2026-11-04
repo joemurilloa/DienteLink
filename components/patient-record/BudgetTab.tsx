@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePriceCatalog } from '../../lib/priceCatalog';
 import { PatientRecord as PatientRecordType, BudgetItem, Payment } from '../../types';
 import { cn, formatCurrency, getLocalISODate } from '../../lib/utils';
+import { FDI_INPUT_HINT, fdiLabel, parseFdiInput } from '../../lib/toothNumber';
 import { PAYMENT_METHOD_OPTIONS, paymentMethodLabel } from '../../lib/finance';
 import {
     Plus,
@@ -44,7 +45,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
             treatment: prefill.treatment,
             unitCost: prefill.cost,
             quantity: '1',
-            toothId: String(prefill.toothId),
+            toothId: fdiLabel(prefill.toothId) ?? '',
         }));
         onPrefillConsumed?.();
     }, [prefill]);
@@ -66,10 +67,13 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
         const qty = parseInt(newTreatment.quantity) || 1;
         if (qty < 1) { setBudgetError('La cantidad debe ser al menos 1'); return; }
 
+        const parsedTooth = parseFdiInput(newTreatment.toothId);
+        if (!parsedTooth.ok) { setBudgetError(parsedTooth.error); return; }
+
         const item: BudgetItem = {
             id: crypto.randomUUID(),
             treatment: newTreatment.treatment.trim(),
-            toothId: newTreatment.toothId ? parseInt(newTreatment.toothId) : undefined,
+            toothId: parsedTooth.id,
             unitCost: cost,
             quantity: qty,
             status: 'pending',
@@ -197,7 +201,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                         <input placeholder="Cant." type="number" min="1" className="w-full bg-white px-3 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-400 text-center" value={newTreatment.quantity} onChange={e => setNewTreatment(p => ({ ...p, quantity: e.target.value }))} />
                     </div>
                     <div className="md:col-span-2">
-                        <input placeholder="Pieza #" type="number" min="1" max="32" className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-400" value={newTreatment.toothId} onChange={e => setNewTreatment(p => ({ ...p, toothId: e.target.value }))} />
+                        <input placeholder={FDI_INPUT_HINT} type="text" inputMode="numeric" maxLength={2} className="w-full bg-white px-4 py-3 rounded-xl border border-slate-300 outline-none text-sm font-medium text-slate-900 focus:border-blue-500 transition-all placeholder:text-slate-400" value={newTreatment.toothId} onChange={e => setNewTreatment(p => ({ ...p, toothId: e.target.value }))} aria-label="Pieza FDI" />
                     </div>
                     <div className="md:col-span-2 flex items-stretch">
                         <button onClick={handleAddTreatment} className="w-full py-3 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/15 font-semibold text-sm active:scale-[0.98]">
@@ -248,7 +252,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                                         item.status === 'in_progress' ? "bg-amber-100 text-amber-600" :
                                         "bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600"
                                     )}
-                                    aria-label={item.status === 'pending' ? 'Marcar en progreso' : item.status === 'in_progress' ? 'Marcar completado' : 'Marcar pendiente'}
+                                    aria-label={item.status === 'pending' ? 'Marcar en curso' : item.status === 'in_progress' ? 'Marcar hecho' : 'Marcar por hacer'}
                                 >
                                     {item.status === 'completed' ? <Check size={16} /> :
                                      item.status === 'in_progress' ? <Loader2 size={16} /> :
@@ -259,7 +263,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                                         {item.treatment}
                                     </h4>
                                     <p className="text-sm text-slate-500 flex items-center gap-2">
-                                        {item.toothId && <span>Pieza #{item.toothId}</span>}
+                                        {fdiLabel(item.toothId) && <span>Pieza {fdiLabel(item.toothId)}</span>}
                                         <span>{item.quantity > 1 ? `${item.quantity} × ${formatCurrency(item.unitCost)}` : formatCurrency(item.unitCost)}</span>
                                         <span className={cn(
                                             "px-1.5 py-0.5 rounded text-xs font-semibold",
@@ -267,7 +271,7 @@ const BudgetTab: React.FC<Props> = ({ patient, onUpdate, prefill, onPrefillConsu
                                             item.status === 'in_progress' ? "bg-amber-50 text-amber-600" :
                                             "bg-slate-50 text-slate-500"
                                         )}>
-                                            {item.status === 'completed' ? 'Hecho' : item.status === 'in_progress' ? 'En curso' : 'Pendiente'}
+                                            {item.status === 'completed' ? 'Hecho' : item.status === 'in_progress' ? 'En curso' : 'Por hacer'}
                                         </span>
                                     </p>
                                 </div>

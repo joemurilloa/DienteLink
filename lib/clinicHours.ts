@@ -56,6 +56,15 @@ export function scheduleFromHours(hours: ClinicHours): DayAvailability[] {
   }));
 }
 
+/** True when every open day uses the same blocks. Ajustes guarda un solo horario para todos. */
+export function daysShareOneSchedule(availability: DoctorAvailability): boolean {
+  const enabled = availability.weeklySchedule.filter(d => d.enabled && d.timeSlots.length > 0);
+  if (enabled.length < 2) return true;
+  const key = (slots: { start: string; end: string }[]) => slots.map(s => `${s.start}-${s.end}`).join('|');
+  const first = key(enabled[0].timeSlots);
+  return enabled.every(d => key(d.timeSlots) === first);
+}
+
 export function hoursError(hours: ClinicHours): string | null {
   if (!hours.days.length) return 'Elige al menos un día.';
   if (hours.start >= hours.end) return 'La hora de salida tiene que ser después de la de entrada.';

@@ -9,12 +9,12 @@ import { useAppointments, useAppointmentMutations } from '../../hooks/useAppoint
 import { usePatients } from '../../hooks/usePatients';
 import { useAuth } from '../../services/authService';
 import { Appointment, ReminderStatus, AppointmentRequest } from '../../types';
-import { cn, getLocalISODate } from '../../lib/utils';
+import { cn, formatLongEsDate, getLocalISODate } from '../../lib/utils';
 import { Search, Plus, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useRoleAccess } from '../RoleGuard';
 import GettingStarted from '../GettingStarted';
-import { getLastBackupDate } from '../../lib/backup';
+import { resolveBackupDate, syncLocalBackupToAccount } from '../../lib/backup';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -37,7 +37,7 @@ const StatPill: React.FC<{ label: string; value: string | number; sub?: string }
 // ── Section Header ─────────────────────────────────────────────────────────────
 const SectionHeader: React.FC<{ title: string; action?: { label: string; onClick: () => void } }> = ({ title, action }) => (
   <div className="flex items-center justify-between mb-4">
-    <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-slate-400">{title}</h2>
+    <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-slate-600">{title}</h2>
     {action && (
       <button
         onClick={action.onClick}
@@ -52,10 +52,13 @@ const SectionHeader: React.FC<{ title: string; action?: { label: string; onClick
 
 // ── Main Inicio / Home ────────────────────────────────────────────────────────
 const Dashboard: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, user, isGuest } = useAuth();
   const doctorName = profile?.full_name || 'Doctor';
   const { isAdmin } = useRoleAccess();
-  const { isGuest } = useAuth();
+  const accountBackupDates = [
+    profile?.last_backup_at,
+    typeof user?.user_metadata?.last_backup_at === 'string' ? user.user_metadata.last_backup_at : null,
+  ];
 
   const { data: allAppointments = [] } = useAppointments();
   const { updateAppointment } = useAppointmentMutations();
@@ -66,6 +69,11 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const { addNotification } = useNotifications();
+
+  useEffect(() => {
+    if (isGuest) return;
+    syncLocalBackupToAccount(accountBackupDates);
+  }, [isGuest, profile?.last_backup_at, user?.user_metadata?.last_backup_at]);
 
   // Upcoming appointment notifications (≤30 min)
   useEffect(() => {
@@ -182,7 +190,7 @@ const Dashboard: React.FC = () => {
     updateAppointment.mutate({ ...apt, reminderStatus: status });
   }, [allAppointments, updateAppointment]);
 
-  const todayDateStr = new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const todayDateStr = formatLongEsDate(new Date());
   const firstName = doctorName.replace(/^Dr\.?\s*/i, '').split(' ')[0];
 
   return (
@@ -192,7 +200,7 @@ const Dashboard: React.FC = () => {
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <p className="text-[13px] font-medium text-slate-400 capitalize mb-1 tracking-wide">{todayDateStr}</p>
+            <p className="text-[13px] font-medium text-slate-600 mb-1 tracking-wide">{todayDateStr}</p>
             <h1 className="text-[26px] sm:text-[32px] font-bold text-slate-900 tracking-tight leading-tight">
               {getGreeting()}, {firstName}.
             </h1>
@@ -232,25 +240,27 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ── Pending Requests Banner (Clean alert if any) ──────────────── */}
+        {/* ── Pending Requests Banner: arriba de Próximo paciente si hay alguien esperando ── */}
         {pendingRequests.length > 0 && (
           <div
             onClick={() => navigate('/booking/manage')}
-            style={{ order: 2 }}
             className="flex items-center justify-between p-3.5 sm:p-4 bg-blue-50/80 border border-blue-200 rounded-2xl cursor-pointer hover:bg-blue-100/70 transition-all duration-200 active:scale-[0.99] group shadow-sm"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">
                 {pendingRequests.length}
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-blue-950 leading-tight">
                   {pendingRequests.length === 1 ? '1 solicitud de cita pendiente de confirmación' : `${pendingRequests.length} solicitudes de cita pendientes de confirmación`}
                 </p>
-                <p className="text-xs text-blue-600 mt-0.5">Recibidas por el enlace de reserva en línea</p>
+                <p className="text-xs text-blue-700 mt-0.5 truncate">
+                  {pendingRequests[0].patientName} · {pendingRequests[0].requestedTime.slice(0, 5)}
+                  {pendingRequests.length > 1 ? ` · y ${pendingRequests.length - 1} más` : ''}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-xs font-semibold text-blue-700 group-hover:translate-x-0.5 transition-transform duration-150">
+            <div className="flex items-center gap-1 text-xs font-semibold text-blue-700 group-hover:translate-x-0.5 transition-transform duration-150 flex-shrink-0">
               <span className="hidden sm:inline">Revisar</span>
               <ArrowRight size={13} />
             </div>
@@ -314,7 +324,7 @@ const Dashboard: React.FC = () => {
             <div className="space-y-6">
               {groupedAppointments.map(group => (
                 <div key={group.label}>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400 mb-3 px-1">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-600 mb-3 px-1">
                     {group.label}
                   </p>
                   <div className="flex flex-col gap-2.5">
@@ -357,7 +367,7 @@ const Dashboard: React.FC = () => {
 
         {/* ── Recordatorio de respaldo (>30 días o nunca): discreto, al final ── */}
         {isAdmin && !isGuest && allPatients.length > 0 && (() => {
-          const last = getLastBackupDate();
+          const last = resolveBackupDate(accountBackupDates);
           const days = last ? Math.floor((Date.now() - last.getTime()) / 86_400_000) : null;
           if (days !== null && days <= 30) return null;
           return (

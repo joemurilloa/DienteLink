@@ -79,14 +79,14 @@ export const ClinicalSummaryPanel: React.FC<ClinicalSummaryPanelProps> = React.m
           <div className="text-left">
             <p className="text-sm font-black text-slate-900">Resumen del Odontograma</p>
             <p className="text-[9px] text-slate-500 font-bold">
-              {stats.totalAffected} dientes afectados · {condEntries.length} condicion{condEntries.length !== 1 ? 'es' : ''}
+              {stats.totalAffected === 1 ? '1 diente afectado' : `${stats.totalAffected} dientes afectados`} · {condEntries.length} condicion{condEntries.length !== 1 ? 'es' : ''}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="px-2 py-1 bg-blue-50 rounded-lg">
-              <span className="text-xs font-black text-blue-600">{stats.integrity}%</span>
+              <span className="text-xs font-black text-blue-600">Sanos {stats.healthyCount}/32</span>
             </div>
           </div>
           {expanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}

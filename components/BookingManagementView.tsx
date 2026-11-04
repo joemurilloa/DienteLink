@@ -5,8 +5,9 @@ import {
   Settings, Share2, Copy, Eye, Plus, Trash2, Save, Globe,
   Bell, RefreshCw, Link2, MoreVertical
 } from 'lucide-react';
-import { DoctorAvailability, PublicBookingSettings, AppointmentRequest } from '../types';
+import { DoctorAvailability, PublicBookingSettings, AppointmentRequest, Appointment } from '../types';
 import { bookingService } from '../services/bookingService';
+import { DEMO_APPOINTMENTS } from '../lib/demoData';
 import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
 import { cn, getInitials, formatAppDate } from '../lib/utils';
 import { sileo } from 'sileo';
@@ -23,6 +24,34 @@ interface Props {
   onBack: () => void;
 }
 
+function DemoLinkNote() {
+  return (
+    <div className="text-left bg-slate-50 border border-slate-200 rounded-2xl p-4">
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Enlace de ejemplo</p>
+      <p className="text-sm font-semibold text-slate-800">/p/tu-consultorio</p>
+      <p className="text-sm text-slate-500 mt-2">En el demo no se puede copiar ni abrir. Con tu cuenta, aquí sale el enlace real de tu consultorio.</p>
+    </div>
+  );
+}
+
+function timeKey(t: string): string {
+  const [h, m] = (t || '').split(':');
+  if (h == null || m == null || m === '') return t || '';
+  return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`.slice(0, 5);
+}
+
+function requestMoment(req: AppointmentRequest): number {
+  const [y, m, d] = (req.requestedDate || '').split('-').map(Number);
+  const [hh, mm] = timeKey(req.requestedTime).split(':').map(Number);
+  if (!y || !m || !d) return 0;
+  return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
+}
+
+function requestIsPast(req: AppointmentRequest): boolean {
+  const moment = requestMoment(req);
+  return moment > 0 && moment <= Date.now();
+}
+
 const daysOfWeek = [
   { value: 0, label: 'Domingo', short: 'Dom' },
   { value: 1, label: 'Lunes', short: 'Lun' },
@@ -34,7 +63,7 @@ const daysOfWeek = [
 ];
 
 export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
-  const { profile, clinicId } = useAuth();
+  const { profile, clinicId, isGuest } = useAuth();
   const { canApproveBookings } = useRoleAccess();
   const { data: appointments = [] } = useAppointments();
   const { deleteAppointment } = useAppointmentMutations();
@@ -80,8 +109,8 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
   useEffect(() => {
     loadRequests();
-    setPublicUrl(bookingService.generatePublicBookingUrl());
-  }, [loadRequests]);
+    if (!isGuest) setPublicUrl(bookingService.generatePublicBookingUrl());
+  }, [loadRequests, isGuest]);
 
   useEffect(() => {
     const handle = () => setRequests(bookingService.getAppointmentRequests());
@@ -111,10 +140,29 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     setApprovingId(id);
     try {
       const result = await bookingService.approveRequestAtomic(id, forceOverlap);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] }),
-        queryClient.invalidateQueries({ queryKey: ['patients', clinicId] }),
-      ]);
+      if (isGuest) {
+        const aptId = `demo-from-${req.id}`;
+        queryClient.setQueryData<Appointment[]>(['appointments', clinicId], (prev) => {
+          const list = prev ?? DEMO_APPOINTMENTS;
+          if (list.some((item) => item.id === aptId)) return list;
+          return [{
+            id: aptId,
+            patientId: '',
+            patientName: req.patientName,
+            phoneNumber: req.patientPhone,
+            time: req.requestedTime,
+            date: req.requestedDate,
+            type: req.appointmentType,
+            status: 'Programada',
+            reminderStatus: 'not_sent',
+          }, ...list];
+        });
+      } else {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['appointments', clinicId] }),
+          queryClient.invalidateQueries({ queryKey: ['patients', clinicId] }),
+        ]);
+      }
       setRequests(bookingService.getAppointmentRequests());
 
       if (result.possible_duplicates) {
@@ -286,10 +334,28 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
     return new Date(0, 0, 0, parseInt(h || '0', 10), parseInt(m || '0', 10)).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  const statusColor = (status: string) => {
-    if (status === 'pending') return 'bg-amber-400';
-    if (status === 'approved') return 'bg-green-500';
-    return 'bg-slate-300';
+  const linkedAppointment = (req: AppointmentRequest) => appointments.find(a =>
+    a.status !== 'Eliminada' &&
+    a.date === req.requestedDate &&
+    timeKey(a.time) === timeKey(req.requestedTime) &&
+    a.patientName.trim().toLowerCase() === req.patientName.trim().toLowerCase()
+  );
+
+  const requestBadge = (req: AppointmentRequest): { label: string; className: string; dot: string } => {
+    if (req.status === 'pending') {
+      return requestIsPast(req)
+        ? { label: 'Venció', className: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300' }
+        : { label: 'Por aprobar', className: 'bg-amber-100 text-amber-800', dot: 'bg-amber-400' };
+    }
+    if (req.status === 'rejected') {
+      return { label: 'Declinada', className: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300' };
+    }
+    const linked = linkedAppointment(req);
+    if (!linked) return { label: 'Sin cita', className: 'bg-amber-100 text-amber-800', dot: 'bg-amber-400' };
+    if (requestIsPast(req) || linked.status === 'Completada') {
+      return { label: 'Pasó', className: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300' };
+    }
+    return { label: 'En la agenda', className: 'bg-blue-50 text-blue-700', dot: 'bg-green-500' };
   };
 
   return (
@@ -371,7 +437,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
             <div className="flex items-center gap-2 mb-6 border-b border-slate-300 pb-4 overflow-x-auto hide-scrollbar">
               {([
                 { key: 'pending', label: 'Por aprobar' },
-                { key: 'approved', label: 'En la agenda' },
+                { key: 'approved', label: 'Aprobadas' },
                 { key: 'rejected', label: 'Declinadas' },
                 { key: 'all', label: 'Todas' },
               ] as const).map(f => (
@@ -411,7 +477,9 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     ? 'Comparte tu enlace para que los pacientes reserven. Las citas nuevas aparecen aquí.'
                     : 'No hay reservas con este estado.'}
                 </p>
-                {publicUrl && (
+                {isGuest ? (
+                  <DemoLinkNote />
+                ) : publicUrl && (
                   <div className="text-left bg-slate-50 border border-slate-200 rounded-2xl p-4">
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tu enlace de reservas</p>
                     <div className="flex items-start gap-2">
@@ -436,7 +504,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                     className="group bg-white rounded-2xl p-5 hover:bg-slate-50/50 transition-colors border border-slate-300 hover:border-slate-300 flex flex-col md:flex-row gap-5 items-start md:items-center relative animate-in fade-in slide-in-from-top-1 duration-300"
                   >
                     {/* Status Dot */}
-                    <div className={cn("w-2 h-2 rounded-full mt-1.5 md:mt-0 flex-shrink-0", statusColor(req.status))} />
+                    <div className={cn("w-2 h-2 rounded-full mt-1.5 md:mt-0 flex-shrink-0", requestBadge(req).dot)} />
                     
                     {/* Profile & Info */}
                     <div className="flex-1 min-w-0 flex items-start gap-4">
@@ -446,17 +514,17 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-bold text-[15px] text-slate-900 truncate">{req.patientName}</h4>
-                          <span className={cn(
-                            'text-[11px] font-bold px-2 py-0.5 rounded-md',
-                            req.status === 'pending' && 'bg-amber-100 text-amber-800',
-                            req.status === 'approved' && 'bg-blue-50 text-blue-700',
-                            req.status === 'rejected' && 'bg-slate-100 text-slate-500',
-                          )}>
-                            {req.status === 'pending' ? 'Por aprobar' : req.status === 'approved' ? 'En la agenda' : req.requestedDate < todayISO ? 'Venció' : 'Declinada'}
-                          </span>
+                          {(() => {
+                            const badge = requestBadge(req);
+                            return (
+                              <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-md', badge.className)}>
+                                {badge.label}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px] font-medium text-slate-500 leading-tight">
-                          <span className="capitalize whitespace-nowrap">{formatAppDate(req.requestedDate)}</span>
+                          <span className="whitespace-nowrap">{formatAppDate(req.requestedDate)}</span>
                           <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"/>
                           <span className="font-semibold text-slate-700 whitespace-nowrap">{fmtTime(req.requestedTime)}</span>
                           <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"/>
@@ -476,7 +544,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t border-slate-300 md:border-0 pt-4 md:pt-0">
-                      {req.status === 'pending' && (
+                      {req.status === 'pending' && !requestIsPast(req) && (
                         <>
                            <button
                              disabled={!canApproveBookings || approvingId === req.id}
@@ -488,7 +556,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                            <button onClick={() => handleReject(req.id)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-[10px] text-[13px] font-bold hover:bg-slate-200 transition-all">Declinar</button>
                         </>
                       )}
-                      {req.status === 'approved' && req.patientPhone && (
+                      {req.status === 'approved' && req.patientPhone && !requestIsPast(req) && linkedAppointment(req)?.status === 'Programada' && (
                         <WhatsAppAction
                           storageKey={`reserva_${req.id}`}
                           label="Abrir WhatsApp"
@@ -503,7 +571,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                           )}
                         />
                       )}
-                      {req.status === 'rejected' && (
+                      {req.status === 'rejected' && !requestIsPast(req) && (
                         <button onClick={() => handleChangeStatus(req.id, 'approved')} className="px-4 py-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg text-sm font-bold transition-all">Aprobar</button>
                       )}
                       {req.status !== 'pending' && (
@@ -530,18 +598,13 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
              <div className="space-y-12">
                {/* Sección 1 */}
                <section>
-                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">Cómo se reservan</h3>
-                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Cómo se reservan</h3>
+                 <p className="text-sm text-slate-500 mb-6">La siguiente cita empieza cuando termina la anterior.</p>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                    <div className="space-y-2">
                      <label className="text-[13px] font-semibold text-slate-900">Cuánto dura una cita</label>
                      <select value={availability.slotDuration} onChange={e => { setAvailability(p => ({ ...p, slotDuration: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
                        <option value={15}>15 minutos</option><option value={30}>30 minutos</option><option value={45}>45 minutos</option><option value={60}>1 hora</option>
-                     </select>
-                   </div>
-                   <div className="space-y-2">
-                     <label className="text-[13px] font-semibold text-slate-900">Tiempo entre citas</label>
-                     <select value={availability.bufferTime} onChange={e => { setAvailability(p => ({ ...p, bufferTime: +e.target.value })); setHasChanges(true); }} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none text-sm font-semibold border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all">
-                       <option value={0}>Sin pausa</option><option value={15}>15 minutos</option><option value={30}>30 minutos</option>
                      </select>
                    </div>
                    <div className="space-y-2">
@@ -635,9 +698,17 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                  <Globe size={32} className="-rotate-3" />
                </div>
                <h2 className="text-2xl font-bold text-slate-900 mb-2">Comparte tu Agenda</h2>
-               <p className="text-slate-500 font-medium">Envía este enlace a tus pacientes para que reserven su propia cita desde cualquier dispositivo.</p>
+               <p className="text-slate-500 font-medium">
+                 {isGuest
+                   ? 'Con tu cuenta, este enlace es el que envías para que reserven. En el demo solo se muestra como ejemplo.'
+                   : 'Envía este enlace a tus pacientes para que reserven su propia cita desde cualquier dispositivo.'}
+               </p>
              </div>
 
+             {isGuest ? (
+               <DemoLinkNote />
+             ) : (
+               <>
              <div className="bg-slate-50 border border-slate-300 p-6 rounded-[24px] mb-8 relative group">
                 <code className="text-[15px] font-semibold text-slate-700 break-all pr-12">{publicUrl}</code>
                 <button onClick={copyUrl} className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white shadow-sm rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:scale-105 transition-all">
@@ -651,6 +722,8 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                    <span className="text-[13px] font-bold text-slate-900">Probar como paciente</span>
                 </button>
              </div>
+               </>
+             )}
           </div>
         )}
         </div>

@@ -1,26 +1,73 @@
 import { supabase } from './supabase';
 import { dbToPatient } from '../hooks/usePatients';
 import { getLocalISODate } from './utils';
+import { fdiLabel } from './toothNumber';
 import type { PatientRecord } from '../types';
 
 const LAST_BACKUP_KEY = 'dientelink_last_backup';
 const PAGE_SIZE = 50;
 
+function parseBackupDate(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function getLastBackupDate(): Date | null {
   try {
-    const raw = localStorage.getItem(LAST_BACKUP_KEY);
-    return raw ? new Date(raw) : null;
+    return parseBackupDate(localStorage.getItem(LAST_BACKUP_KEY));
   } catch {
     return null;
   }
 }
 
-function markBackupDone() {
+/** La fecha más reciente entre este navegador y las que ya viven en la cuenta. */
+export function resolveBackupDate(accountDates: Array<string | null | undefined> = []): Date | null {
+  const dates = [getLastBackupDate(), ...accountDates.map(parseBackupDate)].filter((d): d is Date => !!d);
+  if (dates.length === 0) return null;
+  return dates.reduce((latest, next) => (next > latest ? next : latest));
+}
+
+let accountSyncStarted = false;
+
+/** Si este navegador ya tiene una fecha más nueva que la cuenta, la sube para que los demás dispositivos la vean. */
+export function syncLocalBackupToAccount(accountDates: Array<string | null | undefined> = []) {
+  if (accountSyncStarted) return;
+  const local = getLastBackupDate();
+  if (!local) return;
+  const newestAccount = accountDates
+    .map(parseBackupDate)
+    .filter((d): d is Date => !!d)
+    .reduce<Date | null>((latest, next) => (!latest || next > latest ? next : latest), null);
+  if (newestAccount && newestAccount.getTime() >= local.getTime() - 1000) return;
+  accountSyncStarted = true;
+  void rememberBackup(local.toISOString());
+}
+
+/** Guarda la fecha en este navegador y en la cuenta (metadatos y perfil). */
+export async function rememberBackup(when = new Date().toISOString()): Promise<string> {
   try {
-    localStorage.setItem(LAST_BACKUP_KEY, new Date().toISOString());
+    localStorage.setItem(LAST_BACKUP_KEY, when);
   } catch {
     // ignore
   }
+  try {
+    await supabase.auth.updateUser({ data: { last_backup_at: when } });
+  } catch (e) {
+    console.warn('[backup] no se pudo guardar la fecha en la sesión', e);
+  }
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('profiles').update({ last_backup_at: when }).eq('id', user.id);
+      if (error && !/last_backup_at|schema cache/i.test(error.message)) {
+        console.warn('[backup] no se pudo guardar la fecha en el perfil', error.message);
+      }
+    }
+  } catch (e) {
+    console.warn('[backup] no se pudo guardar la fecha en el perfil', e);
+  }
+  return when;
 }
 
 function esc(v: unknown): string {
@@ -127,7 +174,7 @@ export async function createFullBackup(opts: BackupOptions): Promise<{ patients:
 
   zip.file('presupuestos.csv', toCSV(
     ['Paciente', 'Fecha', 'Tratamiento', 'Pieza', 'Cantidad', 'Costo unitario', 'Total', 'Estado'],
-    patients.flatMap(p => p.budget.map(b => [p.identification.fullName, b.createdAt, b.treatment, b.toothId ?? '', b.quantity, b.unitCost, b.unitCost * b.quantity, b.status])),
+    patients.flatMap(p => p.budget.map(b => [p.identification.fullName, b.createdAt, b.treatment, fdiLabel(b.toothId) ?? '', b.quantity, b.unitCost, b.unitCost * b.quantity, b.status])),
   ));
 
   zip.file('pagos.csv', toCSV(
@@ -185,7 +232,7 @@ export async function createFullBackup(opts: BackupOptions): Promise<{ patients:
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 
-  markBackupDone();
+  await rememberBackup();
   progress('Listo', 100);
   return { patients: patients.length, appointments: (rawAppointments || []).length, pdfFailures };
 }

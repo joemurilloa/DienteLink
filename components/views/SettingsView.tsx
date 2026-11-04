@@ -8,6 +8,7 @@ import { useRoleAccess } from '../RoleGuard';
 import PriceCatalogSettings from './Settings/PriceCatalogSettings';
 import BackupSettings from './Settings/BackupSettings';
 import ClinicHoursSettings from './Settings/ClinicHoursSettings';
+import { subscriptionStatusCopy } from '../../lib/billing';
 import { openProblemReport } from '../../lib/support';
 import { roleLabel } from '../../lib/roles';
 import { AlertCircle, Check, Clock, Loader2 } from 'lucide-react';
@@ -220,41 +221,52 @@ const SettingsView: React.FC = () => {
         {/* <TeamSettings /> */}
 
         {/* Subscription Section — only for owners */}
-        {(!profile?.clinic_id || profile.clinic_id === profile?.id) && (
+        {(!profile?.clinic_id || profile.clinic_id === profile?.id) && (() => {
+          const plan = subscription.loading
+            ? null
+            : subscriptionStatusCopy({
+                isTrial: subscription.isTrial,
+                isActive: subscription.isActive,
+                isProvisional: subscription.isProvisional,
+                daysLeft: subscription.daysLeft,
+                expiresAt: subscription.expiresAt,
+                provisionalUntil: subscription.provisionalUntil,
+              });
+          const toneClass = !plan
+            ? 'bg-slate-100 text-slate-500'
+            : plan.tone === 'ok'
+            ? 'bg-green-100 text-green-700'
+            : plan.tone === 'expired'
+            ? 'bg-red-100 text-red-700'
+            : plan.tone === 'soon'
+            ? 'bg-amber-100 text-amber-800'
+            : 'bg-blue-100 text-blue-700';
+          return (
           <div className="card-premium p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Suscripción</h3>
                 <p className="text-sm text-slate-500 mt-0.5">
-                  {subscription.isTrial
-                    ? `Período de prueba — ${subscription.daysLeft} día${subscription.daysLeft === 1 ? '' : 's'} restantes`
-                    : subscription.isActive
-                    ? `Plan activo — vence ${subscription.expiresAt?.toLocaleDateString('es-HN') ?? ''}`
-                    : 'Suscripción requerida para continuar'}
+                  {plan ? plan.detail : 'Revisando el plan…'}
                 </p>
               </div>
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                subscription.isActive
-                  ? subscription.isTrial
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
-              }`}>
-                {subscription.isTrial ? <Clock size={12} /> : subscription.isActive ? <Check size={12} /> : <AlertCircle size={12} />}
-                {subscription.isTrial ? 'Prueba' : subscription.isActive ? 'Activa' : 'Vencida'}
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${toneClass}`}>
+                {plan?.tone === 'soon' ? <Clock size={12} /> : plan?.tone === 'ok' ? <Check size={12} /> : plan?.tone === 'expired' ? <AlertCircle size={12} /> : <Clock size={12} />}
+                {plan ? plan.badge : '…'}
               </span>
             </div>
             <button
               onClick={() => navigate('/subscription')}
               className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-all"
             >
-              {subscription.isActive ? 'Ver instrucciones de pago' : 'Activar plan'}
+              {!plan || plan.tone === 'soon' || plan.tone === 'expired' ? 'Activar plan' : 'Ver instrucciones de pago'}
             </button>
             <p className="text-xs text-slate-400 text-center mt-3">
               Tus datos se conservan siempre, sin importar el estado de tu suscripción.
             </p>
           </div>
-        )}
+          );
+        })()}
 
       </div>
     </div>

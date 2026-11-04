@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ToothData, SurfaceData, ToothSurface, ClinicalCondition } from '../types';
 import { cn } from '../lib/utils';
+import { idToFdi } from '../lib/toothNumber';
 import {
   X, ChevronLeft, ChevronRight, Shield, Zap, AlertTriangle,
   Hexagon, Diamond, Target, Star, Eye, Trash2, CheckCircle2,
@@ -141,7 +142,7 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
   const tooth = teeth.find(t => t.id === toothId) || { id: toothId, surfaces: [] };
   const info = TOOTH_INFO[toothId] || {
     fdi: 0,
-    name: `Pieza ${toothId}`,
+    name: `Pieza ${idToFdi(toothId) ?? ''}`,
     anterior: false,
     type: 'Diente',
     arch: toothId <= 16 ? 'superior' : 'inferior',
@@ -205,9 +206,6 @@ export const ToothDetailModal: React.FC<ToothDetailModalProps> = ({
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">
                   FDI {info.fdi}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700">
-                  Universal #{toothId}
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium hidden sm:block">

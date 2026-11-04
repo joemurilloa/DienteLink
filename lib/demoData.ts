@@ -7,10 +7,11 @@
  * =====================================================================
  */
 
-import { PatientRecord } from '../types';
+import { PatientRecord, AppointmentRequest } from '../types';
 import { Appointment } from '../types';
-import { DoctorProfile } from '../services/authService';
+import type { DoctorProfile } from '../services/authService';
 import { getLocalISODate } from './utils';
+import { fdiToId } from './toothNumber';
 
 // ─── Helpers de fecha ────────────────────────────────────────────────
 const today = getLocalISODate(new Date());
@@ -33,6 +34,25 @@ export const DEMO_PROFILE: DoctorProfile = {
   theme_color: 'blue',
   has_completed_onboarding: true,
 };
+
+/** Solicitud que cuenta la landing: aún no está en la agenda. Mañana a las 11:00 para que siga pendiente todo el día. */
+export function createDemoBookingRequests(): AppointmentRequest[] {
+  return [
+    {
+      id: 'demo-request-1',
+      patientName: 'Carlos Méndez',
+      patientEmail: '',
+      patientPhone: '+504 9888-1100',
+      requestedDate: addDays(1),
+      requestedTime: '11:00',
+      appointmentType: 'Consulta',
+      message: 'Quisiera una revisión. Es la primera vez que voy.',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      doctorId: 'demo',
+    },
+  ];
+}
 
 // ─── Citas demo ───────────────────────────────────────────────────────
 export const DEMO_APPOINTMENTS: Appointment[] = [
@@ -162,13 +182,13 @@ export const DEMO_PATIENTS: PatientRecord[] = [
     ],
     history: [
       { id: 'ev-1-1', date: addDays(-30), type: 'treatment', description: 'Profilaxis completa', toothId: undefined },
-      { id: 'ev-1-2', date: addDays(-5), type: 'diagnose', description: 'Caries oclusal pieza 26', toothId: 14 },
+      { id: 'ev-1-2', date: addDays(-5), type: 'diagnose', description: 'Caries oclusal pieza 26', toothId: fdiToId(26)! },
     ],
     consentSigned: true,
-    // Universal id 14 = FDI 26 (primer molar superior izquierdo)
+    // La caries de María está en la pieza FDI 26.
     odontogram: Array.from({ length: 32 }, (_, i) => ({
       id: i + 1,
-      surfaces: i + 1 === 14 ? [{ surface: 'oclusal' as const, condition: 'caries' as const }] : [],
+      surfaces: i + 1 === fdiToId(26) ? [{ surface: 'oclusal' as const, condition: 'caries' as const }] : [],
     })),
     odontogramHistory: [],
     periodontogram: null as any,
@@ -176,7 +196,7 @@ export const DEMO_PATIENTS: PatientRecord[] = [
     budget: [
       { id: 'bud-1-1', treatment: 'Limpieza dental profesional', toothId: undefined, unitCost: 800, quantity: 1, status: 'completed', createdAt: addDays(-30) },
       { id: 'bud-1-2', treatment: 'Fluorización', toothId: undefined, unitCost: 200, quantity: 1, status: 'completed', createdAt: addDays(-30) },
-      { id: 'bud-1-3', treatment: 'Resina oclusal', toothId: 14, unitCost: 1500, quantity: 1, status: 'pending', createdAt: addDays(-5) },
+      { id: 'bud-1-3', treatment: 'Resina oclusal', toothId: fdiToId(26)!, unitCost: 1500, quantity: 1, status: 'pending', createdAt: addDays(-5) },
     ],
     payments: [
       { id: 'pay-1-1', amount: 1000, method: 'transfer', note: 'Pago limpieza + fluorización', date: addDays(-30) },
@@ -215,7 +235,7 @@ export const DEMO_PATIENTS: PatientRecord[] = [
       },
     ],
     history: [
-      { id: 'ev-2-1', date: addDays(-10), type: 'extraction', description: 'Extracción pieza 36 por infección periapical', toothId: 36 },
+      { id: 'ev-2-1', date: addDays(-10), type: 'extraction', description: 'Extracción pieza 36 por infección periapical', toothId: fdiToId(36)! },
     ],
     consentSigned: true,
     odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
@@ -223,8 +243,8 @@ export const DEMO_PATIENTS: PatientRecord[] = [
     periodontogram: null as any,
     xrays: [],
     budget: [
-      { id: 'bud-2-1', treatment: 'Extracción simple', toothId: 36, unitCost: 600, quantity: 1, status: 'completed', createdAt: addDays(-10) },
-      { id: 'bud-2-2', treatment: 'Implante dental', toothId: 36, unitCost: 15000, quantity: 1, status: 'pending', createdAt: addDays(-10) },
+      { id: 'bud-2-1', treatment: 'Extracción simple', toothId: fdiToId(36)!, unitCost: 600, quantity: 1, status: 'completed', createdAt: addDays(-10) },
+      { id: 'bud-2-2', treatment: 'Implante dental', toothId: fdiToId(36)!, unitCost: 15000, quantity: 1, status: 'pending', createdAt: addDays(-10) },
     ],
     payments: [
       { id: 'pay-2-1', amount: 600, method: 'cash', note: 'Extracción pieza 36', date: addDays(-10) },
@@ -377,7 +397,7 @@ export const DEMO_PATIENTS: PatientRecord[] = [
       },
     ],
     history: [
-      { id: 'ev-5-1', date: addDays(-7), type: 'diagnose', description: 'Diagnóstico: necrosis pulpar pieza 16', toothId: 16 },
+      { id: 'ev-5-1', date: addDays(-7), type: 'diagnose', description: 'Diagnóstico: necrosis pulpar pieza 16', toothId: fdiToId(16)! },
     ],
     consentSigned: true,
     odontogram: Array.from({ length: 32 }, (_, i) => ({ id: i + 1, surfaces: [] })),
@@ -385,8 +405,8 @@ export const DEMO_PATIENTS: PatientRecord[] = [
     periodontogram: null as any,
     xrays: [],
     budget: [
-      { id: 'bud-5-1', treatment: 'Endodoncia pieza 16', toothId: 16, unitCost: 4500, quantity: 1, status: 'pending', createdAt: addDays(-7) },
-      { id: 'bud-5-2', treatment: 'Corona porcelana sobre metal', toothId: 16, unitCost: 6000, quantity: 1, status: 'pending', createdAt: addDays(-7) },
+      { id: 'bud-5-1', treatment: 'Endodoncia pieza 16', toothId: fdiToId(16)!, unitCost: 4500, quantity: 1, status: 'pending', createdAt: addDays(-7) },
+      { id: 'bud-5-2', treatment: 'Corona porcelana sobre metal', toothId: fdiToId(16)!, unitCost: 6000, quantity: 1, status: 'pending', createdAt: addDays(-7) },
     ],
     payments: [
       { id: 'pay-5-1', amount: 10500, method: 'transfer', note: 'Pago total de endodoncia y corona', date: addDays(-7) },

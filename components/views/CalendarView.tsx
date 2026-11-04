@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppointments, useAppointmentMutations } from '../../hooks/useAppointments';
 import { usePatients } from '../../hooks/usePatients';
 import ConfirmModal from '../ConfirmModal';
 import NewAppointmentModal from '../NewAppointmentModal';
-import { Appointment, AppointmentType } from '../../types';
+import AppointmentCard from '../AppointmentCard';
+import { Appointment, AppointmentType, ReminderStatus } from '../../types';
 import { cn, getInitials, getLocalISODate } from '../../lib/utils';
-import { Plus, Trash2, ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useCalendarTip } from '../ContextualTips';
+import { bookingService } from '../../services/bookingService';
+import { generateAvailableSlots, scheduledSlotTimes } from '../../services/bookingUtils';
 
 const APPOINTMENT_TYPES: AppointmentType[] = ['Consulta', 'Seguimiento', 'Cirugía', 'Revisión'];
 
@@ -18,15 +21,23 @@ const CalendarView: React.FC = () => {
   const [viewDate, setViewDate] = useState(new Date());
   const { data: appointments = [], isLoading } = useAppointments();
   const { data: patientsList = [] } = usePatients();
-  const { createAppointment, deleteAppointment } = useAppointmentMutations();
+  const { deleteAppointment, updateAppointment } = useAppointmentMutations();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [detailApt, setDetailApt] = useState<Appointment | null>(null);
+  const [availability, setAvailability] = useState(() => bookingService.getDoctorAvailability());
+
+  useEffect(() => {
+    const sync = () => setAvailability(bookingService.getDoctorAvailability());
+    window.addEventListener('availabilityUpdated', sync);
+    return () => window.removeEventListener('availabilityUpdated', sync);
+  }, []);
 
   // Contextual tip (show once)
   useCalendarTip();
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>(() => {
-    return window.innerWidth < 768 ? 'day' : 'month';
+    return window.innerWidth < 768 ? 'day' : 'week';
   });
 
   const patientNameFromParams = searchParams.get('patient') || '';
@@ -75,7 +86,13 @@ const CalendarView: React.FC = () => {
   const days = daysInMonth(year, month);
   const skip = firstDayOfMonth(year, month);
   const todayStr = getLocalISODate(new Date());
-  const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 - 20:00
+  const timeKey = (t: string) => {
+    const [h, m] = (t || '').split(':');
+    if (h == null || m == null || m === '') return t;
+    return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`.slice(0, 5);
+  };
+  const openSlots = (dateStr: string) => new Set(generateAvailableSlots(dateStr, availability));
+  const dayIsClosed = (date: Date) => scheduledSlotTimes(availability, date.getDay()).length === 0;
 
   const getWeekDates = () => {
     const d = new Date(currentDate);
@@ -90,7 +107,23 @@ const CalendarView: React.FC = () => {
   };
 
   const fmtDate = (d: Date) => getLocalISODate(d);
-  const fmtHour = (h: number) => `${String(h).padStart(2, '0')}:00`;
+
+  const weekDates = getWeekDates();
+  const gridTimes = useMemo(() => {
+    const times = new Set(scheduledSlotTimes(availability));
+    const visible = new Set(weekDates.map(fmtDate));
+    for (const a of appointments) {
+      if (a.status === 'Eliminada' || !a.time || !visible.has(a.date)) continue;
+      times.add(timeKey(a.time));
+    }
+    return [...times].sort();
+  }, [availability, appointments, currentDate]);
+
+  const handleReminderStatusUpdate = (id: string, status: ReminderStatus) => {
+    const apt = appointments.find(a => a.id === id);
+    if (!apt) return;
+    updateAppointment.mutate({ ...apt, reminderStatus: status });
+  };
 
   const headerLabel = viewMode === 'month'
     ? `${monthNames[month]} ${year}`
@@ -98,13 +131,14 @@ const CalendarView: React.FC = () => {
       ? (() => {
         const dates = getWeekDates();
         const s = dates[0], e = dates[6];
+        const monthOf = (index: number) => monthNames[index].toLowerCase();
         return s.getMonth() === e.getMonth()
-          ? `${s.getDate()} - ${e.getDate()} de ${monthNames[s.getMonth()]} ${year}`
-          : `${s.getDate()} de ${monthNames[s.getMonth()].slice(0, 3)} - ${e.getDate()} de ${monthNames[e.getMonth()].slice(0, 3)} ${year}`;
+          ? `${s.getDate()} - ${e.getDate()} de ${monthOf(s.getMonth())} ${year}`
+          : `${s.getDate()} de ${monthOf(s.getMonth()).slice(0, 3)} - ${e.getDate()} de ${monthOf(e.getMonth()).slice(0, 3)} ${year}`;
       })()
       : (() => {
           const d = currentDate.getDate();
-          return `${d} de ${monthNames[currentDate.getMonth()]} ${year}`;
+          return `${d} de ${monthNames[currentDate.getMonth()].toLowerCase()} ${year}`;
       })();
 
   return (
@@ -225,17 +259,14 @@ const CalendarView: React.FC = () => {
 
                     <div className="hidden sm:block flex-1 space-y-1 px-0.5 overflow-hidden mt-1 w-full">
                       {dayApts.slice(0, 2).map(a => (
-                        <div key={a.id} className="px-1.5 py-0.5 bg-blue-50 border border-blue-200/70 rounded-md flex items-center justify-between group/apt">
+                        <div key={a.id} className="px-1.5 py-0.5 bg-blue-50 border border-blue-200/70 rounded-md flex items-center">
                           <button
                             type="button"
-                            onClick={() => { if (a.patientId) navigate(`/patient/${a.patientId}`); }}
+                            onClick={() => setDetailApt(a)}
                             className="min-w-0 text-left text-[10px] font-semibold text-blue-800 truncate hover:underline"
-                            aria-label={`Abrir expediente de ${a.patientName}, ${a.time}`}
+                            aria-label={`Ver cita de ${a.patientName}, ${a.time}`}
                           >
                             {a.time} {a.patientName.split(' ')[0]}
-                          </button>
-                          <button type="button" onClick={() => setDeleteTarget(a.id)} aria-label={`Eliminar cita de ${a.patientName}`} className="w-6 h-6 -my-1 -mr-1 rounded-md flex items-center justify-center text-blue-400 hover:text-red-600 hover:bg-red-50 lg:opacity-40 lg:group-hover/apt:opacity-100 flex-shrink-0 ml-1 transition-colors">
-                            <Trash2 size={13} aria-hidden="true" />
                           </button>
                         </div>
                       ))}
@@ -298,6 +329,7 @@ const CalendarView: React.FC = () => {
                       <div key={i} className={cn("text-center py-4 border-r border-slate-300 bg-white", isToday && "bg-blue-50/20")}>
                         <p className={cn("text-xs font-bold uppercase tracking-wider mb-1", isToday ? "text-blue-600" : "text-slate-500")}>{dayNamesShort[(i + 1) % 7]}</p>
                         <p className={cn("text-2xl font-semibold", isToday ? "text-blue-600" : "text-slate-900")}>{date.getDate()}</p>
+                        {dayIsClosed(date) && <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">Cerrado</p>}
                       </div>
                     );
                   })}
@@ -305,49 +337,56 @@ const CalendarView: React.FC = () => {
 
                 {/* Timeline Grid */}
                 <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-white">
-                  {HOURS.map(hour => (
-                    <React.Fragment key={hour}>
-                      <div className="h-24 pr-4 pt-2 text-right border-r border-b border-slate-50 bg-white sticky left-0 z-10">
-                        <span className="text-xs font-semibold text-slate-500">{fmtHour(hour)}</span>
+                  {gridTimes.length === 0 && (
+                    <p className="col-span-full px-6 py-10 text-sm text-slate-500">No hay horario guardado. Lo puedes definir en Ajustes.</p>
+                  )}
+                  {gridTimes.map(time => (
+                    <React.Fragment key={time}>
+                      <div className="h-20 pr-4 pt-2 text-right border-r border-b border-slate-50 bg-white sticky left-0 z-10">
+                        <span className="text-xs font-semibold text-slate-500">{time}</span>
                       </div>
-                      {getWeekDates().map((date, di) => {
+                      {weekDates.map((date, di) => {
                         const dateStr = fmtDate(date);
                         const isToday = dateStr === todayStr;
-                        const isPast = dateStr < todayStr;
-                        const hourApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada' && parseInt(a.time.split(':')[0] || '0', 10) === hour);
-                        
+                        const isPastDay = dateStr < todayStr;
+                        const inSchedule = scheduledSlotTimes(availability, date.getDay()).includes(time);
+                        const bookable = inSchedule && !isPastDay && openSlots(dateStr).has(time);
+                        const hourApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada' && timeKey(a.time) === time);
+
                         return (
-                          <div 
-                            key={`${hour}-${di}`} 
+                          <div
+                            key={`${time}-${di}`}
                             className={cn(
-                              "h-24 border-r border-b border-slate-50 p-1 transition-colors",
-                              isPast ? "bg-slate-50/50" : "group hover:bg-blue-50/40",
-                              isToday && !isPast && "bg-blue-50/10"
+                              "h-20 border-r border-b border-slate-50 p-1",
+                              !inSchedule && "bg-slate-50/80",
+                              inSchedule && isPastDay && "bg-slate-50/50",
+                              isToday && inSchedule && !isPastDay && "bg-blue-50/10"
                             )}
                           >
-                            {hourApts.length === 0 && !isPast && (
+                            {hourApts.length === 0 && bookable && (
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)}));
+                                  setNewApt(p => ({...p, date: dateStr, time}));
                                   setIsAdding(true);
                                 }}
-                                aria-label={`Agendar el ${dateStr} a las ${fmtHour(hour)}`}
-                                className="w-full h-full rounded-lg"
+                                aria-label={`Agendar el ${dateStr} a las ${time}`}
+                                className="w-full h-full rounded-lg hover:bg-blue-50/70"
                               />
                             )}
                             {hourApts.map(a => (
-                              <div key={a.id} className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)]">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-blue-600">{a.time}</span>
-                                  <button type="button" onClick={() => setDeleteTarget(a.id)} aria-label={`Eliminar cita de ${a.patientName}`} className="w-8 h-8 -my-1 -mr-1 rounded-lg flex items-center justify-center text-red-300 hover:text-red-600 hover:bg-red-50 lg:opacity-50 lg:group-hover:opacity-100 transition-all">
-                                    <Trash2 size={15} aria-hidden="true" />
-                                  </button>
-                                </div>
-                                <button type="button" onClick={() => { if (a.patientId) navigate(`/patient/${a.patientId}`); }} className="text-left text-sm font-semibold text-slate-800 line-clamp-2 mt-0.5 leading-tight hover:text-blue-700">
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => setDetailApt(a)}
+                                aria-label={`Ver cita de ${a.patientName}, ${a.time}`}
+                                className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)] w-full text-left hover:border-blue-300"
+                              >
+                                <span className="text-xs font-bold text-blue-600">{a.time}</span>
+                                <span className="text-sm font-semibold text-slate-800 line-clamp-2 mt-0.5 leading-tight">
                                   {a.patientName}
-                                </button>
-                              </div>
+                                </span>
+                              </button>
                             ))}
                           </div>
                         );
@@ -363,76 +402,96 @@ const CalendarView: React.FC = () => {
           {/* ══════ DAY VIEW ══════ */}
           {viewMode === 'day' && (
             <div className="bg-white rounded-3xl border border-slate-300 p-2.5 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
-              {HOURS.map(hour => {
+              {(() => {
                 const dateStr = fmtDate(currentDate);
-                const isNow = todayStr === dateStr && new Date().getHours() === hour;
-                const hourApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada' && parseInt(a.time.split(':')[0] || '0', 10) === hour);
-
-                return (
-                  <div key={hour} className="flex min-h-[80px] group relative">
-                    <div className="w-14 sm:w-24 flex-shrink-0 text-right pr-3 sm:pr-6 pt-5 relative">
-                      <span className={cn("text-[13px] font-semibold", isNow ? "text-blue-600" : "text-slate-500")}>{fmtHour(hour)}</span>
-                      {isNow && <div className="absolute right-0 top-6 w-2 h-2 bg-blue-600 rounded-full translate-x-1" />}
-                    </div>
-                    
-                    <div className={cn(
-                      "flex-1 min-w-0 border-t border-slate-300 py-3 pl-2 sm:pl-6 pr-0 sm:pr-2 space-y-3",
-                      isNow ? "border-t-blue-200 bg-blue-50/5" : ""
-                    )}>
-                      {hourApts.map(a => (
-                          <article 
-                            key={a.id} 
+                const scheduled = scheduledSlotTimes(availability, currentDate.getDay());
+                const extra = appointments
+                  .filter(a => a.date === dateStr && a.status !== 'Eliminada' && a.time && !scheduled.includes(timeKey(a.time)))
+                  .map(a => timeKey(a.time));
+                const rows = [...new Set([...scheduled, ...extra])].sort();
+                if (rows.length === 0) {
+                  return (
+                    <p className="px-2 py-8 text-sm text-slate-500">Ese día no atiendes. Cámbialo en Ajustes si hace falta.</p>
+                  );
+                }
+                const bookableTimes = openSlots(dateStr);
+                return rows.map(time => {
+                  const [hh, mm] = time.split(':').map(Number);
+                  const now = new Date();
+                  const startMin = (hh || 0) * 60 + (mm || 0);
+                  const nowMin = now.getHours() * 60 + now.getMinutes();
+                  const isNow = todayStr === dateStr && nowMin >= startMin && nowMin < startMin + (availability.slotDuration || 60);
+                  const hourApts = appointments.filter(a => a.date === dateStr && a.status !== 'Eliminada' && timeKey(a.time) === time);
+                  const bookable = bookableTimes.has(time) && hourApts.length === 0;
+                  return (
+                    <div key={time} className="flex min-h-[72px] group relative">
+                      <div className="w-14 sm:w-24 flex-shrink-0 text-right pr-3 sm:pr-6 pt-5 relative">
+                        <span className={cn("text-[13px] font-semibold", isNow ? "text-blue-600" : "text-slate-500")}>{time}</span>
+                        {isNow && <div className="absolute right-0 top-6 w-2 h-2 bg-blue-600 rounded-full translate-x-1" />}
+                      </div>
+                      <div className={cn(
+                        "flex-1 min-w-0 border-t border-slate-300 py-3 pl-2 sm:pl-6 pr-0 sm:pr-2 space-y-3",
+                        isNow ? "border-t-blue-200 bg-blue-50/5" : ""
+                      )}>
+                        {hourApts.map(a => (
+                          <article
+                            key={a.id}
                             className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-300/60 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all group/apt hover:border-blue-200"
                           >
-                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                            <button type="button" onClick={() => setDetailApt(a)} className="flex items-center gap-3 sm:gap-4 min-w-0 text-left" aria-label={`Ver cita de ${a.patientName}, ${a.time}`}>
                               <div className="w-12 h-12 bg-blue-50 rounded-[14px] flex items-center justify-center text-blue-600 font-bold text-sm">
                                 {getInitials(a.patientName)}
                               </div>
                               <div>
-                                {a.patientId ? (
-                                  <button type="button" onClick={() => navigate(`/patient/${a.patientId}`)} className="font-bold text-slate-900 text-[15px] text-left hover:text-blue-700">
-                                    {a.patientName}
-                                  </button>
-                                ) : (
-                                  <h4 className="font-bold text-slate-900 text-[15px]">{a.patientName}</h4>
-                                )}
+                                <p className="font-bold text-slate-900 text-[15px]">{a.patientName}</p>
                                 <p className="text-sm text-slate-500 font-medium mt-0.5">{a.time} · {a.type} · {a.status}</p>
                               </div>
-                            </div>
-                          
-                          <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:opacity-0 group-hover/apt:opacity-100 transition-opacity justify-end">
-                            {a.patientId && (
-                              <button type="button" onClick={() => navigate(`/patient/${a.patientId}`)} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all">
-                                Historia clínica
-                              </button>
-                            )}
-                            <button type="button" onClick={() => setDeleteTarget(a.id)} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl text-sm font-bold transition-all">
-                              Eliminar
                             </button>
-                          </div>
-                        </article>
-                      ))}
-                      
-                      {dateStr >= todayStr && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewApt(p => ({...p, date: dateStr, time: fmtHour(hour)}));
-                            setIsAdding(true);
-                          }}
-                          className="h-full w-full border-2 border-dashed border-slate-300 rounded-2xl flex items-center px-4 transition-all hover:border-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        >
-                          <span className="text-sm font-bold text-slate-500 flex items-center gap-2"><Plus size={14} aria-hidden="true"/> Agendar aquí</span>
-                        </button>
-                      )}
+                            <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:opacity-0 group-hover/apt:opacity-100 focus-within:opacity-100 transition-opacity justify-end">
+                              {a.patientId && (
+                                <button type="button" onClick={() => navigate(`/patient/${a.patientId}`)} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-bold transition-all">
+                                  Historia clínica
+                                </button>
+                              )}
+                              <button type="button" onClick={() => setDeleteTarget(a.id)} className="px-3 sm:px-4 py-2 whitespace-nowrap bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl text-sm font-bold transition-all">
+                                Eliminar
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                        {bookable && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewApt(p => ({...p, date: dateStr, time}));
+                              setIsAdding(true);
+                            }}
+                            aria-label={`Agendar el ${dateStr} a las ${time}`}
+                            className="h-full w-full min-h-12 border-2 border-dashed border-slate-300 rounded-2xl flex items-center px-4 transition-all hover:border-slate-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
+                          >
+                            <span className="text-sm font-bold text-slate-500 flex items-center gap-2"><Plus size={14} aria-hidden="true"/> Agendar aquí</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
       </div>
+
+      {detailApt && (
+        <AppointmentCard
+          appointment={detailApt}
+          headless
+          detailOpen
+          onDetailClose={() => setDetailApt(null)}
+          onReminderSent={handleReminderStatusUpdate}
+          onNavigateToPatient={(a) => { if (a.patientId) navigate(`/patient/${a.patientId}`); }}
+        />
+      )}
 
       <NewAppointmentModal
         isOpen={isAdding}

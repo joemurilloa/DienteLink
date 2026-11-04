@@ -92,9 +92,10 @@ describe('subscriptionBannerCopy', () => {
   it('muestra quedan N días y urge el último día', () => {
     expect(subscriptionBannerCopy(90, false).message).toBe('Quedan 90 días');
     expect(subscriptionBannerCopy(1, false)).toEqual({
-      message: 'Queda 1 día restante',
+      message: 'El acceso vence mañana',
       action: 'Activar suscripción',
       urgent: true,
     });
+    expect(subscriptionBannerCopy(1, true).message).toBe('La prueba vence mañana');
   });
 });

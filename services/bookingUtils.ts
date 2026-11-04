@@ -43,3 +43,34 @@ export function generateAvailableSlots(date: string, availability: any): string[
   }
   return slots;
 }
+
+/**
+ * Horas que el consultorio tiene en la agenda, sin quitar las que ya pasaron hoy.
+ * Si dayOfWeek viene, solo ese día (0 = domingo). Si no, la unión de la semana.
+ */
+export function scheduledSlotTimes(
+  availability: {
+    weeklySchedule?: Array<{ dayOfWeek: number; enabled: boolean; timeSlots?: Array<{ start: string; end: string }> }>;
+    slotDuration?: number;
+  },
+  dayOfWeek?: number,
+): string[] {
+  const duration = availability?.slotDuration || 30;
+  if (duration <= 0) return [];
+  const days = (availability?.weeklySchedule || []).filter(
+    (day) => dayOfWeek === undefined || day.dayOfWeek === dayOfWeek,
+  );
+  const times = new Set<string>();
+  for (const day of days) {
+    if (!day.enabled) continue;
+    for (const ts of day.timeSlots || []) {
+      const start = timeToMinutes(ts.start);
+      const end = timeToMinutes(ts.end);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+      for (let t = start; t < end; t += duration) {
+        times.add(minutesToTime(t));
+      }
+    }
+  }
+  return [...times].sort();
+}

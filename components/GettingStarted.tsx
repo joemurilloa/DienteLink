@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, X } from 'lucide-react';
 import { useAuth } from '../services/authService';
+import { bookingService } from '../services/bookingService';
 
 interface Props {
   hasPatient: boolean;
@@ -10,7 +11,7 @@ interface Props {
   onNewAppointment: () => void;
 }
 
-/** Guía progresiva para el doctor nuevo. Se oculta sola al completarse o al cerrarla. */
+/** Guía para un consultorio que todavía no tiene pacientes. Se oculta al registrar uno, al completar los pasos o al cerrarla. */
 const GettingStarted: React.FC<Props> = ({ hasPatient, hasAppointment, hasPayment, onNewAppointment }) => {
   const navigate = useNavigate();
   const { clinicId, user } = useAuth();
@@ -21,7 +22,10 @@ const GettingStarted: React.FC<Props> = ({ hasPatient, hasAppointment, hasPaymen
 
   const hoursKey = `dientelink_hours_reviewed_${clinicId || user?.id || 'default'}`;
   const [hoursReviewed] = useState(() => {
-    try { return localStorage.getItem(hoursKey) === '1'; } catch { return false; }
+    try {
+      if (localStorage.getItem(hoursKey) === '1') return true;
+    } catch { /* ignore */ }
+    return bookingService.hasSavedHours();
   });
   const reviewHours = () => {
     navigate('/settings');
@@ -35,7 +39,7 @@ const GettingStarted: React.FC<Props> = ({ hasPatient, hasAppointment, hasPaymen
   ];
   const doneCount = steps.filter(s => s.done).length;
 
-  if (dismissed || doneCount === steps.length) return null;
+  if (dismissed || hasPatient || doneCount === steps.length) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(key, '1'); } catch { /* ignore */ }

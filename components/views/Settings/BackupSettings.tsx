@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, DatabaseBackup, Download } from 'lucide-react';
 import { sileo } from 'sileo';
 import { useAuth } from '../../../services/authService';
-import { createFullBackup, getLastBackupDate } from '../../../lib/backup';
+import { createFullBackup, resolveBackupDate, syncLocalBackupToAccount } from '../../../lib/backup';
 
 const BackupSettings: React.FC = () => {
-  const { clinicId, profile, isGuest } = useAuth();
+  const { clinicId, profile, user, isGuest } = useAuth();
   const [includePDFs, setIncludePDFs] = useState(true);
   const [running, setRunning] = useState(false);
   const [percent, setPercent] = useState(0);
   const [message, setMessage] = useState('');
-  const [lastBackup, setLastBackup] = useState<Date | null>(() => getLastBackupDate());
+  const accountBackupDates = [
+    profile?.last_backup_at,
+    typeof user?.user_metadata?.last_backup_at === 'string' ? user.user_metadata.last_backup_at : null,
+  ];
+  const [lastBackup, setLastBackup] = useState<Date | null>(() => resolveBackupDate(accountBackupDates));
+
+  useEffect(() => {
+    setLastBackup(resolveBackupDate(accountBackupDates));
+    if (!isGuest) syncLocalBackupToAccount(accountBackupDates);
+  }, [isGuest, profile?.last_backup_at, user?.user_metadata?.last_backup_at]);
 
   const daysAgo = lastBackup ? Math.floor((Date.now() - lastBackup.getTime()) / 86_400_000) : null;
 
@@ -30,7 +39,7 @@ const BackupSettings: React.FC = () => {
         includePDFs,
         onProgress: (m, p) => { setMessage(m); setPercent(Math.round(p)); },
       });
-      setLastBackup(getLastBackupDate());
+      setLastBackup(resolveBackupDate(accountBackupDates));
       sileo.success({
         title: 'Respaldo descargado',
         description: `${res.patients} pacientes y ${res.appointments} citas.${res.pdfFailures ? ` ${res.pdfFailures} PDF no se pudieron generar (sus datos sí están en el archivo).` : ''}`,

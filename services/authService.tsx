@@ -36,6 +36,7 @@ export interface DoctorProfile {
   locale: string;
   theme_color?: string;
   has_completed_onboarding?: boolean;
+  last_backup_at?: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

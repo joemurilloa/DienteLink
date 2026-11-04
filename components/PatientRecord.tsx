@@ -240,6 +240,7 @@ const ENABLE_PERIODONTOGRAM = false;
                     snapshots={patient.odontogramHistory || []}
                     onSaveSnapshot={canEditClinical ? handleSaveOdontogramSnapshot : undefined}
                     onAddToBudget={canViewFinancial ? handleAddToBudget : undefined}
+                    onExpand={isFocusMode ? undefined : () => setIsFocusMode(true)}
                     readOnly={!canEditClinical}
                 />
             );
@@ -279,7 +280,7 @@ const ENABLE_PERIODONTOGRAM = false;
             case 'odontogram':
                 return (
                     <div className="space-y-0 animate-in-up duration-500 min-h-[600px] h-full flex flex-col">
-                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={handleOdontogramUpdate} snapshots={patient.odontogramHistory || []} onSaveSnapshot={canEditClinical ? handleSaveOdontogramSnapshot : undefined} onAddToBudget={canViewFinancial ? handleAddToBudget : undefined} readOnly={!canEditClinical} />
+                    <Odontogram patientId={patient.id} teeth={patient.odontogram || []} onUpdate={handleOdontogramUpdate} snapshots={patient.odontogramHistory || []} onSaveSnapshot={canEditClinical ? handleSaveOdontogramSnapshot : undefined} onAddToBudget={canViewFinancial ? handleAddToBudget : undefined} onExpand={isFocusMode ? undefined : () => setIsFocusMode(true)} readOnly={!canEditClinical} />
                     </div>
                 );
             case 'periodontogram':
@@ -384,17 +385,17 @@ const ENABLE_PERIODONTOGRAM = false;
 
             {/* Main Content */}
             <div className={cn(
-                "flex-1 bg-white rounded-2xl border border-slate-300 md:overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm",
+                "flex-1 min-w-0 bg-white rounded-2xl border border-slate-300 md:overflow-hidden relative flex flex-col transition-all duration-500 shadow-sm",
                 isClinicalTab ? "border-slate-300 shadow-none" : ""
             )}>
                 <div className={cn(
-                    "flex-1 md:overflow-y-auto hide-scrollbar transition-all duration-300",
+                    "flex-1 min-w-0 md:overflow-y-auto hide-scrollbar transition-all duration-300",
                     isClinicalTab ? "p-0" : "p-5 lg:p-8"
                 )}>
                     {isClinicalTab && (
                         <button
                             onClick={() => setIsFocusMode(true)}
-                            className="absolute top-5 right-5 z-10 w-11 h-11 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md shadow-blue-500/20 flex items-center justify-center transition-all active:scale-95"
+                            className="absolute top-5 right-5 z-10 hidden sm:flex w-11 h-11 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md shadow-blue-500/20 items-center justify-center transition-all active:scale-95"
                             aria-label="Ver en pantalla completa"
                         >
                             <Maximize2 size={18} />

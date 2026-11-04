@@ -31,14 +31,23 @@ export function generateId(): string {
   return crypto.randomUUID();
 }
 
-/** Formats ISO dates ("YYYY-MM-DD") into human readable strings like "jueves 19 de marzo" for fast reading */
+const ES_WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const ES_MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** "Miércoles, 4 de noviembre". La preposición queda en minúscula. */
+export function formatLongEsDate(date: Date): string {
+  return `${ES_WEEKDAYS[date.getDay()]}, ${date.getDate()} de ${ES_MONTHS[date.getMonth()]}`;
+}
+
+/** Formats ISO dates ("YYYY-MM-DD") into "Miércoles, 4 de noviembre". */
 export function formatAppDate(dateStr: string): string {
   if (!dateStr) return '';
   try {
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
     const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-    return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    if (Number.isNaN(date.getTime())) return dateStr;
+    return formatLongEsDate(date);
   } catch(e) {
     return dateStr;
   }

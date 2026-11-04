@@ -10,6 +10,7 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { ToothData, ToothSurface, ClinicalCondition } from '../../types';
 import { cn } from '../../lib/utils';
+import { idToFdi } from '../../lib/toothNumber';
 import {
   TOOTH_INFO,
   conditionThemes,
@@ -47,6 +48,7 @@ export const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
   const isAbsent    = wholeCond === 'ausente' || wholeCond === 'extraido';
   const hasSpecial  = wholeCond !== null;
   const info        = TOOTH_INFO[tooth.id];
+  const fdi         = info?.fdi ?? idToFdi(tooth.id);
   const surfaces    = getSurfacesForTooth(tooth.id);
   const condCount   = getConditionCount(tooth.surfaces);
   const toothType   = getToothType(tooth.id);
@@ -112,13 +114,13 @@ export const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
             <line x1="75" y1="20" x2="25" y2="120" stroke="#64748B" strokeWidth="3" />
           </svg>
         </div>
-        <span className="text-sm font-bold text-slate-500 tabular-nums">{info?.fdi ?? tooth.id}</span>
+        <span className="text-sm font-bold text-slate-500 tabular-nums">{fdi}</span>
 
         {showTooltip && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-50 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs whitespace-nowrap shadow-2xl min-w-[140px]">
               <p className="font-black text-sm mb-0.5">{info?.name}</p>
-              <p className="text-slate-500 text-[9px] mb-1">Universal: {tooth.id} | FDI: {info?.fdi}</p>
+              <p className="text-slate-400 text-[10px] mb-1">FDI {info?.fdi}</p>
               <p className="text-slate-500 italic border-t border-slate-700 pt-1">
                 {wholeCond ? conditionThemes[wholeCond].label : 'Pieza no presente'} (Toca para editar)
               </p>
@@ -218,9 +220,9 @@ export const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
           'text-sm font-bold tabular-nums transition-colors leading-tight cursor-pointer hover:underline',
           readOnly ? 'text-slate-500' : 'text-slate-700 group-hover:text-blue-600',
         )}
-        title={`FDI ${info?.fdi ?? tooth.id} — tocar para abrir detalle`}
+        title={`FDI ${fdi} — tocar para abrir detalle`}
       >
-        {info?.fdi ?? tooth.id}
+        {fdi}
       </span>
 
       {/* Mini 5-surface cross diagram */}
@@ -290,7 +292,7 @@ export const ToothDiagram: React.FC<ToothDiagramProps> = React.memo(({
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <div className="px-3 py-2.5 bg-slate-900 text-white rounded-xl text-xs whitespace-nowrap shadow-2xl min-w-[170px]">
             <p className="font-black text-sm mb-0.5">{info?.name}</p>
-            <p className="text-slate-500 text-[9px] mb-1.5">Universal: {tooth.id} | FDI: {info?.fdi}</p>
+            <p className="text-slate-400 text-[10px] mb-1.5">FDI {info?.fdi}</p>
             {tooth.surfaces.length > 0 ? (
               <div className="space-y-0.5 border-t border-slate-700 pt-1.5">
                 {tooth.surfaces.map(s => (
