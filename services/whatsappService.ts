@@ -1,5 +1,6 @@
 import { Appointment, BudgetItem } from '../types';
 import { fdiLabel } from '../lib/toothNumber';
+import { formatCurrency } from '../lib/utils';
 
 export const COUNTRY_DIAL_CODES: Record<string, string> = {
   HNL: '504',
@@ -228,7 +229,9 @@ class WhatsAppService {
       ? (doctorName ? `— Dr(a). ${doctorName} | ${clinicName}` : `— ${clinicName}`)
       : '— Su clínica dental';
     const money = (n: number) =>
-      `${currencySymbol ? currencySymbol + ' ' : ''}${n.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
+      currencySymbol
+        ? `${currencySymbol} ${n.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`
+        : formatCurrency(n);
     const name = this.firstName(patientName);
 
     const itemsText = items.map((item, index) => {

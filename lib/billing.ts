@@ -93,14 +93,21 @@ export function subscriptionStatusCopy(opts: {
   if (opts.isProvisional) {
     return {
       badge: 'En revisión',
-      detail: `Sigues dentro mientras revisamos el pago, hasta el ${day(opts.provisionalUntil)}.`,
+      detail: `Sigues dentro mientras revisamos el pago, hasta el ${day(opts.provisionalUntil)}. Lo revisamos en menos de 24 horas.`,
       tone: 'trial',
+    };
+  }
+  if (opts.isActive && opts.expiresAt && opts.expiresAt.getTime() <= Date.now()) {
+    return {
+      badge: 'Gracia',
+      detail: `El plan venció. Sigues dentro ${opts.daysLeft} día${opts.daysLeft === 1 ? '' : 's'} para cerrar el día y bajar tu copia.`,
+      tone: 'soon',
     };
   }
   if (!opts.isActive || opts.daysLeft <= 0) {
     return {
       badge: 'Vencida',
-      detail: 'El acceso está cerrado. Los expedientes siguen guardados.',
+      detail: 'El trabajo está cerrado. Los expedientes siguen guardados y la copia se baja en Ajustes.',
       tone: 'expired',
     };
   }

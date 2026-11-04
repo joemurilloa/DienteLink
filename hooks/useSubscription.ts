@@ -101,17 +101,13 @@ export function useSubscription(clinicId: string | null): SubscriptionState {
 
     const deny = (message: string) => {
       setState(prev => {
-        if (confirmed.current) return { ...prev, loading: false };
+        if (confirmed.current) return { ...prev, loading: false, error: message };
         return {
           ...prev,
-          status: 'inactive',
-          isActive: false,
-          isTrial: false,
-          isExpired: true,
-          daysLeft: 0,
-          expiresSoon: false,
           loading: false,
           error: message,
+          isActive: false,
+          isExpired: false,
         };
       });
     };

@@ -4,6 +4,7 @@ import { PatientRecord } from '../types';
 import { sileo } from 'sileo';
 import { formatCurrency, getLocalISODate } from './utils';
 import { fdiLabel } from './toothNumber';
+import { findingLabel } from './clinicalLabels';
 
 export const generatePatientPDF = async (
     patient: PatientRecord,
@@ -156,7 +157,7 @@ export const generatePatientPDF = async (
             drawSectionHeader('Odontograma Inicial');
             const odontoData = teethWithConditions.map(t => [
                 `Pieza ${fdiLabel(t.id) ?? '—'}`,
-                t.surfaces.map(s => `${s.surface}: ${s.condition}`).join(', ')
+                t.surfaces.map(s => findingLabel(s.surface, s.condition)).join(', ')
             ]);
             drawClinicalTable([['Pieza', 'Hallazgos / Condiciones']], odontoData, { 0: { cellWidth: 30 } });
         }

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../hooks/useSubscription';
 
 import { BILLING, subscriptionStatusCopy } from '../../lib/billing';
+import { openProblemReport } from '../../lib/support';
 import { prepareReceiptFile, MAX_RECEIPT_BYTES } from '../../lib/receiptFile';
 
 const BANK_INFO = {
@@ -119,11 +120,11 @@ const SubscriptionPage: React.FC = () => {
               {provisionalGranted ? (
                 <>
                   Recibimos tu foto. <strong>Sigues usando la app mientras la revisamos</strong> (hasta 3 días).
-                  El mes se suma cuando confirmemos el pago. Si pasa de 3 días, escríbenos por WhatsApp.
+                  El mes se suma cuando confirmemos el pago, en menos de 24 horas. Si pasa de 3 días, escríbenos por WhatsApp.
                 </>
               ) : (
                 <>
-                  Recibimos tu foto. La revisamos a mano. El mes se suma cuando confirmemos el pago.
+                  Recibimos tu foto. La revisamos a mano, en menos de 24 horas. El mes se suma cuando confirmemos el pago.
                   Si no ves el plan activo, escríbenos por WhatsApp.
                 </>
               )}
@@ -185,9 +186,25 @@ const SubscriptionPage: React.FC = () => {
         )}
 
         {!subscription.isActive && (
-          <p className="mb-6 text-sm text-slate-500">
-            Los expedientes siguen guardados. Se vuelven a abrir cuando el plan de este consultorio está vigente.
-          </p>
+          <div className="mb-6 text-sm text-slate-500">
+            <p>Los expedientes siguen guardados. Después del vencimiento sigues 7 días para cerrar el día. La copia se baja en Ajustes aunque el plan ya haya vencido.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button type="button" onClick={() => navigate('/settings')} className="font-semibold text-slate-800 underline">
+                Ir a Ajustes y bajar la copia
+              </button>
+              <button
+                type="button"
+                onClick={() => openProblemReport({
+                  doctorName: profile?.full_name,
+                  clinicName: profile?.clinic_name,
+                  email: userEmail,
+                })}
+                className="font-semibold text-slate-800 underline"
+              >
+                WhatsApp de soporte
+              </button>
+            </div>
+          </div>
         )}
 
         <div className="sub-grid-modern">

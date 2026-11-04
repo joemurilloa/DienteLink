@@ -373,7 +373,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                 </div>
               )}
             </div>
-            <p className="text-slate-500 font-medium text-sm sm:text-base">Reservas que llegaron por tu enlace. Aprueba las que sí vas a atender.</p>
+            <p className="text-slate-500 font-medium text-sm sm:text-base">Reservas que llegaron por tu enlace. Aprueba las que sí vas a atender. El aviso por correo todavía no está activo: hay que abrir la app para verlas.</p>
           </div>
           <div className={cn('flex self-start md:self-auto bg-slate-100/80 p-1 rounded-xl', !settings.isActive && 'pointer-events-none select-none opacity-40')}>
             {([

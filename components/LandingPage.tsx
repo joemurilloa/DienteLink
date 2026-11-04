@@ -73,7 +73,7 @@ const SCENES = [
   {
     id: 'reservas',
     label: 'Reservas',
-    text: 'Compartes un enlace con las horas abiertas. Alguien pidió las 11:00 y te llega como solicitud: tú la apruebas y recién entonces entra a la agenda. Mientras está pendiente, esa hora ya no sale como libre.',
+    text: 'Compartes un enlace con las horas abiertas. Alguien pidió las 11:00 y la solicitud queda en Reservas, dentro de la app: tú la apruebas y recién entonces entra a la agenda. Mientras está pendiente, esa hora ya no sale como libre. Hoy no llega un correo; hay que abrir DienteLink para verla.',
     mode: 'booking',
   },
 ] as const;
@@ -91,11 +91,11 @@ const FAQS = [
   },
   {
     q: `¿Qué pasa cuando terminan los ${BILLING.trialDays} días de prueba?`,
-    a: `Si no continúas, el acceso se detiene sin cargos automáticos y tus datos no se borran. Antes de que termine tu plan puedes descargar tu copia desde Ajustes. Para continuar pagas ${BILLING.priceAmount} al mes por transferencia bancaria y subes tu comprobante.`,
+    a: `Si no continúas, sigues 7 días más para cerrar el día. Después se detiene el trabajo, sin cargos automáticos, y tus datos no se borran. La copia se baja desde Ajustes aunque el plan ya haya vencido. Para continuar pagas ${BILLING.priceAmount} al mes por transferencia y subes el comprobante. Lo revisamos en menos de 24 horas.`,
   },
   {
     q: '¿Cómo se protegen los expedientes de mis pacientes?',
-    a: 'Viajan cifrados por HTTPS y se guardan en tu cuenta, separados de los de otros consultorios. Entra solo quien tú invitas. Puedes descargar una copia completa desde Ajustes mientras tu plan esté vigente. Si dejas el plan, el acceso se detiene y los expedientes no se borran.',
+    a: 'Viajan cifrados por HTTPS y se guardan en tu cuenta, separados de los de otros consultorios. Puedes descargar una copia completa desde Ajustes aunque el plan haya vencido. Si dejas el plan, el trabajo se detiene y los expedientes no se borran.',
   },
   {
     q: '¿El recibo en PDF es una factura con CAI?',
@@ -110,19 +110,18 @@ const INCLUDED = [
   { title: 'Presupuestos y pagos' },
   { title: 'Reservas por enlace' },
   { title: 'Aviso de la cita por WhatsApp', note: 'El mensaje lo envías tú.' },
-  { title: 'Copia de tu cuenta', note: 'Desde Ajustes, mientras el plan esté vigente.' },
+  { title: 'Copia de tu cuenta', note: 'Desde Ajustes, también si el plan ya venció.' },
 ] as const;
 
 const ALSO = [
   'Recetas',
   'Notas de evolución',
   'Historial del odontograma',
-  'Roles para recepción',
 ] as const;
 
 const GUARANTEES = [
   { title: 'Separado por consultorio', note: 'Cada consultorio ve solo sus pacientes.' },
-  { title: 'consultorio.zip', note: 'Descárgala desde Ajustes mientras tu plan esté vigente.' },
+  { title: 'consultorio.zip', note: 'Descárgala desde Ajustes, también si el plan ya venció.' },
   { title: 'Si dejas el plan, no se borra', note: 'El acceso se detiene. Los expedientes siguen.' },
 ] as const;
 

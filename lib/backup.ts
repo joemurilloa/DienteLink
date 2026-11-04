@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { dbToPatient } from '../hooks/usePatients';
 import { getLocalISODate } from './utils';
 import { fdiLabel } from './toothNumber';
+import { paymentMethodLabel, workStatusLabel } from './clinicalLabels';
 import type { PatientRecord } from '../types';
 
 const LAST_BACKUP_KEY = 'dientelink_last_backup';
@@ -174,12 +175,12 @@ export async function createFullBackup(opts: BackupOptions): Promise<{ patients:
 
   zip.file('presupuestos.csv', toCSV(
     ['Paciente', 'Fecha', 'Tratamiento', 'Pieza', 'Cantidad', 'Costo unitario', 'Total', 'Estado'],
-    patients.flatMap(p => p.budget.map(b => [p.identification.fullName, b.createdAt, b.treatment, fdiLabel(b.toothId) ?? '', b.quantity, b.unitCost, b.unitCost * b.quantity, b.status])),
+    patients.flatMap(p => p.budget.map(b => [p.identification.fullName, b.createdAt, b.treatment, fdiLabel(b.toothId) ?? '', b.quantity, b.unitCost, b.unitCost * b.quantity, workStatusLabel(b.status)])),
   ));
 
   zip.file('pagos.csv', toCSV(
     ['Paciente', 'Fecha', 'Monto', 'Método', 'Nota'],
-    patients.flatMap(p => (p.payments || []).map(x => [p.identification.fullName, x.date, x.amount, x.method, x.note])),
+    patients.flatMap(p => (p.payments || []).map(x => [p.identification.fullName, x.date, x.amount, paymentMethodLabel(x.method), x.note])),
   ));
 
   zip.file('citas.csv', toCSV(
