@@ -318,9 +318,9 @@ const CalendarView: React.FC = () => {
               <p className="sm:hidden text-center text-xs text-slate-400 font-medium -mt-1">Toca un día para ver las citas</p>
 
             <div className="hidden sm:block overflow-x-auto border border-slate-300 rounded-3xl bg-white">
-              <div className="min-w-[800px] flex flex-col h-max">
+              <div className="w-full min-w-0 flex flex-col h-max">
                 {/* Headers */}
-                <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50/30 border-b border-slate-300 sticky top-0 z-10">
+                <div className="grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))] sm:grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] bg-slate-50/30 border-b border-slate-300 sticky top-0 z-10">
                   <div className="bg-white border-r border-slate-300" />
                   {getWeekDates().map((date, i) => {
                     const dateStr = fmtDate(date);
@@ -336,7 +336,7 @@ const CalendarView: React.FC = () => {
                 </div>
 
                 {/* Timeline Grid */}
-                <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-white">
+                <div className="grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))] sm:grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] bg-white">
                   {gridTimes.length === 0 && (
                     <p className="col-span-full px-6 py-10 text-sm text-slate-500">No hay horario guardado. Lo puedes definir en Ajustes.</p>
                   )}
@@ -357,7 +357,7 @@ const CalendarView: React.FC = () => {
                           <div
                             key={`${time}-${di}`}
                             className={cn(
-                              "h-20 border-r border-b border-slate-50 p-1",
+                              "h-20 min-w-0 border-r border-b border-slate-50 p-1",
                               !inSchedule && "bg-slate-50/80",
                               inSchedule && isPastDay && "bg-slate-50/50",
                               isToday && inSchedule && !isPastDay && "bg-blue-50/10"
@@ -380,7 +380,7 @@ const CalendarView: React.FC = () => {
                                 type="button"
                                 onClick={() => setDetailApt(a)}
                                 aria-label={`Ver cita de ${a.patientName}, ${a.time}`}
-                                className="p-2 mb-1 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)] w-full text-left hover:border-blue-300"
+                                className="p-1.5 sm:p-2 mb-1 min-w-0 bg-blue-50/80 border border-blue-100 rounded-xl flex flex-col justify-center h-[calc(100%-4px)] w-full text-left hover:border-blue-300"
                               >
                                 <span className="text-xs font-bold text-blue-600">{a.time}</span>
                                 <span className="text-sm font-semibold text-slate-800 line-clamp-2 mt-0.5 leading-tight">

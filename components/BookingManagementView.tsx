@@ -434,7 +434,7 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
         {/* TAB: REQUESTS */}
         {activeTab === 'requests' && (
           <div className="animate-in fade-in duration-300">
-            <div className="flex items-center gap-2 mb-6 border-b border-slate-300 pb-4 overflow-x-auto hide-scrollbar">
+            <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-300 pb-4">
               {([
                 { key: 'pending', label: 'Por aprobar' },
                 { key: 'approved', label: 'Aprobadas' },
@@ -445,18 +445,17 @@ export const BookingManagementView: React.FC<Props> = ({ onBack }) => {
                   key={f.key}
                   onClick={() => setFilter(f.key)}
                   className={cn(
-                    "px-2.5 sm:px-4 py-2 rounded-[10px] text-[13px] font-bold transition-all whitespace-nowrap",
+                    "shrink-0 px-2.5 sm:px-4 py-2 rounded-[10px] text-[13px] font-bold transition-all whitespace-nowrap",
                     filter === f.key ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"
                   )}
                 >
                   {f.label}
                 </button>
               ))}
-              <div className="flex-1" />
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="w-11 h-11 rounded-[10px] flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50"
+                className="shrink-0 ml-auto w-11 h-11 rounded-[10px] flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50"
               >
                 <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
               </button>

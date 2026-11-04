@@ -445,7 +445,10 @@ const UnifiedTimelineTab: React.FC<Props> = ({ patient, onUpdate }) => {
             <FileText size={18} />
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Notas Evolución</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 leading-tight">
+              <span className="sm:hidden">Notas</span>
+              <span className="hidden sm:inline">Notas de evolución</span>
+            </p>
             <p className="text-xl sm:text-2xl font-bold text-slate-900 tabular-nums leading-tight">
               {(patient.evolutionNotes || []).length}
             </p>
