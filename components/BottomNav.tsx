@@ -85,7 +85,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ activePath, onSearchOp
     setIsMenuOpen(false);
     try {
       await signOut();
-      window.location.assign('/login');
+      window.location.assign('/welcome');
     } catch (err) {
       console.error('Error signing out:', err);
       sileo.error({ title: 'Error', description: 'No se pudo cerrar sesión. Intenta de nuevo.' });

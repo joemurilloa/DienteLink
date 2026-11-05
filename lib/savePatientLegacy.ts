@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type { PatientCollection, PatientRecord } from '../types';
 import { legacyExplicitRemovedIds, shouldSyncPatientCollection } from './patientSync';
 import { PatientIdentificationSchema } from './schemas';
+import { SaveFailedError } from './saveFailed';
 
 /**
  * Camino viejo (N upserts). Activo solo con VITE_USE_SAVE_PATIENT_RPC !== 'true'.
@@ -30,7 +31,10 @@ export async function savePatientLegacy(
   const idValidation = PatientIdentificationSchema.safeParse(patient.identification);
   if (!idValidation.success) {
     const firstIssue = idValidation.error.issues[0];
-    throw new Error(`Datos inválidos: ${firstIssue.message} (campo: ${firstIssue.path.join('.')})`);
+    throw new SaveFailedError(
+      'patients',
+      new Error(`Datos inválidos: ${firstIssue.message} (campo: ${firstIssue.path.join('.')})`),
+    );
   }
 
   const validId = idValidation.data;
@@ -50,7 +54,7 @@ export async function savePatientLegacy(
   };
 
   const { error: pErr } = await supabase.from('patients').upsert(identityRow, { onConflict: 'id' });
-  if (pErr) throw new Error(`Error en paciente: ${pErr.message}`);
+  if (pErr) throw new SaveFailedError('patients', pErr, `Error en paciente: ${pErr.message}`);
 
   if (canViewChart) {
     const { error: cErr } = await supabase.from('patient_clinical').upsert(
@@ -73,7 +77,7 @@ export async function savePatientLegacy(
       },
       { onConflict: 'patient_id' },
     );
-    if (cErr) throw new Error(`Error en expediente clínico: ${cErr.message}`);
+    if (cErr) throw new SaveFailedError('patient_clinical', cErr, `Error en expediente clínico: ${cErr.message}`);
   }
 
   const syncSubTable = async <T extends { id?: string }, R extends Record<string, unknown>>(
@@ -100,7 +104,7 @@ export async function savePatientLegacy(
     if (present.length > 0) {
       const mapped = present.map(mapFn);
       const { error: upsertErr } = await supabase.from(tableName).upsert(mapped, { onConflict: 'id' });
-      if (upsertErr) throw upsertErr;
+      if (upsertErr) throw new SaveFailedError(tableName, upsertErr);
     }
 
     const removedIds = legacyExplicitRemovedIds(
@@ -116,7 +120,7 @@ export async function savePatientLegacy(
         .eq('patient_id', patient.id)
         .eq('doctor_id', doctorId)
         .in('id', removedIds);
-      if (delErr) throw delErr;
+      if (delErr) throw new SaveFailedError(tableName, delErr);
     }
   };
 

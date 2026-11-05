@@ -15,6 +15,8 @@ import {
 } from '../lib/savePatientRpc';
 import { savePatientLegacy } from '../lib/savePatientLegacy';
 import { isRpcVersionConflict, isSessionExpiredError, rpcErrorMessage } from '../lib/rpcErrors';
+import { SaveFailedError } from '../lib/saveFailed';
+import { reportSaveFailure } from '../lib/sentry';
 import { patientListSelect } from '../lib/patientSelect';
 
 // ===================== Helpers =====================
@@ -298,7 +300,10 @@ export function usePatientMutations() {
             const idValidation = PatientIdentificationSchema.safeParse(patient.identification);
             if (!idValidation.success) {
                 const firstIssue = idValidation.error.issues[0];
-                throw new Error(`Datos inválidos: ${firstIssue.message} (campo: ${firstIssue.path.join('.')})`);
+                throw new SaveFailedError(
+                    'patients',
+                    new Error(`Datos inválidos: ${firstIssue.message} (campo: ${firstIssue.path.join('.')})`),
+                );
             }
 
             if (!isSavePatientRpcEnabled()) {
@@ -343,6 +348,7 @@ export function usePatientMutations() {
             return { previous, previousPatient };
         },
         onError: (err, newPatient, context) => {
+            reportSaveFailure(err, 'patients');
             const versionConflict =
                 err instanceof MissingPatientVersionError || isRpcVersionConflict(err);
             if (versionConflict) {

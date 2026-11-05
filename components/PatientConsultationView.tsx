@@ -8,6 +8,7 @@ import { useAppointments, useAppointmentMutations } from '../hooks/useAppointmen
 import { PatientRecord, EvolutionNote, ClinicalEvent, Prescription } from '../types';
 import { sileo } from 'sileo';
 import { stickyError } from '../lib/stickyError';
+import { reportSaveFailure } from '../lib/sentry';
 import { cn, getInitials } from '../lib/utils';
 import { useAuth } from '../services/authService';
 import PatientRecordComponent from './PatientRecord';
@@ -167,7 +168,7 @@ const PatientConsultationView: React.FC = () => {
       sileo.success({ title: isDraft ? 'Borrador Guardado' : 'Consulta Finalizada', description: isDraft ? 'Se ha guardado en el expediente para continuar después.' : 'El expediente ha sido actualizado automáticamente.' });
       navigate('/');
     } catch (error) {
-      console.error(error);
+      reportSaveFailure(error, 'appointments');
       stickyError('No se guardó la consulta', 'Lo escrito sigue en esta pantalla. Revisa tu conexión antes de salir.');
     } finally {
       setIsSaving(false);
