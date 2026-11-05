@@ -75,6 +75,14 @@ export function isRpcSoftDeleted(err: unknown): boolean {
   return rpcErrorMessage(err).includes('GONE:') || rpcErrorMessage(err).includes('soft-deleted');
 }
 
+/** El servidor rechazó la sesión. Reintentar el mismo envío no entra de nuevo. */
+export function isSessionExpiredError(err: unknown): boolean {
+  const code = rpcErrorCode(err);
+  if (code === 'PGRST301' || code === '401') return true;
+  const msg = rpcErrorMessage(err).toLowerCase();
+  return /jwt|refresh token|session expired|auth session missing|not authenticated|invalid claim/.test(msg);
+}
+
 /** La función no está en el esquema que ve este rol (migración aún no aplicada). */
 export function isMissingRpc(err: unknown): boolean {
   if (rpcErrorCode(err) === 'PGRST202') return true;

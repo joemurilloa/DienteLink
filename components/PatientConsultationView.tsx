@@ -7,6 +7,7 @@ import { usePatient, usePatientMutations } from '../hooks/usePatients';
 import { useAppointments, useAppointmentMutations } from '../hooks/useAppointments';
 import { PatientRecord, EvolutionNote, ClinicalEvent, Prescription } from '../types';
 import { sileo } from 'sileo';
+import { stickyError } from '../lib/stickyError';
 import { cn, getInitials } from '../lib/utils';
 import { useAuth } from '../services/authService';
 import PatientRecordComponent from './PatientRecord';
@@ -167,7 +168,7 @@ const PatientConsultationView: React.FC = () => {
       navigate('/');
     } catch (error) {
       console.error(error);
-      sileo.error({ title: 'Error', description: 'Hubo un problema guardando la consulta.' });
+      stickyError('No se guardó la consulta', 'Lo escrito sigue en esta pantalla. Revisa tu conexión antes de salir.');
     } finally {
       setIsSaving(false);
     }

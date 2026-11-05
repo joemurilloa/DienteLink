@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { PatientRecord, OdontogramSnapshot, PatientCollection, Payment } from '../types';
 import { canSeeClinicMoney, canViewClinicalChart } from '../lib/roles';
 import { useAuth } from '../services/authService';
-import { sileo } from 'sileo';
+import { stickyError } from '../lib/stickyError';
 import { ensurePeriodontogramData, ensureOdontogram } from '../lib/utils';
 import { DEMO_PATIENTS } from '../lib/demoData';
 import { PatientIdentificationSchema } from '../lib/schemas';
@@ -14,7 +14,7 @@ import {
   savePatientViaRpc,
 } from '../lib/savePatientRpc';
 import { savePatientLegacy } from '../lib/savePatientLegacy';
-import { isRpcVersionConflict, rpcErrorMessage } from '../lib/rpcErrors';
+import { isRpcVersionConflict, isSessionExpiredError, rpcErrorMessage } from '../lib/rpcErrors';
 import { patientListSelect } from '../lib/patientSelect';
 
 // ===================== Helpers =====================
@@ -277,6 +277,9 @@ export function usePatientMutations() {
     };
 
     const saveMutation = useMutation({
+        // Sin esto, sin red el envío se pausa y la pantalla se queda en «Guardando…».
+        // Aquí siempre se intenta: si falla, el doctor ve «No se guardó» y el texto sigue.
+        networkMode: 'always',
         mutationFn: async (patient: PatientRecord) => {
             // Guest mode: update local cache only
             if (isGuest) {
@@ -358,11 +361,10 @@ export function usePatientMutations() {
                         pendingRemovedIds: undefined,
                     });
                 }
-                sileo.error({
-                    title: 'Conflicto de versión',
-                    description:
-                        'Recarga el expediente. Los borrados pendientes no se aplicaron (sin reintento).',
-                });
+                stickyError(
+                    'Conflicto de versión',
+                    'Recarga el expediente. Los borrados pendientes no se aplicaron.',
+                );
                 return;
             }
             if (context?.previous) {
@@ -371,10 +373,16 @@ export function usePatientMutations() {
             if (context?.previousPatient) {
                 queryClient.setQueryData(['patient', newPatient.id, clinicId], context.previousPatient);
             }
-            sileo.error({
-                title: 'Error al sincronizar datos',
-                description: rpcErrorMessage(err) || 'Los cambios fueron revertidos. Verifica tu conexión.',
-            });
+            const raw = rpcErrorMessage(err);
+            const network = /failed to fetch|networkerror|load failed|offline/i.test(raw);
+            stickyError(
+                isSessionExpiredError(err) ? 'Tu sesión venció' : 'No se guardó',
+                isSessionExpiredError(err)
+                    ? 'Entra de nuevo para guardar. Reintentar el mismo envío no alcanza.'
+                    : network
+                        ? 'Revisa tu conexión. El cambio no quedó en el servidor.'
+                        : (raw || 'Revisa tu conexión. El cambio no quedó en el servidor.'),
+            );
         },
         onSettled: (data, error, variables) => {
             if (isGuest) return;
@@ -415,7 +423,7 @@ export function usePatientMutations() {
         },
         onError: (err, _, context) => {
             if (context?.previous) queryClient.setQueryData(['patients', clinicId], context.previous);
-            sileo.error({ title: 'Error', description: 'No se pudo eliminar el paciente.' });
+            stickyError('No se eliminó', 'El paciente sigue en la lista. Revisa tu conexión.');
         },
         onSettled: (_, __, variables) => {
             queryClient.invalidateQueries({ queryKey: ['patients', clinicId] });
@@ -479,7 +487,7 @@ export function usePatientMutations() {
             if (context?.previousDetail) {
                 queryClient.setQueryData(['patient', context.patientId, clinicId], context.previousDetail);
             }
-            sileo.error({ title: 'No se registró el pago', description: 'Verifica tu conexión e inténtalo de nuevo.' });
+            stickyError('No se registró el pago', 'Verifica tu conexión e inténtalo de nuevo.');
         },
         onSettled: (_data, _err, variables) => {
             if (isGuest) return;

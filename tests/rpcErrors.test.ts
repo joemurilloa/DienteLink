@@ -6,6 +6,7 @@ import {
   isRpcInvalidState,
   isMissingRpc,
   isRpcNotFound,
+  isSessionExpiredError,
   rpcErrorCode,
 } from '../lib/rpcErrors';
 
@@ -24,6 +25,12 @@ describe('rpcErrors', () => {
     expect(isRpcInvalidState({ message: 'NOT_PENDING: ya no está pendiente' })).toBe(true);
     expect(isRpcForbidden({ message: 'FORBIDDEN: sin clínica' })).toBe(true);
     expect(isRpcConflict({ message: 'otro error' })).toBe(false);
+  });
+
+  it('reconoce una sesión vencida aunque el guardado viejo envuelva el mensaje', () => {
+    expect(isSessionExpiredError({ code: 'PGRST301', message: 'JWT expired' })).toBe(true);
+    expect(isSessionExpiredError(new Error('Error en paciente: JWT expired'))).toBe(true);
+    expect(isSessionExpiredError(new Error('Error en paciente: Failed to fetch'))).toBe(false);
   });
 
   it('reconoce un RPC que todavía no está en el esquema', () => {

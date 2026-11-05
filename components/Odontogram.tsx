@@ -17,6 +17,7 @@ import React, { useState, useMemo, useCallback, useRef, useLayoutEffect } from '
 import { ToothData, ToothSurface, ClinicalCondition, OdontogramSnapshot } from '../types';
 import { cn, ensureOdontogram } from '../lib/utils';
 import { sileo } from 'sileo';
+import { stickyError } from '../lib/stickyError';
 import 'sileo/styles.css';
 import {
   Clock, Info, Maximize2,
@@ -154,13 +155,16 @@ const Odontogram: React.FC<OdontogramProps> = ({
               setSaveStatus('saving');
               void Promise.resolve(onUpdate(previous))
                 .then(() => { if (undoSeq === saveSequence.current) setSaveStatus('saved'); sileo.info({ title: 'Cambio deshecho' }); })
-                .catch(() => { if (undoSeq === saveSequence.current) setSaveStatus('error'); sileo.error({ title: 'No se pudo deshacer' }); });
+                .catch(() => {
+                  if (undoSeq === saveSequence.current) setSaveStatus('error');
+                  stickyError('No se pudo deshacer', 'El odontograma sigue como estaba en pantalla.');
+                });
             },
           },
         });
       } catch {
         if (sequence === saveSequence.current) setSaveStatus('error');
-        sileo.error({ title: 'No se pudo guardar el odontograma', description: 'Inténtalo nuevamente.' });
+        stickyError('No se guardó el odontograma', 'El cambio sigue en pantalla. Si sales, se pierde.');
       }
     })();
   }, [onUpdate]);
